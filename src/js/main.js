@@ -28,13 +28,17 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     var trigger = dd.querySelector('.lang-dropdown-trigger');
     var list = dd.querySelector('.lang-dropdown-list');
     if (!trigger || !list) return;
+    var label = trigger.querySelector('.lang-dropdown-label');
     function open() {
       dd.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
+      if (label) { label.classList.remove('is-rolling'); label.textContent = label.dataset.name; }
     }
     function close() {
+      if (!dd.classList.contains('open')) return;
       dd.classList.remove('open');
       trigger.setAttribute('aria-expanded', 'false');
+      if (label) rollCode(label);
     }
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -42,6 +46,39 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     });
     dropdowns.push({ el: dd, close: close });
   });
+  /* THE NAME CLEARS AND THE CODE ROLLS IN (2026-10-08): per character, top
+     down, with the cascade's curve and stagger (see the character cascade
+     below), quicker because it is a button answering a press. Put back as
+     plain text once it lands; at once for reduced motion. */
+  function rollCode(el) {
+    var code = el.dataset.code;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = code; return; }
+    var lh = el.getBoundingClientRect().height || 14;
+    el.textContent = '';
+    el.classList.add('is-rolling');
+    var inners = [];
+    for (var i = 0; i < code.length; i++) {
+      var box = document.createElement('span'), inner = document.createElement('span');
+      box.className = 'cr-box'; box.style.height = lh + 'px';
+      inner.className = 'cr-in'; inner.style.height = inner.style.lineHeight = lh + 'px';
+      inner.textContent = code[i];
+      inner.style.transition = 'none';
+      inner.style.transform = 'translateY(-' + lh + 'px)';
+      box.appendChild(inner); el.appendChild(box); inners.push(inner);
+    }
+    el.getBoundingClientRect();
+    requestAnimationFrame(function () {
+      inners.forEach(function (inner, i) {
+        inner.style.transition = 'transform .7s cubic-bezier(.55,.05,.45,.95) ' + (i * 40) + 'ms';
+        inner.style.transform = 'translateY(0)';
+      });
+    });
+    setTimeout(function () {
+      if (!el.classList.contains('is-rolling')) return;
+      el.classList.remove('is-rolling');
+      el.textContent = code;
+    }, 700 + code.length * 40 + 60);
+  }
   if (!dropdowns.length) return;
   document.addEventListener('click', function (e) {
     dropdowns.forEach(function (d) { if (!d.el.contains(e.target)) d.close(); });
@@ -614,6 +651,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       var lh = parseFloat(cs.lineHeight); if (isNaN(lh)) lh = fs * 1.25;
       var labelLs = parseFloat(cs.letterSpacing); if (isNaN(labelLs)) labelLs = 0;
       var label = el.textContent;
+      /* what was there, markup and all — the words' formatting and the
+         preview's data-k marker (src/js/site-rich.js) — put back after the roll */
+      var was = el.innerHTML;
       var num = el.dataset.crNum;
       el.textContent = '';
       el.style.letterSpacing = '0';
@@ -637,7 +677,7 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
       });
       var totalMs = elDelay + (inners.length - 1) * charStagger + 1300 + 80;
       setTimeout(function () {
-        el.textContent = label;       // back to plain text (counter reappears)
+        el.innerHTML = was;           // back as it was (counter reappears)
         el.style.letterSpacing = '';
         el.classList.remove('cr-nonum');
       }, totalMs);
@@ -831,3 +871,27 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
     }).then(function () { btn.disabled = false; msg.textContent = msg.className.indexOf('bad') > -1 ? msg.textContent : ''; });
   });
 })();
+
+/* THE FOOTER'S OWN LINKS AS ICONS (Website › Links, 2026-10-07), as a partner
+   site draws them (site/render.js): a site icon with a clear ground becomes a
+   silhouette in the icons' color, a solid one stays a small picture, and none
+   at all shows the link's initials. */
+(function () {
+  [].forEach.call(document.querySelectorAll('.foot-socials .favi img'), function (im) {
+    var a = im.parentNode;
+    if (a.classList.contains('own')) return;
+    function no() { a.classList.add('no-icon'); }
+    function ok() {
+      if (!im.naturalWidth) return no();
+      try {
+        var c = document.createElement('canvas'); c.width = c.height = 16;
+        var x = c.getContext('2d'); x.drawImage(im, 0, 0, 16, 16);
+        var p = x.getImageData(0, 0, 16, 16).data, n = 0;
+        for (var i = 3; i < p.length; i += 4) if (p[i] < 40) n++;
+        if (n > 40) { a.style.setProperty('--fi', 'url("' + im.src + '")'); a.classList.add('mono'); }
+      } catch (e) { /* a picture the page may not read stays a picture */ }
+    }
+    if (im.complete) ok(); else { im.addEventListener('load', ok); im.addEventListener('error', no); }
+  });
+})();
+

@@ -63,7 +63,7 @@
   function setSwitch(el, on) {
     el.setAttribute('aria-checked', on ? 'true' : 'false');
     var s = el.querySelector('.switch-state');
-    if (s) s.textContent = on ? tr('common.on') : tr('common.off');
+    if (s) s.textContent = tr(on ? 'switch.on' : 'switch.off');
   }
   function isOn(el) { return el.getAttribute('aria-checked') === 'true'; }
 

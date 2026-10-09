@@ -423,7 +423,7 @@
 
   function setSwitch(btn, on) {
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
-    btn.querySelector('.switch-state').textContent = on ? 'On' : 'Off';
+    btn.querySelector('.switch-state').textContent = tr(on ? 'switch.on' : 'switch.off');
   }
 
   /* The senders an administrator has set up, as options.

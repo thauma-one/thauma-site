@@ -18,8 +18,8 @@ pageTitle: resources
    and it defaults to revealed. #}
 {% set resourcesRevealed = visible.sections.resourcesLibrary %}
 <header class="page"><div class="wrap">
-  <div class="cue rise">{{ t.resources.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.resources.h2_thin }} <b>{{ t.resources.h2_bold }}</b></h1>
+  <div class="cue rise">{{ t.resources.cue | rich("resources.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.resources.h2_thin | rich("resources.h2_thin") }} <b>{{ t.resources.h2_bold | rich("resources.h2_bold") }}</b></h1>
 </div></header>
 
 <section><div class="wrap">
@@ -48,10 +48,10 @@ pageTitle: resources
   {%- set filtering = resources.length >= 3 %}
   <div class="lib{% if not filtering %} lib-few{% endif %}" id="lib">
     {% if filtering %}
-    <div class="doors" role="group" aria-label="{{ t.resources.cue }}">
+    <div class="doors" role="group" aria-label="{{ t.resources.cue | plain }}">
       {%- for d in ["crisis", "growth", "planning", "lookup"] %}
       <button type="button" class="door" data-door="{{ d }}" aria-pressed="false">
-        <span class="door-label">{{ t.resources["door_" + d] }}</span>
+        <span class="door-label">{{ t.resources["door_" + d] | plain }}</span>
         <span class="door-n" aria-hidden="true"></span>
       </button>
       {%- endfor %}
@@ -60,17 +60,17 @@ pageTitle: resources
     {% if filtering %}
     <div class="lib-bar">
       <label class="lib-search">
-        <span class="vh">{{ t.resources.search_label }}</span>
+        <span class="vh">{{ t.resources.search_label | rich("resources.search_label") }}</span>
         <svg class="lib-mag" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
           <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
           <path d="M10.4 10.4 L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
         </svg>
         <input type="search" id="libQ" autocomplete="off"
-               placeholder="{{ t.resources.search_hint }}">
+               placeholder="{{ t.resources.search_hint | plain }}">
       </label>
-      <div class="fmts" role="group" aria-label="{{ t.resources.link_label }}">
+      <div class="fmts" role="group" aria-label="{{ t.resources.link_label | plain }}">
         {%- for f in ["guide", "diagram", "checklist", "glossary-entry", "video"] %}
-        <button type="button" class="fmt" data-fmt="{{ f }}" aria-pressed="false">{{ t.resources["fmt_" + f] }}</button>
+        <button type="button" class="fmt" data-fmt="{{ f }}" aria-pressed="false">{{ t.resources["fmt_" + f] | plain }}</button>
         {%- endfor %}
       </div>
     </div>
@@ -88,9 +88,9 @@ pageTitle: resources
            data-text="{{ (rtitle ~ ' ' ~ rsum ~ ' ' ~ (r.symptoms | join(' '))) | lower }}">
         {% if r.photo %}<div class="resource-photo" style="aspect-ratio:{{ r.photo_ar }}"><img src="{{ r.photo }}" alt="{{ rtitle }}" loading="lazy" decoding="async"></div>{% endif %}
         <h3><a href="/{{ lang }}/resources/{{ r.slug }}/">{{ rtitle }}</a></h3>
-        <p class="resource-kind">{{ t.resources["fmt_" + r.format] or r.format }}</p>
+        <p class="resource-kind">{{ (t.resources["fmt_" + r.format] or r.format) | plain }}</p>
         {% if rsum %}<p>{{ rsum | md | safe }}</p>{% endif %}
-        {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label }}</a>{% endif %}
+        {% if r.link %}<a class="btn ghost" href="{{ r.link }}" target="_blank" rel="noopener">{{ t.resources.link_label | rich("resources.link_label") }}</a>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -98,16 +98,16 @@ pageTitle: resources
     {#- Shown only when a filter empties the grid. The way out is a button,
        not an instruction telling somebody to clear their filters. -#}
     <p class="lib-none" id="libNone" hidden>
-      <span>{{ t.resources.none_text }}</span>
-      <button type="button" class="btn ghost" id="libClear">{{ t.resources.none_cta }}</button>
+      <span>{{ t.resources.none_text | rich("resources.none_text") }}</span>
+      <button type="button" class="btn ghost" id="libClear">{{ t.resources.none_cta | rich("resources.none_cta") }}</button>
     </p>
   </div>
   {% else %}
   <div class="empty">
-    <h3>{{ t.resources.empty_title }}</h3>
-    <p>{{ t.resources.empty_text }}</p>
+    <h3>{{ t.resources.empty_title | rich("resources.empty_title") }}</h3>
+    <p>{{ t.resources.empty_text | rich("resources.empty_text") }}</p>
     <div class="workline"><i></i></div>
-    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.resources.empty_cta }}</a>
+    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.resources.empty_cta | rich("resources.empty_cta") }}</a>
   </div>
   {% endif %}
 </div></section>

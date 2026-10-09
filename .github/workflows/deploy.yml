@@ -295,6 +295,9 @@ jobs:
       - name: Test · workers/widgets-run
         working-directory: workers
         run: node test/widgets-run.test.mjs
+      - name: Test · workers/words-waiting
+        working-directory: workers
+        run: node test/words-waiting.test.mjs
       # ---- END TEST STEPS ----
 
       # PRODUCTION REFUSES; IT DOES NOT APPLY.

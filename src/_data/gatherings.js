@@ -123,6 +123,8 @@ module.exports = () => {
            showing the item with a marker — never between showing and hiding. */
         langs: Object.keys(data.title || {}).filter((k) => (data.title || {})[k]),
         registration: webUrl(data.registration),
+        /* HIGHLIGHTED: an invitation at the top of the page (events.njk). */
+        featured: data.featured === true,
         /* An explicit map link wins — some venues deserve better than a search
            — and otherwise it follows the place, so moving the venue moves the
            link and nobody has to remember two fields. */

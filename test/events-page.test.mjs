@@ -48,7 +48,7 @@ const d = new JSDOM(html).window.document;
 
 /* ------------------------------------------------------ the invitation */
 
-await check("exactly ONE gathering is featured, however many are coming", async () => {
+await check("with none highlighted, exactly ONE gathering is featured, however many are coming", async () => {
   /* Three cards each announcing "You are invited" is a list wearing an
      invitation's clothes, and the announcement stops meaning anything by the
      third time somebody reads it. */
@@ -254,6 +254,28 @@ await check("the empty state is a position, not an apology", async () => {
   assert(en.events.empty_text, "there is no empty state text at all");
   assert(!/check back/i.test(en.events.empty_text),
     "the empty state apologizes instead of stating the position");
+});
+
+/* ------------------------------------------------- highlighted at the top */
+
+await check("highlighted gatherings are each an invitation at the top, in date order; nothing left over is listed", async () => {
+  /* Chase, 2026-10-08: "a highlighted event which is the one that populates
+     at the top … highlighting multiple". The same fixtures, both coming ones
+     marked featured, built separately. */
+  const { cpSync, readFileSync: rd, writeFileSync } = await import("node:fs");
+  const src = "/tmp/events-featured-src";
+  cpSync(new URL("./fixtures/", import.meta.url).pathname, src, { recursive: true });
+  for (const f of ["cohort.md", "next-gathering.md"]) {
+    const p = `${src}/gatherings/${f}`;
+    writeFileSync(p, rd(p, "utf8").replace(/^---\n/, "---\nfeatured: true\n"));
+  }
+  const built = await buildDevSite("/tmp/events-featured", "en/events/index.html", { contentDir: src + "/" });
+  assert(built.ok, "could not build: " + built.error);
+  const f = new JSDOM(readFileSync("/tmp/events-featured/en/events/index.html", "utf8")).window.document;
+  const cards = [...f.querySelectorAll("article.invite .invite-title")].map((t) => t.textContent);
+  assert(cards.length === 2, `${cards.length} invitations`);
+  assert(/Production people/.test(cards[0]) && /Prva grupa/.test(cards[1]), `not in date order: ${cards.join(" | ")}`);
+  assert(!f.querySelector(".also"), "an 'also ahead' list with nothing left in it");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

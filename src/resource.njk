@@ -44,8 +44,8 @@ pagination:
 
   {% if resource.link %}
   <p><a class="btn ghost" href="{{ resource.link }}" target="_blank" rel="noopener">
-    {{ t.resources.link_label }}</a></p>
+    {{ t.resources.link_label | rich("resources.link_label") }}</a></p>
   {% endif %}
 
-  <p class="row-actions"><a class="lnk" href="/{{ lang }}/resources/">&larr; {{ t.resources.title }}</a></p>
+  <p class="row-actions"><a class="lnk" href="/{{ lang }}/resources/">&larr; {{ t.resources.title | rich("resources.title") }}</a></p>
 </div></section>

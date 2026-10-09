@@ -89,7 +89,7 @@
   function setSwitch(btn, on) {
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
     var label = btn.querySelector('.switch-state');
-    if (label) label.textContent = on ? 'On' : 'Off';
+    if (label) label.textContent = tr(on ? 'switch.on' : 'switch.off');
   }
 
   function has(code) {
@@ -98,10 +98,6 @@
   function langName(code) {
     var l = state.languages.filter(function (x) { return x.code === code; })[0];
     return l ? (l.native_name || l.name) : code;
-  }
-  function isEnabled(code) {
-    var l = state.languages.filter(function (x) { return x.code === code; })[0];
-    return !!(l && l.is_enabled);
   }
 
   /* ONLY the languages this partner publishes. A language switched off in
@@ -236,7 +232,7 @@
             ' aria-checked="' + (m.is_public ? 'true' : 'false') + '"' +
             ' aria-label="' + esc(tr('ms.published')) + '">' +
             '<span class="switch-track"><span class="switch-state">' +
-              (m.is_public ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+              tr(m.is_public ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
           '</button>') +
         '</div>' +
       '</div>';
@@ -579,7 +575,7 @@
     var show = w.mode !== 'custom' && !!w.start;
     el.hidden = !show;
     el.innerHTML = show ? enabledLangs().map(function (l) {
-      return '<div><b>' + esc(l.code.toUpperCase()) + '</b>' +
+      return '<div><b>' + esc(l.native_name || l.name || l.code) + '</b>' +
         esc(whenLabel(l.code, w.precision, w.start, w.end)) + '</div>';
     }).join('') : '';
   }

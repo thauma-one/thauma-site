@@ -112,6 +112,22 @@
     "youtube": "https://youtube.com/@thaumaone",
     "instagram": "",
     "facebook": "",
-    "x": ""
-  }
+    "x": "",
+    "tiktok": "",
+    "linkedin": "",
+    "spotify": "",
+    "email": ""
+  },
+  "share": {
+    "home": "",
+    "about": "",
+    "mission": "",
+    "values": "",
+    "team": "",
+    "resources": "",
+    "events": "",
+    "give": "",
+    "contact": ""
+  },
+  "links": []
 }

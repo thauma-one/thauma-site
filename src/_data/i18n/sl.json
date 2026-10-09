@@ -20,7 +20,7 @@
     "sub": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez koga, od katerega bi se lahko učili. Thauma obstaja zato, da tem potrebam pride naproti.",
     "who_cue": "Potreba",
     "who_h2_thin": "Resnične cerkve,",
-    "who_h2_bold": "resnične tehnične potrebe.",
+    "who_h2_bold": "resnične\ntehnične potrebe.",
     "who_lede": "Zastarela oprema, ki je nihče ne zna upravljati. Prostovoljci, ki sami vodijo zapletene sisteme. Nobenega usposabljanja, nobene mreže sodelavcev. Potreba je praktična in tu je že to nedeljo — zato začnemo prav tam.",
     "who_img_tag": "Fotografija — nedeljska produkcija v polnem teku",
     "who_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
@@ -39,7 +39,9 @@
     "cta_h2_bold": "partnerstvo.",
     "cta_lede": "Thauma se financira iz darov podpornikov. Partnerji — posamezniki in cerkve — so tisti, ki nas postavijo ob ekipe, ki to potrebujejo.",
     "cta_give": "Podprite delo",
-    "cta_contact": "Stopite v stik"
+    "cta_contact": "Stopite v stik",
+    "seo_title": "Thauma | Domov",
+    "seo_desc": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez…"
   },
   "about": {
     "title": "O nas",
@@ -49,17 +51,19 @@
     "dict_def2": "beseda, po kateri sežejo evangeliji, ko se množice čudijo Jezusovim delom.",
     "dict_def3": "kadar se produkcija in bogoslužje združita v slavljenje troedinega Boga.",
     "who_cue": "Kdo smo",
-    "who_h2_thin": "Služabniki Cerkve,",
+    "who_h2_thin": "Služabniki Cerkve,\n",
     "who_h2_bold": "ne njena avtoriteta.",
     "body1": "Thauma je produkcijska služba za protestantske cerkve na Hrvaškem in v širšem Balkanu. Potrebo je preprosto opisati: cerkve potrebujejo pomoč pri produkciji — zvok, video, luč, prenosi v živo in ljudje, ki jih upravljajo — v tej regiji pa ni organizacije, ki bi tej potrebi odgovorila na terenu.",
     "body2": "Te cerkve so majhne, razpršene in večinoma vodene s prostovoljci — ljudje, ki nosijo to delo, pa ga pogosto opravljajo brez prave podpore: neznana oprema, malo ljudi v bližini, ki so reševali iste težave, in malo priložnosti, da bi se od koga kaj naučili. Potreba je resnična, prav tako osamljenost tistega, ki ji je prepuščen sam. Prav to prihajamo spremenit.",
     "posture_cue": "Naša drža",
     "posture_h2_thin": "Učenci kulture,",
-    "posture_h2_bold": "nikoli njeni reformatorji.",
+    "posture_h2_bold": "nikoli\nnjeni reformatorji.",
     "body3": "V kulture, kjer služimo, prihajamo kot učenci in udeleženci. Nismo tam, da bi cerkve preoblikovali po podobi kakšnega tujega modela — pridružujemo se temu, kar je krajevna cerkev že vzpostavila, in odgovarjamo na potrebe tako, kot jih opredelijo same. Zato sta učenje jezika in kulture na prvem mestu, zaznamujeta prva leta in se nikoli povsem ne končata.",
     "posture_img_tag": "Fotografija — najprej učenje kulture, šele nato vse drugo",
     "posture_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
-    "status_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri) in služi celotni protestantski cerkvi, ne glede na denominacijo."
+    "status_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri) in služi celotni protestantski cerkvi, ne glede na denominacijo.",
+    "seo_title": "Thauma | O nas",
+    "seo_desc": "Thauma je produkcijska služba za protestantske cerkve na Hrvaškem in v širšem Balkanu. Potrebo je preprosto opisati: cerkve potrebujejo pomoč pri produkciji…"
   },
   "mission": {
     "title": "Poslanstvo",
@@ -77,18 +81,20 @@
     "work3_title": "Skupnost in voditeljstvo",
     "work3_text": "Regijska srečanja, ki povežejo ljudi iz produkcije prek meja občin in denominacij — ter vlaganje v zveste domače ljudi, ki lahko kot voditelji usposabljajo druge. To je sad in dolgoročni cilj.",
     "horizon_cue": "Obzorje",
-    "horizon_h2_thin": "Merimo v letih,",
+    "horizon_h2_thin": "Merimo v letih,\n",
     "horizon_h2_bold": "ne v dogodkih.",
     "horizon_text": "Obzorje je pošteno: pomembne sadove pričakujemo v petih do desetih letih, ne v dveh. Služenje zraste iz temeljev jezika in kulture; usposabljanje zraste iz služenja; skupnost in voditelji zrastejo iz obojega. Zavezujemo se celotnemu loku in ga nočemo prehitevati — počasen temelj je tisto, kar poznejši sad sploh omogoči.",
     "success_text": "Uspeh je videti kot skupnost cerkvenih produkcijskih ljudi — tehnikov, voditeljev bogoslužja in pastorjev — ki obstaja tam, kjer je prej ni bilo, in se srečuje ter si pomaga, ne da bi vsako povezavo poganjali mi.",
     "horizon_img_tag": "Fotografija — čez leta, skupaj",
-    "horizon_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/."
+    "horizon_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
+    "seo_title": "Thauma | Poslanstvo",
+    "seo_desc": "To niso stopnje, ki bi jih dokončali, ampak trajni izrazi iste poklicanosti — vsak zraste iz prejšnjega in sčasoma vsi trije tečejo skupaj."
   },
   "values": {
     "title": "Vrednote",
     "cue": "Česa se držimo",
     "h2_thin": "Prepričanja,",
-    "h2_bold": "na katerih stoji to delo.",
+    "h2_bold": "na\nkaterih stoji to delo.",
     "items": [
       {
         "title": "Ljudje pred projekti",
@@ -118,12 +124,14 @@
         "title": "Mi sadimo, Bog daje rast",
         "text": "Vse zgoraj opisuje trud, sam trud pa ima svojo mejo. Lahko odpremo vrata, dosledno prihajamo in dobro služimo — skupnosti in razmnoževanja, ki sledita, pa ne moremo ustvariti. Če to povemo naravnost, to ni lažna skromnost; to je razlog, da prvih šest prepričanj nikoli ne zdrsne v pritisk po uspešnosti."
       }
-    ]
+    ],
+    "seo_title": "Thauma | Vrednote",
+    "seo_desc": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez…"
   },
   "resources": {
     "title": "Gradiva",
     "cue": "Gradiva",
-    "h2_thin": "Nastala iz resničnih potreb,",
+    "h2_thin": "Nastala iz resničnih potreb,\n",
     "h2_bold": "v resničnih cerkvah.",
     "empty_title": "Gradiva prihajajo.",
     "empty_text": "Ko bomo služili cerkvam na terenu, bodo tu živeli vodniki, prevodi in orodja, ki jih bomo ustvarili — v hrvaščini in angleščini, brezplačno za vsako cerkev. Če vaša ekipa kaj potrebuje že zdaj, nam pišite.",
@@ -142,12 +150,14 @@
     "fmt_diagram": "Diagram",
     "fmt_checklist": "Kontrolni seznam",
     "fmt_glossary-entry": "Slovarček",
-    "fmt_video": "Video"
+    "fmt_video": "Video",
+    "seo_title": "Thauma | Gradiva",
+    "seo_desc": "Ko bomo služili cerkvam na terenu, bodo tu živeli vodniki, prevodi in orodja, ki jih bomo ustvarili — v hrvaščini in angleščini, brezplačno za vsako cerkev.…"
   },
   "give": {
     "title": "Darujte",
     "cue": "Postanite naš partner",
-    "h2_thin": "To delo poganja",
+    "h2_thin": "To delo poganja\n",
     "h2_bold": "partnerstvo.",
     "lede": "Thauma se po misijonarskem izročilu financira iz darov podpornikov: stroškov ne nosijo cerkve, ki jim služimo, ampak partnerji. Vaš dar postavi usposobljeno pomoč ob ekipe, ki do nje drugače ne morejo priti.",
     "monthly_title": "Mesečni partnerji",
@@ -157,12 +167,14 @@
     "impact_img_tag": "Fotografija — kaj omogoča vaše partnerstvo",
     "impact_placeholder": "Fotografije še ni — dodajte jo na /admin/website/photos/.",
     "legal_note": "Thauma je neprofitna organizacija v ustanavljanju (zvezna država Missouri). Dokler ne pridobimo zveznega statusa davčne oprostitve, darovi še niso davčno olajšani — takoj ko se to spremeni, bomo to tukaj jasno zapisali.",
-    "form_placeholder": "Tukaj bo naš varen obrazec za darovanje."
+    "form_placeholder": "Tukaj bo naš varen obrazec za darovanje.",
+    "seo_title": "Thauma | Darujte",
+    "seo_desc": "Thauma se po misijonarskem izročilu financira iz darov podpornikov: stroškov ne nosijo cerkve, ki jim služimo, ampak partnerji. Vaš dar postavi usposobljeno…"
   },
   "contact": {
     "title": "Kontakt",
     "cue": "Stopite v stik",
-    "h2_thin": "Pogovorimo se —",
+    "h2_thin": "Pogovorimo se\n—",
     "h2_bold": "o čemer koli.",
     "lede": "Cerkev, ki potrebuje pomoč, vprašanje o poslanstvu, želja po partnerstvu — vsako sporočilo prebere resničen človek.",
     "form_name": "Vaše ime",
@@ -172,7 +184,9 @@
     "form_success": "Hvala — kmalu se vam oglasimo.",
     "form_error": "Sporočilo ni bilo poslano — preverite ime, e-poštni naslov in sporočilo ter poskusite znova.",
     "form_subject": "O čem gre (neobvezno)",
-    "form_reason": "Izberite razlog…"
+    "form_reason": "Izberite razlog…",
+    "seo_title": "Thauma | Kontakt",
+    "seo_desc": "Cerkev, ki potrebuje pomoč, vprašanje o poslanstvu, želja po partnerstvu — vsako sporočilo prebere resničen človek."
   },
   "stay": {
     "h_thin": "Ostanimo",
@@ -192,7 +206,7 @@
   "events": {
     "title": "Dogodki",
     "cue": "Srečanja",
-    "h2_thin": "Ljudje iz produkcije,",
+    "h2_thin": "Ljudje iz produkcije,\n",
     "h2_bold": "v istem prostoru.",
     "empty_title": "Zaenkrat ni napovedanih dogodkov.",
     "empty_text": "Regijska srečanja so del dolgoročne vizije — ljudje iz produkcije iz številnih občin, skupaj. Ko bo prvo načrtovano, se bodo tukaj odprle prijave.",
@@ -210,7 +224,9 @@
     "cadence_fortnightly": "Vsaka dva tedna",
     "cadence_monthly": "Vsak mesec",
     "cadence_custom": "Glej datume spodaj",
-    "also_cue": "Prav tako prihaja"
+    "also_cue": "Prav tako prihaja",
+    "seo_title": "Thauma | Dogodki",
+    "seo_desc": "Regijska srečanja so del dolgoročne vizije — ljudje iz produkcije iz številnih občin, skupaj. Ko bo prvo načrtovano, se bodo tukaj odprle prijave."
   },
   "staff": {
     "title": "Osebje",
@@ -232,11 +248,13 @@
     "title": "Ekipa",
     "cue": "Ljudje",
     "h2_thin": "Tisti, ki gredo",
-    "h2_bold": "na teren, za kulise.",
+    "h2_bold": "na\nteren, za kulise.",
     "base_label": "Živi v",
     "contact": "Kontakt",
     "back": "Vsi člani ekipe",
-    "bio_cue": "Predstavitev"
+    "bio_cue": "Predstavitev",
+    "seo_title": "Thauma | Ekipa",
+    "seo_desc": "Cerkve po Hrvaškem in v širši regiji imajo resnične tehnične potrebe — ozvočenje, luč, video, prenose v živo in ljudi, ki vse to upravljajo, pogosto brez…"
   },
   "notFound": {
     "cue": "Napaka",

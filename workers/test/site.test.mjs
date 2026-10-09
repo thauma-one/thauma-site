@@ -223,7 +223,7 @@ check("the language menu is always a dropdown, by each language's own name, on a
     payload, theme: payload.theme, lang: "hr", pageId: "home", base: "/site/c", origin: "", draft: false,
     langNames: { en: "English", hr: "Hrvatski", sr: "Српски" } });
   const header = html.slice(html.indexOf("<header"), html.indexOf("</header>"));
-  assert(/<details class="langmenu"><summary[^>]*><span>HR<\/span>/.test(header), "in the header, showing the language in use");
+  assert(/<details class="langmenu"><summary[^>]*><span data-name="Hrvatski">HR<\/span>/.test(header), "in the header, showing the language in use (its name kept for when it opens)");
   assert(header.indexOf("langmenu") > header.indexOf("</nav>"), "outside the page menu, so a phone still shows it");
   assert(html.includes('hreflang="sr" lang="sr">Српски</a>'), "each language by its own name");
   /* Not in the footer (Chase, 2026-10-01: "We also don't need the language
@@ -813,12 +813,20 @@ check("a page's tabs: the page's own sections, then the bar, then a panel per ta
   assert(/class="ptabs-bar ptabs-pills al-left"/.test(html), "the bar's look");
   assert(/<button[^>]*aria-selected="true" data-tab="give">Give<\/button><button[^>]*aria-selected="false" data-tab="pray">Tab 2<\/button>/.test(html), "named tabs, and a blank name falls back");
   assert(/<div class="ptab" id="t-give"[^>]*><section/.test(html) && /<div class="ptab" id="t-pray"[^>]*hidden>/.test(html), "the first panel shows, the rest wait");
+  /* Chase, 2026-10-08: sections below the tabs too — the bar sits at tabs.at. */
+  give.sections = [txt("top1", "Above"), txt("low1", "Below")];
+  give.tabs.at = 1;
+  const at1 = page(d, "give");
+  assert(at1.indexOf(">Above<") < at1.indexOf('<section class="ptabs-bar') && at1.indexOf('id="t-pray"') < at1.indexOf(">Below<"), "the bar where it sits; the rest of the page after the panels");
+  delete give.tabs.at; give.sections = [txt("top1", "Above")];
   give.tabs.items.pop();
   const one = page(d, "give");
   assert(!/<section class="ptabs-bar/.test(one) && /Giving/.test(one), "one tab is part of the page, no bar");
   const bad = cleanDoc({ ...d, pages: [{ id: "give", tabs: { style: "nope", items: Array.from({ length: 9 }, () => ({ id: "../x", sections: [] })) } }] }, ["en"]);
   const t = bad.pages.find((p) => p.id === "give").tabs;
   assert(t.style === "joined" && t.items.length === 6 && t.items.every((x) => /^[a-z0-9]+$/i.test(x.id)), "cleaned: a known style, six at most, safe ids");
+  const placed = cleanDoc({ ...d, pages: [{ id: "give", tabs: { at: 2, items: [{ id: "a", sections: [] }] } }, { id: "about", tabs: { at: -3, items: [{ id: "b", sections: [] }] } }] }, ["en"]);
+  eq([placed.pages.find((p) => p.id === "give").tabs.at, placed.pages.find((p) => p.id === "about").tabs.at], [2, undefined], "where the bar sits is kept; nonsense is dropped");
 });
 
 check("the new form and Give styles draw; a site saved before keeps its old one", () => {
@@ -942,6 +950,10 @@ check("sharing and search: each page's own words and picture, the real public ad
   const head = (extra) => page(d, "about", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", subdomain: "chaseroush" }, ...extra }).match(/<head>[\s\S]*<\/head>/)[0];
   const h = head();
   assert(h.includes('<meta name="description" content="I Grew Up Surrounded by Ministry, and It Shaped Everything.">'), "this page's own words, in Title Case (English)");
+  about.seo = { desc: { en: "news from the field, once a month", hr: "vijesti s terena, jednom mjesečno" } };
+  assert(head().includes('content="News from the Field, Once a Month"'), "a typed description, in Title Case (English)");
+  assert(page(d, "about", "hr", { site: { slug: "chase-roush", display_name: "Chase Roush", subdomain: "chaseroush" } }).includes('content="vijesti s terena, jednom mjesečno"'), "Croatian as written");
+  delete about.seo;
   assert(h.includes('<link rel="canonical" href="https://chaseroush.thauma.one/en/about/">'), "canonical");
   assert(h.includes('<meta property="og:image" content="https://thauma.one/media/partnersite/x/p.webp">'), "its first photo, as a full address");
   assert(h.includes('hreflang="hr" href="https://chaseroush.thauma.one/hr/about/"') && h.includes('hreflang="x-default"'), "alternates, full");
@@ -973,7 +985,7 @@ check("Advanced: a written title and description win; the name card is the defau
   assert(head().includes('og:image" content="https://thauma.one/media/card-en.jpg"'), "the card, once made");
   home.seo = { title: { en: "Production for churches" }, desc: { en: "Written by hand." }, image: "photo" };
   const h = head();
-  assert(h.includes("<title>Production for churches</title>") && h.includes('og:description" content="Written by hand."') && h.includes('og:image" content="https://thauma.one/media/p.jpg"'), "written wins; photo chosen");
+  assert(h.includes("<title>Production for churches</title>") && h.includes('og:description" content="Written by Hand."') && h.includes('og:image" content="https://thauma.one/media/p.jpg"'), "written wins; photo chosen");
 });
 
 check("any text size like Word: 4–200px kept and drawn; the first version's multiples still read; anything else dropped", () => {
@@ -1069,10 +1081,16 @@ check("a page's own description is a title as its language writes one: Title Cas
   eq(MODEL.titleCase("tell your story here: who you are and why it matters to the people of iPhone land.", "en"),
     "Tell Your Story Here: Who You Are and Why It Matters to the People of iPhone Land.", "English");
   eq(MODEL.titleCase("Recite svoju priču ovdje.", "hr"), "Recite svoju priču ovdje.", "Croatian");
+  /* Chase, 2026-10-08: typed in capitals, it still read as capitals. */
+  eq(MODEL.titleCase("NEWS, PRAYER AND THE ROAD AHEAD", "en"), "News, Prayer and the Road Ahead", "capitals, English");
+  eq(MODEL.titleCase("VIJESTI I MOLITVE S TERENA", "hr"), "Vijesti i molitve s terena", "capitals, Croatian: a sentence");
+  eq(MODEL.titleCase("our trip to the USA and back", "en"), "Our Trip to the USA and Back", "an acronym in ordinary words stays");
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   assert(/<meta name="description" content="News, Prayer and the Road Ahead — All in One Place\.">/.test(page(d)), "the page's own, in English");
   d.pages[0].seo = { title: {}, desc: { en: "written by me, as I like it" }, image: null };
-  assert(/<meta name="description" content="written by me, as I like it"/.test(page(d)), "what the owner wrote is kept as written");
+  /* Chase, 2026-10-08: what the owner writes reads as the language writes a
+     description too — English in Title Case. */
+  assert(/<meta name="description" content="Written by Me, as I Like It"/.test(page(d)), "what the owner wrote, in Title Case");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -20,6 +20,7 @@
 import { word, SECTIONS, plainOf, allSections, titleCase } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
+import { ICON, SOCIAL_NAME } from "../lib/social-icons.js";
 
 export function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -682,6 +683,9 @@ html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate
 .h.in .ch{opacity:1;transform:none}
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
+/* A preview redrawn after a change arrives as it was, not arriving again
+   (?settled, from the Site Creator; staff-site.js refreshFrame). */
+html.settled .m,html.settled .h .ch{opacity:1!important;transform:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
  .scrollcue,.cue-mouse em{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
@@ -692,19 +696,6 @@ html[data-pages="fade"]{view-transition-name:root}
 }
 
 /* ---------------------------------------------------------------- icons -- */
-
-const ICON = {
-  youtube: '<path d="M22 8.2s-.2-1.5-.8-2.1c-.8-.8-1.6-.8-2-.9C16.4 5 12 5 12 5s-4.4 0-7.2.2c-.4.1-1.2.1-2 .9-.6.6-.8 2.1-.8 2.1S2 9.9 2 11.6v1.6c0 1.7.2 3.4.2 3.4s.2 1.5.8 2.1c.8.8 1.8.8 2.2.9 1.6.2 6.8.2 6.8.2s4.4 0 7.2-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2.1.8-2.1s.2-1.7.2-3.4v-1.6c0-1.7-.2-3.4-.2-3.4zM10 15V9l5.2 3L10 15z" fill="currentColor"/>',
-  instagram: '<rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor"/>',
-  facebook: '<path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.3H7.6V13h2.7v8h3.2z" fill="currentColor"/>',
-  x: '<path d="M17.7 3h3l-6.6 7.5L22 21h-6.1l-4.8-6.2L5.6 21h-3l7-8L2.5 3h6.2l4.3 5.7L17.7 3zm-1 16.2h1.7L7.8 4.7H6l10.7 14.5z" fill="currentColor"/>',
-  tiktok: '<path d="M16.5 3c.4 2.2 1.8 3.6 4 3.8v3c-1.5 0-2.9-.4-4-1.2v6.2c0 3.4-2.6 5.7-5.7 5.7S5 18.2 5 15.1c0-3.3 2.8-5.8 6.2-5.6v3.1c-1.6-.3-3.1.8-3.1 2.5 0 1.4 1.1 2.6 2.6 2.6 1.6 0 2.7-1.1 2.7-3V3h3.1z" fill="currentColor"/>',
-  linkedin: '<path d="M4.5 9h3v11h-3V9zm1.5-5a1.8 1.8 0 110 3.6A1.8 1.8 0 016 4zm4 5h2.9v1.5c.4-.8 1.5-1.7 3.1-1.7 3.3 0 3.9 2.1 3.9 4.9V20h-3v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V20h-3V9z" fill="currentColor"/>',
-  spotify: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7.5 9.6c3-1 6.6-.7 9.2.8M8 12.6c2.5-.7 5.3-.4 7.4.8M8.6 15.4c2-.5 4-.3 5.6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-  email: '<rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.8"/>',
-};
-const SOCIAL_NAME = { youtube: "YouTube", instagram: "Instagram", facebook: "Facebook", x: "X", tiktok: "TikTok",
-  linkedin: "LinkedIn", spotify: "Spotify", email: "Email" };
 
 /* -------------------------------------------------------------- helpers -- */
 
@@ -1198,16 +1189,20 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     }
     return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}"${s.join && i > 0 ? " data-joined" : ""}>`);
   }).join("\n");
-  /* THE PAGE'S TABS: its own sections, then the bar, then a panel per tab,
-     the first one showing (a #tab address opens another; MOTION_JS). One tab
-     alone is no choice, so it is drawn as part of the page. */
+  /* THE PAGE'S TABS: the bar where it sits among the page's own sections
+     (tabs.at; the end unless moved), then a panel per tab, the first one
+     showing (a #tab address opens another; MOTION_JS), then the rest of the
+     page's sections. One tab alone is no choice, so it is drawn as part of
+     the page. */
   const tabs = page.tabs && page.tabs.items && page.tabs.items.length ? page.tabs : null;
   const tabName = (t, i) => (t.label && (t.label[lang] || t.label[fallback])) || word(lang, "tabFill") + " " + (i + 1);
-  const body = drawn(page.sections) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
+  const tabsAt = tabs && Number.isInteger(tabs.at) ? Math.min(tabs.at, page.sections.length) : page.sections.length;
+  const after = tabs && tabsAt < page.sections.length ? "\n" + drawn(page.sections.slice(tabsAt)) : "";
+  const body = drawn(page.sections.slice(0, tabsAt)) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
     `\n<section class="ptabs-bar ptabs-${esc(tabs.style)} al-${tabs.align === "left" ? "left" : "center"}"><div class="wrap"><div class="ptabs" role="tablist">` +
     tabs.items.map((t, i) => `<button type="button" role="tab" id="tb-${esc(t.id)}" aria-controls="t-${esc(t.id)}" aria-selected="${i === 0}" data-tab="${esc(t.id)}">${esc(tabName(t, i))}</button>`).join("") +
     `</div></div></section>\n` +
-    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n"));
+    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n")) + after;
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
   const brand = design.brand === "logo" && design.logo
@@ -1224,12 +1219,14 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const give = giveOut ? `<a class="givebtn" href="${esc(doc.give)}" target="_blank" rel="noopener">${esc(label("give"))}</a>` : "";
   /* THE LANGUAGE MENU IS ALWAYS A DROPDOWN (Chase, 2026-09-29: "Language
      selection should maintain the dropdown menu regardless"): the current
-     language's code, opening to every language by its own name. Outside the
+     language's code, opening to every language by its own name — and, open,
+     the button says the name too; closed again, the code rolls back in
+     (MOTION_JS; Chase, 2026-10-08). Outside the
      page menu, so it stays on screen on a phone. <details>, so it opens
      without a script; the script only closes it on a click elsewhere. */
   const langMenu = (up) => doc.languages.length > 1
     ? `<details class="langmenu${up ? " up" : ""}"><summary aria-label="${esc(word(lang, "lang"))}">` +
-      `<span>${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
+      `<span data-name="${esc(langNames[lang] || lang.toUpperCase())}">${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
       `<ul>${doc.languages.map((l) =>
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
@@ -1298,7 +1295,9 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     return "";
   };
   const clip = (t) => (t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, "") + "…" : t);
-  const desc = (seo.desc && seo.desc[lang]) || titleCase(clip(firstWords(thisPage) || firstWords(doc.pages[0])), lang);
+  /* Typed or taken from the page, a description reads as the language writes
+     one: English in Title Case, the rest as written (titleCase). */
+  const desc = titleCase((seo.desc && seo.desc[lang]) || clip(firstWords(thisPage) || firstWords(doc.pages[0])), lang);
   const firstPhoto = (pg) => allSections(pg).map((s) => s.photo).find(Boolean) || null;
   const absolute = (u) => (!u ? null : /^https?:/.test(u) ? u : "https://thauma.one" + (u.startsWith("/") ? u : "/" + u));
   /* The picture: the owner's own; the page's photo; or (the default) the
@@ -1440,7 +1439,8 @@ const MOTION_JS = `(function(){
 var d=document.documentElement,b=document.querySelector('.menubtn');
 [].forEach.call(document.querySelectorAll('time[data-local]'),function(t){try{var x=new Date(t.dateTime);if(!isNaN(x))t.textContent=x.toLocaleDateString(d.lang,{day:'numeric',month:'long',year:'numeric'})}catch(e){}});
 if(b)b.addEventListener('click',function(){var o=d.classList.toggle('menu-open');b.setAttribute('aria-expanded',o)});
-var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var settled=/[?&]settled(&|$)/.test(location.search);if(settled)d.classList.add('settled');
+var still=settled||window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 var hs=d.getAttribute('data-headings');
 if(!still&&hs!=='plain'){[].forEach.call(document.querySelectorAll('.h'),function(h){
  var n=0;[].forEach.call(h.childNodes,function(c){var el=c.nodeType===3?null:c;var t=c.textContent;var parts=hs==='words'?t.split(/(\\s+)/):t.split('');
@@ -1460,6 +1460,12 @@ function frame(){tick=false;var vh=innerHeight;
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
+[].forEach.call(document.querySelectorAll('details.langmenu'),function(m){var s=m.querySelector('summary span[data-name]');if(!s)return;var code=s.textContent,name=s.getAttribute('data-name');
+ m.addEventListener('toggle',function(){if(m.open){s.textContent=name;return}if(still){s.textContent=code;return}
+  var h=s.getBoundingClientRect().height||16,ins=[];s.textContent='';
+  for(var i=0;i<code.length;i++){var b=document.createElement('span'),n=document.createElement('span');b.style.cssText='display:inline-block;overflow:hidden;vertical-align:top;height:'+h+'px';n.style.cssText='display:block;height:'+h+'px;line-height:'+h+'px;transform:translateY(-'+h+'px)';n.textContent=code[i];b.appendChild(n);s.appendChild(b);ins.push(n)}
+  s.getBoundingClientRect();requestAnimationFrame(function(){ins.forEach(function(n,i){n.style.transition='transform .7s cubic-bezier(.55,.05,.45,.95) '+(i*40)+'ms';n.style.transform='none'})});
+  setTimeout(function(){if(!m.open)s.textContent=code},760+code.length*40)})});
 [].forEach.call(document.querySelectorAll('.ptabs'),function(bar){var bs=[].slice.call(bar.querySelectorAll('[data-tab]'));
  function show(id,keep){bs.forEach(function(b){var on=b.getAttribute('data-tab')===id;b.setAttribute('aria-selected',on);var p=document.getElementById('t-'+b.getAttribute('data-tab'));if(p)p.hidden=!on});
   if(!keep)try{history.replaceState(null,'','#'+id)}catch(e){}frame()}

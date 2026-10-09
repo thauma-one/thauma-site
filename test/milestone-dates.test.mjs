@@ -121,7 +121,7 @@ await check("the preview is exactly the sentence the Worker will store, in every
     fillSlot("msFrom", from);
     if (to) fillSlot("msTo", to);
     else fillSlot("msTo", p === "day" ? "" : { y: "" });
-    const want = LANGS.map((l) => [l.code.toUpperCase(), whenLabel(l.code, p, start, end)]);
+    const want = LANGS.map((l) => [l.native_name || l.name, whenLabel(l.code, p, start, end)]);
     eq(preview(), want, `${p} ${JSON.stringify(from)}${to ? " – " + JSON.stringify(to) : ""}`);
   }
 });

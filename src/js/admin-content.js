@@ -54,7 +54,7 @@
   var state = {
     site: null, siteSha: null,
     langs: [], lang: null, names: {}, summary: {},
-    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {},
+    lines: [], byId: {}, rows: [], saved: {}, draft: {}, blocked: {}, waiting: {}, base: {}, changedSecs: {}, others: {},
     beside: 'en', besideLines: {},
     view: null, find: '',
     notes: { keep: [], glossary: [], guides: {} }, notesWrite: false, openNotes: null,
@@ -128,7 +128,8 @@
     } catch (e) { /* a code Intl does not know */ }
     return code;
   }
-  function langLabel(code) { return langName(code) + ' (' + code + ')'; }
+  /* The language's own name, not its code (Chase, 2026-10-08). */
+  function langLabel(code) { return langName(code); }
 
   /* `helloAnon` or `who_h2` -> "Hello anon", "Who h2". The last resort, for a
      line the vocabulary below does not know yet. */
@@ -200,6 +201,8 @@
 
   function labelFor(row) {
     if (row.source === 'emails') return emailLabel(row.key);
+    if (/\.seo_title$/.test(row.key)) return tr('con.seoTitle');
+    if (/\.seo_desc$/.test(row.key)) return tr('con.seoText');
     var dot = row.key.indexOf('.');
     if (dot === -1) return row.key === 'name' ? tr('lbl.p.name') : humanize(row.key);
     var section = row.key.slice(0, dot), rest = row.key.slice(dot + 1);
@@ -351,15 +354,41 @@
     $('cBesideWrap').hidden = !others.length;
   }
 
+  /* Every other language's gaps by page, read quietly after a language opens
+     and after a save; the marks wait for it rather than hold the page up. */
+  async function loadOthers() {
+    var out = {};
+    await Promise.all(state.langs.filter(function (c) { return c !== 'en'; }).map(async function (c) {
+      var data = await send(WORDS + '?lang=' + encodeURIComponent(c), 'GET', null, true);
+      if (!data || data.failed) return;
+      var by = {};
+      (data.lines || []).forEach(function (l) {
+        if (l.status === 'missing' || l.status === 'outdated') { var sec = sectionOf(l); by[sec] = (by[sec] || 0) + 1; }
+      });
+      out[c] = by;
+    }));
+    state.others = out;
+    renderSections();
+  }
+
   async function openLang(code, keepView, already) {
     var data = already || await send(WORDS + '?lang=' + encodeURIComponent(code));
     if (!data || data.failed) { $('cLang').value = state.lang || ''; return false; }
     state.lang = code;
     if (data.name && data.name !== code) state.names[code] = data.name;
     state.lines = data.lines || [];
-    state.saved = {}; state.draft = {}; state.blocked = {};
-    state.lines.forEach(function (l) { state.saved[l.id] = l.current; state.draft[l.id] = l.current; });
+    state.saved = {}; state.draft = {}; state.blocked = {}; state.waiting = {}; state.base = {};
+    /* A line changed on dev and not published yet shows dev's text — what
+       dev.thauma.one draws — marked as waiting for Publish, and is edited
+       like any other: a save writes it to both copies (admin-translate.js).
+       `base` is what the saved copy holds, which a save checks against. */
+    state.lines.forEach(function (l) {
+      var v = l.waiting != null ? l.waiting : l.current;
+      state.saved[l.id] = v; state.draft[l.id] = v; state.base[l.id] = l.current;
+      if (l.waiting != null) state.waiting[l.id] = true;
+    });
     buildRows();
+    markChanged();
     try { localStorage.setItem('thauma.content.lang', code); } catch (e) { /* private mode */ }
 
     /* Where to start: what needs doing, if anything does; otherwise the first
@@ -377,6 +406,7 @@
     await loadBeside();
     $('cRoot').hidden = !!state.review;
     render();
+    loadOthers();
     return true;
   }
 
@@ -388,7 +418,7 @@
     var data = await send(WORDS + '?lang=' + encodeURIComponent(b), 'GET', null, true);
     if (!data || data.failed) return;
     var map = {};
-    (data.lines || []).forEach(function (l) { map[l.id] = l.current; });
+    (data.lines || []).forEach(function (l) { map[l.id] = l.waiting != null ? l.waiting : l.current; });
     state.besideLines[b] = map;
   }
   function besideText(line) {
@@ -433,6 +463,117 @@
     renderRows();
     renderMore();
     renderSaveBar();
+    previewSync();
+  }
+
+  /* ---- the live preview -------------------------------------------------
+     Chase, 2026-10-07 (asked for beside the words, "like the Site Editor"):
+     the page these words are on, in the language being written, with what
+     is typed shown in it before it is saved. The site marks each of its
+     words with the key it came from (<span data-k>, site-rich.js); a
+     change is drawn into those with the very function the build uses
+     (SiteRich.richHtml), so the preview and the page cannot disagree.
+     Focusing a line scrolls the preview to it and lights it up. */
+  var PAGE_OF = { home: '', about: 'about/', mission: 'mission/', values: 'values/', resources: 'resources/',
+    give: 'give/', contact: 'contact/', events: 'events/', team: 'team/', coming: 'coming-soon/' };
+  var prev = { on: false, url: null, device: 'wide', section: null };
+  try { prev.on = localStorage.getItem('thauma.pages.preview') === '1'; } catch (e) { /* private mode */ }
+  function prevSection() {
+    if (prev.section) return prev.section;
+    var v = state.view || '';
+    return v.indexOf('section:') === 0 ? v.slice(8) : 'home';
+  }
+  function prevUrl() {
+    var sec = prevSection();
+    return '/' + (state.lang || 'en') + '/' + (PAGE_OF[sec] != null ? PAGE_OF[sec] : '');
+  }
+  function prevDoc() {
+    var f = $('cPrevFrame');
+    try { return f && f.contentDocument; } catch (e) { return null; }
+  }
+  /* One line's words, drawn wherever the page shows them. */
+  function prevDraw(id) {
+    var doc = prevDoc(), line = state.byId[id];
+    if (!doc || !line || line.source !== 'site' || !window.SiteRich) return;
+    [].forEach.call(doc.querySelectorAll('[data-k="' + line.key + '"]'), function (el) {
+      el.innerHTML = window.SiteRich.richHtml(state.draft[id]);
+    });
+  }
+  function prevDrawAll() { dirtyIds().forEach(prevDraw); }
+  function prevShow(id) {
+    var doc = prevDoc(), line = state.byId[id];
+    if (!doc || !line) return;
+    var el = doc.querySelector('[data-k="' + line.key + '"]');
+    [].forEach.call(doc.querySelectorAll('.c-prev-on'), function (x) { x.classList.remove('c-prev-on'); });
+    if (!el) return;
+    el.classList.add('c-prev-on');
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  /* DESKTOP IS A DESKTOP: the page drawn at 1280px and scaled to the room
+     there is, rather than a narrow window that gets the phone's layout. */
+  function prevFit() {
+    var box = $('cPreview') && $('cPreview').querySelector('.c-prev-frame'), f = $('cPrevFrame');
+    if (!box || !f) return;
+    if (prev.device === 'phone') { f.style.width = ''; f.style.height = ''; f.style.transform = ''; return; }
+    var k = Math.min(1, box.clientWidth / 1280);
+    f.style.width = '1280px';
+    f.style.height = Math.round(box.clientHeight / k) + 'px';
+    f.style.transform = 'scale(' + k + ')';
+  }
+  window.addEventListener('resize', function () { if (prev.on) prevFit(); });
+  function previewSync() {
+    var box = $('cPreview');
+    if (!box) return;
+    $('cRoot').classList.toggle('has-preview', prev.on);
+    box.hidden = !prev.on;
+    $('cPrevBtn').setAttribute('aria-pressed', prev.on ? 'true' : 'false');
+    if (!prev.on) return;
+    prevFit();
+    var url = prevUrl();
+    if (url !== prev.url) {
+      prev.url = url;
+      $('cPrevUrl').textContent = url;
+      $('cPrevOpen').href = url;
+      $('cPrevGone').hidden = true;
+      $('cPrevFrame').src = url;
+    } else prevDrawAll();
+  }
+  if ($('cPreview')) {
+    $('cPrevFrame').addEventListener('load', function () {
+      var doc = prevDoc();
+      /* A page this build does not have (a coming-soon site builds only its
+         landing page): said, not shown as a blank. */
+      var missing = !doc || !doc.querySelector('[data-k]') || /404/.test(doc.title || '');
+      $('cPrevGone').hidden = !missing;
+      if (!doc) return;
+      var st = doc.createElement('style');
+      st.textContent = '.c-prev-on{outline:2px solid #2FD8FF;outline-offset:6px;border-radius:3px;transition:outline-color .3s}';
+      doc.head.appendChild(st);
+      prevDrawAll();
+    });
+    $('cPrevBtn').addEventListener('click', function () {
+      prev.on = !prev.on;
+      try { localStorage.setItem('thauma.pages.preview', prev.on ? '1' : '0'); } catch (e) { /* private mode */ }
+      previewSync();
+    });
+    [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (b) {
+      b.addEventListener('click', function () {
+        prev.device = b.getAttribute('data-prev-dev');
+        $('cPreview').setAttribute('data-device', prev.device);
+        prevFit();
+        [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+    /* A line from another page (a search, Needs work) shows its own page. */
+    $('cRows').addEventListener('focusin', function (e) {
+      if (!prev.on) return;
+      var rowEl = e.target.closest && e.target.closest('.c-row');
+      var row = rowEl && state.rows.filter(function (r) { return r.id === rowEl.getAttribute('data-row'); })[0];
+      if (!row) return;
+      var sec = PAGE_OF[row.section] != null ? row.section : 'home';
+      if (sec !== prevSection()) { prev.section = sec; previewSync(); setTimeout(function () { prevShow(row.lines[0].id); }, 700); return; }
+      prevShow(row.lines[0].id);
+    });
   }
 
   function renderSections() {
@@ -446,11 +587,22 @@
     });
     var needs = state.rows.filter(needsWork).length;
     var on = state.find ? null : state.view;
+    /* WHICH OTHER LANGUAGES ARE BEHIND on this page (2026-10-07, suggestion 2:
+       the Site Creator's "missing HR, SR"): missing or outdated lines in
+       each language other than the one being written. */
+    var behind = function (sec) {
+      var codes = Object.keys(state.others).filter(function (c) { return c !== state.lang && (state.others[c][sec] || 0) > 0; });
+      if (!codes.length) return '';
+      return '<span class="c-sec-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
+        esc(codes.join(' ').toUpperCase()) + '</span>';
+    };
 
     function button(view, label, n, extra, dirty) {
+      var sec = view.indexOf('section:') === 0 ? view.slice(8) : null;
+      var pub = sec && state.changedSecs[sec];
       return '<button type="button" class="c-sec' + (view === on ? ' is-on' : '') + (dirty ? ' is-dirty' : '') +
         '" data-view="' + esc(view) + '"' + (view === on ? ' aria-current="true"' : '') + '>' +
-        '<span class="c-sec-n">' + esc(label) + '</span>' +
+        '<span class="c-sec-n">' + esc(label) + (pub ? '<span class="c-sec-dot" title="' + esc(tr('ws.unpublished')) + '" aria-label="' + esc(tr('ws.unpublished')) + '"></span>' : '') + '</span>' +
         '<span class="c-sec-c tnum">' + n + '</span>' + (extra || '') + '</button>';
     }
 
@@ -461,13 +613,34 @@
       orderedSections().map(function (s) {
         var c = counts[s];
         return button('section:' + s, sectionLabel(s), c.n,
-          c.needs ? '<span class="c-sec-empty">' + c.needs + '</span>' : '', c.dirty);
+          (c.needs ? '<span class="c-sec-empty">' + c.needs + '</span>' : '') + behind(s), c.dirty);
       }).join('');
   }
 
+  /* FORMATTED WORDS (2026-10-07, Chase: "allowing the text controls that the
+     Site Creator has … AND also the idea of having the times when a new line
+     is started defined in the text box itself"). A page's words are a
+     formatted box with the Site Creator's bar (rich-text.js): bold, italic,
+     underline, a link, a size, a color, and Enter for a new line, which is
+     where the page breaks it (src/js/site-rich.js). Email and form words stay plain:
+     an email cannot show the page's formatting. */
+  var RT = window.RichText;
+  /* a search title and description are text only: an app shows no formatting */
+  function isRich(r) { return !!RT && r.source === 'site' && !/\.seo_(title|desc)$/.test(r.key); }
+  /* A box's words as stored: the bar's markup, with its own escaping of
+     text undone so a plain word saves exactly as it was typed. */
+  function boxWords(box) {
+    return RT.from(box).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  }
+  function wordsHtml(v) { return RT ? RT.html(v, true) : esc(v); }
+  /* A heading is stored in two halves and printed `light <b>bold</b>`: the
+     box shows that and reads it back — everything before its first bold
+     word is the light half, everything from there on the bold half. A
+     line break typed between them is kept at the end of the light half. */
   function splitHtml(thin, bold) {
-    thin = String(thin || '').trim(); bold = String(bold || '').trim();
-    return esc(thin) + (thin && bold ? ' ' : '') + (bold ? '<b>' + esc(bold) + '</b>' : '');
+    thin = String(thin || '').replace(/[ \t]+$/, ''); bold = String(bold || '').replace(/^[ \t]+/, '');
+    var gap = thin && bold && !/\n$/.test(thin) ? ' ' : '';
+    return wordsHtml(thin) + gap + (bold ? '<b>' + wordsHtml(bold) + '</b>' : '');
   }
 
   function rowHtml(r) {
@@ -478,6 +651,7 @@
     var dirty = rowDirty(r);
     var mark = needsWork(r) && !dirty ? rowStatus(r) : '';
     var blocked = r.lines.some(function (l) { return state.blocked[l.id]; });
+    var waits = r.lines.some(function (l) { return state.waiting[l.id]; });
     var lang = esc(state.lang);
     var aria = esc(r.label + ' — ' + langName(state.lang));
     var ref = '';
@@ -485,28 +659,84 @@
       var bl = esc(state.beside || 'en');
       ref = r.split
         ? '<p class="c-ref" lang="' + bl + '">' + splitHtml(besideText(r.thin), besideText(r.bold)) + '</p>'
-        : '<p class="c-ref" lang="' + bl + '">' + esc(besideText(r.line)) + '</p>';
+        : '<p class="c-ref" lang="' + bl + '">' + (isRich(r) ? (RT ? RT.html(besideText(r.line), false) : esc(besideText(r.line))) : esc(besideText(r.line))) + '</p>';
     }
     var field = r.split
-      ? '<div class="c-split">' +
-          '<div class="c-splitbox" contenteditable="true" role="textbox" spellcheck="true" lang="' + lang + '"' +
-            ' data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
-            splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>' +
-          '<button type="button" class="c-bold" data-mark aria-label="' + esc(tr('con.markBold')) + '"' +
-            ' title="' + esc(tr('con.markBold')) + '">B</button>' +
-        '</div>'
-      : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
-          ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
+      ? '<div class="rt c-rt c-splitbox" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+          ' data-rt="split" data-thin="' + esc(r.thin.id) + '" data-bold="' + esc(r.bold.id) + '" aria-label="' + aria + '">' +
+          splitHtml(state.draft[r.thin.id], state.draft[r.bold.id]) + '</div>'
+      : isRich(r)
+        ? '<div class="rt c-rt" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" lang="' + lang + '"' +
+            ' data-rt="one" data-id="' + esc(r.line.id) + '" aria-label="' + aria + '">' + wordsHtml(state.draft[r.line.id]) + '</div>'
+        : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
+            ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
     return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
-        (blocked ? ' is-blocked' : '') + '" data-row="' + esc(r.id) + '">' +
+        (blocked ? ' is-blocked' : '') + (waits ? ' is-waiting' : '') + '" data-row="' + esc(r.id) + '">' +
       '<div class="c-key">' +
         '<span class="c-name">' + esc(name) + '</span>' +
         '<code>' + esc(r.split ? r.key + '_thin + _bold' : r.key) + '</code>' +
         (mark ? '<span class="tl-st is-' + mark + '">' + esc(tr('tl.status.' + mark)) + '</span>' : '') +
         (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
+        (waits ? '<span class="badge waiting">' + esc(tr('con.waiting')) + '</span>' : '') +
       '</div>' + ref + field +
     '</div>';
   }
+
+  function isSeo(r) { return !r.split && /\.seo_(title|desc)$/.test(r.key); }
+  function draftOf(key) { var id = 'site:' + key; return state.draft[id] != null ? state.draft[id] : ''; }
+  function plainOf(v) { return String(v || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim(); }
+  function seoCard(page) {
+    var share = (state.site && state.site.share && state.site.share[page]) || '';
+    var path = (location.host || 'thauma.one') + ' › ' + (state.lang || 'en') + (PAGE_OF[page] ? ' › ' + PAGE_OF[page].replace(/\/$/, '') : '');
+    return '<div class="c-seo" data-seo="' + esc(page) + '">' +
+      '<div class="c-seo-serp"><span class="c-seo-lbl">' + esc(tr('ws.adv.inSearch')) + '</span>' +
+        '<span class="c-seo-url">' + esc(path) + '</span>' +
+        '<b class="c-seo-title" data-seo-title>' + esc(plainOf(draftOf(page + '.seo_title'))) + '</b>' +
+        '<span class="c-seo-desc" data-seo-desc>' + esc(plainOf(draftOf(page + '.seo_desc'))) + '</span></div>' +
+      '<div class="c-seo-share"><span class="c-seo-lbl">' + esc(tr('ws.adv.inShare')) + '</span>' +
+        '<div class="c-seo-card"><img src="' + esc(share || '/img/og-default.png') + '" alt="">' +
+          '<b data-seo-title>' + esc(plainOf(draftOf(page + '.seo_title'))) + '</b><span>' + esc(location.host || 'thauma.one') + '</span></div>' +
+        '<div class="c-seo-acts"><label class="ghost-btn sm">' + esc(tr(share ? 'ws.changePhoto' : 'ws.sharePic.choose')) +
+          '<input type="file" accept="image/*" data-seo-pic="' + esc(page) + '" hidden></label>' +
+          (share ? '<button type="button" class="link-btn" data-seo-unpic="' + esc(page) + '">' + esc(tr('con.seoCard')) + '</button>' : '') +
+          '<span class="hint" data-seo-status></span></div></div></div>';
+  }
+  /* the card follows what is typed */
+  function seoLive(id) {
+    var line = state.byId[id], card = document.querySelector('.c-seo');
+    if (!line || !card || !/\.seo_(title|desc)$/.test(line.key)) return;
+    var which = /seo_title$/.test(line.key) ? '[data-seo-title]' : '[data-seo-desc]';
+    [].forEach.call(card.querySelectorAll(which), function (el) { el.textContent = plainOf(state.draft[id]); });
+  }
+  /* A PAGE'S OWN PICTURE WHEN SHARED: chosen, shaped in the photo editor to
+     a share card's 1.91:1, uploaded as the finished picture (an app shows
+     the file it is given), and saved to site.json at once, like the other
+     settings. "Use the Thauma card" goes back to the default. */
+  async function seoPicture(page, file) {
+    var status = document.querySelector('.c-seo [data-seo-status]');
+    var say = function (k) { if (status) status.textContent = tr(k); };
+    try {
+      var url = URL.createObjectURL(file), v = null;
+      if (window.PhotoEditor) v = await window.PhotoEditor.open(url, { purpose: 'share' });
+      if (window.PhotoEditor && !v) { URL.revokeObjectURL(url); return; }
+      say('lib.uploading');
+      var blob = v && window.PhotoEditor ? await window.PhotoEditor.exportBlob(url, v, { max: 1200 }) : file;
+      URL.revokeObjectURL(url);
+      var res = await fetch('/api/admin/media?kind=site', { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': blob.type || 'image/jpeg', 'X-File-Name': 'share-' + page }, body: blob });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || tr('err.refused'));
+      if (await saveSetting('share.' + page, body.url)) renderRows();
+    } catch (e) { if (status) status.textContent = e.message; }
+  }
+  $('cRows').addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.seoPic && t.files && t.files[0]) seoPicture(t.dataset.seoPic, t.files[0]);
+  });
+  $('cRows').addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('[data-seo-unpic]');
+    if (b && await saveSetting('share.' + b.dataset.seoUnpic, '')) renderRows();
+  });
 
   function renderRows() {
     var rows = visible();
@@ -516,7 +746,15 @@
     var forms = !state.find && state.view === 'section:contact'
       ? '<a class="up-share-link c-formslink" href="/admin/website/forms/" data-web-go="forms">' +
           esc(tr('con.formsLink')) + '</a>' : '';
-    $('cRows').innerHTML = forms + (rows.length ? rows.map(rowHtml).join('')
+    /* SEARCH AND SHARING (2026-10-07, suggestion 4): on a page's own view,
+       how it shows in a search and when shared, first, with its two lines
+       under it and its picture beside — the rest of the page's words after. */
+    var seo = '', page = !state.find && /^section:/.test(state.view || '') ? state.view.slice(8) : null;
+    if (page && PAGE_OF[page] != null && rows.some(isSeo)) {
+      seo = seoCard(page) + rows.filter(isSeo).map(rowHtml).join('') + '<div class="c-seo-end"></div>';
+      rows = rows.filter(function (r) { return !isSeo(r); });
+    }
+    $('cRows').innerHTML = forms + seo + (rows.length ? rows.map(rowHtml).join('')
       : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>');
     $('cRows').querySelectorAll('textarea').forEach(autosize);
   }
@@ -571,86 +809,48 @@
     if (t.tagName === 'TEXTAREA') {
       state.draft[t.getAttribute('data-id')] = t.value;
       autosize(t);
+      prevDraw(t.getAttribute('data-id'));
+      seoLive(t.getAttribute('data-id'));
       return markRow(t);
     }
-    var box = t.closest && t.closest('.c-splitbox');
-    if (box) {
+    var box = t.closest && t.closest('.c-rt');
+    if (!box) return;
+    if (box.hasAttribute('data-thin')) {
       var parts = readSplit(box);
       state.draft[box.getAttribute('data-thin')] = parts.thin;
       state.draft[box.getAttribute('data-bold')] = parts.bold;
-      markRow(box);
+      prevDraw(box.getAttribute('data-thin')); prevDraw(box.getAttribute('data-bold'));
+    } else {
+      state.draft[box.getAttribute('data-id')] = boxWords(box);
+      prevDraw(box.getAttribute('data-id'));
+      seoLive(box.getAttribute('data-id'));
     }
-  });
-
-  /* ---- a heading written as it reads -----------------------------------
-
-     The site prints `thin <b>bold</b>`. The box shows exactly that and
-     reads it back: everything before the first bold text is the thin part,
-     everything from there on is the bold part. B (or Ctrl/⌘+B) moves where
-     the bold begins to the cursor. One line, plain text only — a pasted
-     heading brings its words, not somebody else's formatting. */
-  function readSplit(box) {
-    var thin = '', bold = '', inBold = false;
-    (function walk(node, b) {
-      Array.prototype.forEach.call(node.childNodes, function (c) {
-        if (c.nodeType === 3) {
-          if (b) inBold = true;
-          if (inBold) bold += c.nodeValue; else thin += c.nodeValue;
-        } else if (c.nodeType === 1) {
-          if (c.tagName === 'BR') { if (inBold) bold += ' '; else thin += ' '; return; }
-          var weight = c.style && c.style.fontWeight;
-          walk(c, b || /^(B|STRONG)$/.test(c.tagName) || weight === 'bold' || Number(weight) >= 600);
-        }
-      });
-    })(box, false);
-    var clean = function (s) { return s.replace(/\s+/g, ' ').trim(); };
-    return { thin: clean(thin), bold: clean(bold) };
-  }
-
-  function caretOffset(box) {
-    var sel = window.getSelection && window.getSelection();
-    if (!sel || !sel.rangeCount || !box.contains(sel.anchorNode)) return null;
-    var r = sel.getRangeAt(0).cloneRange();
-    r.selectNodeContents(box);
-    r.setEnd(sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
-    return r.toString().length;
-  }
-
-  function markBold(box) {
-    var at = caretOffset(box);
-    if (at === null) return;
-    var all = box.textContent;
-    var thin = all.slice(0, at).replace(/\s+/g, ' ').trim();
-    var bold = all.slice(at).replace(/\s+/g, ' ').trim();
-    box.innerHTML = splitHtml(thin, bold);
-    state.draft[box.getAttribute('data-thin')] = thin;
-    state.draft[box.getAttribute('data-bold')] = bold;
     markRow(box);
-    box.focus();
+  });
+
+  function readSplit(box) {
+    var all = boxWords(box), at = all.indexOf('<b>');
+    if (at === -1) return { thin: all.replace(/[ \t]+$/, ''), bold: '' };
+    return { thin: all.slice(0, at).replace(/[ \t]+$/, ''), bold: all.slice(at).replace(/<\/?b>/g, '').replace(/^[ \t]+/, '') };
   }
 
-  $('cRows').addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-mark]');
-    if (b) markBold(b.parentNode.querySelector('.c-splitbox'));
-  });
-  /* Pressing B takes the focus from the box; remember where the cursor was. */
-  $('cRows').addEventListener('mousedown', function (e) {
-    if (e.target.closest && e.target.closest('[data-mark]')) e.preventDefault();
-  });
+  /* Enter is a new line, never a new paragraph block; a paste brings the
+     words (and their line breaks), not another page's formatting. */
   $('cRows').addEventListener('keydown', function (e) {
-    var box = e.target.closest && e.target.closest('.c-splitbox');
-    if (!box) return;
-    if (e.key === 'Enter') { e.preventDefault(); return; }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); markBold(box); }
+    var box = e.target.closest && e.target.closest('.c-rt');
+    if (!box || e.key !== 'Enter') return;
+    e.preventDefault();
+    document.execCommand('insertLineBreak');
   });
   $('cRows').addEventListener('paste', function (e) {
-    var box = e.target.closest && e.target.closest('.c-splitbox');
+    var box = e.target.closest && e.target.closest('.c-rt');
     if (!box) return;
     e.preventDefault();
-    var text = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\s+/g, ' ');
+    var text = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ');
     if (document.execCommand) document.execCommand('insertText', false, text);
   });
-  /* Leaving the box shows it as it will be saved. */
+  /* Leaving a heading shows it as it will be saved: where its bold half
+     really begins. */
   $('cRows').addEventListener('focusout', function (e) {
     var box = e.target.closest && e.target.closest('.c-splitbox');
     if (!box) return;
@@ -660,6 +860,7 @@
 
   function openView(view) {
     state.view = view;
+    prev.section = null;
     try { sessionStorage.setItem('thauma.content.view.' + state.lang, state.view); } catch (e2) { /* private mode */ }
     // A page and a search are two ways of choosing what is on screen;
     // leaving both on shows neither.
@@ -722,6 +923,7 @@
     if (!ok) return;
     state.lines.forEach(function (l) { state.draft[l.id] = state.saved[l.id]; });
     state.blocked = {};
+    prev.url = null;
     render();
   });
 
@@ -769,7 +971,9 @@
     var btn = this;
     btn.disabled = true; $('cDiscard').disabled = true;
     var data = await send(WORDS, 'POST', { action: 'save', lang: state.lang, items: ids.map(function (id) {
-      return { id: id, value: state.draft[id], was: state.saved[id] };
+      var it = { id: id, value: state.draft[id], was: state.base[id] };
+      if (state.waiting[id]) it.waiting = true;
+      return it;
     }) });
     btn.disabled = false; $('cDiscard').disabled = false;
     if (!data) return;
@@ -784,8 +988,10 @@
     var kept = {};
     ids.forEach(function (id) { kept[id] = state.draft[id]; });
     toast(fill('con.saved', { n: data.saved }), 'ok');
+    document.dispatchEvent(new CustomEvent('web:saved'));
     var conflicts = data.conflicts || [];
     if (conflicts.length) toast(fill('tl.conflicts', { n: conflicts.length }), 'err');
+    if (data.devMissed && data.devMissed.length) toast(tr('con.devMissed'), 'err');
     await openLang(state.lang, true);
     loadSummary();
     // A line left as somebody else's keeps what was typed, still unsaved.
@@ -794,6 +1000,18 @@
       render();
     }
   });
+
+  /* THE PAGES WITH WORDS NOT PUBLISHED YET get the same dot as an unsaved
+     one (admin-website.js asks which lines differ from live). */
+  var changedLines = [];
+  function markChanged() {
+    var set = {};
+    changedLines.forEach(function (id) { set[id] = true; });
+    state.changedSecs = {};
+    state.lines.forEach(function (l) { if (set[l.id]) state.changedSecs[sectionOf(l)] = true; });
+    if (state.rows.length) renderSections();
+  }
+  document.addEventListener('web:changes', function (e) { changedLines = (e.detail && e.detail.lines) || []; markChanged(); });
 
   window.addEventListener('beforeunload', function (e) {
     if (dirtyIds().length || state.review) { e.preventDefault(); e.returnValue = ''; }
@@ -1118,7 +1336,7 @@
     return '<button type="button" class="switch small" role="switch" data-set="' + esc(path) + '"' +
       ' aria-checked="' + (on ? 'true' : 'false') + '"' + (on ? ' data-on="1"' : '') +
       ' aria-label="' + esc(label) + '">' +
-        '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+        '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
         '</span><span class="switch-knob"></span></span></button>';
   }
 

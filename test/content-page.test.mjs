@@ -118,6 +118,7 @@ async function boot({ answers = {} } = {}) {
   const w = dom.window, d = w.document;
   w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
   w.eval(readFileSync("src/js/staff.js", "utf8"));
+  w.eval(readFileSync("src/js/rich-text.js", "utf8"));
   // Every question is answered yes, and recorded, so a test can say whether one was asked.
   w.StaffConfirm = async (o) => { asked.push(o); return true; };
   w.StaffPrompt = async (o) => { asked.push(o); return null; };
@@ -183,6 +184,25 @@ await check("editing it saves the two halves, split where the bold begins", asyn
     JSON.stringify(items));
 });
 
+await check("a heading keeps the line break typed into it; a page's words take formatting, an email's stay plain", async () => {
+  const { w, d, sent } = await boot();
+  await pick(w, d, "hr");
+  view(d, "section:home");
+  const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
+  assert(box.hasAttribute("data-rt"), "the heading has no formatting bar");
+  box.innerHTML = "Na licu<br>mjesta,<br><b>iza <i>kulisa.</i></b>";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  view(d, "needs");
+  const mail = d.querySelector('[data-row="emails:confirm.helloAnon"]');
+  assert(mail && mail.querySelector("textarea") && !mail.querySelector("[data-rt]"), "an email's words are offered formatting");
+  d.getElementById("cSave").click();
+  await tick(150);
+  const save = sent.find((s) => s.body && s.body.action === "save");
+  const items = Object.fromEntries(save.body.items.map((i) => [i.id, i.value]));
+  assert(JSON.stringify([items["site:home.h1_thin"], items["site:home.h1_bold"]]) === JSON.stringify(["Na licu\nmjesta,\n", "iza <i>kulisa.</i>"]),
+    "saved with its breaks and its italic: " + JSON.stringify(items));
+});
+
 await check("another language opens on what needs work, beside English", async () => {
   const { w, d } = await boot();
   await pick(w, d, "hr");
@@ -223,9 +243,10 @@ await check("the file holds exactly what is on screen, and More says how many", 
 /* ---------------------------------------------------------------- saving */
 
 async function type(w, d, id, value) {
-  const ta = d.querySelector(`#cRows textarea[data-id="${id}"]`);
-  ta.value = value;
-  ta.dispatchEvent(new w.Event("input", { bubbles: true }));
+  /* a page's words are a formatted box; an email's a plain one */
+  const el = d.querySelector(`#cRows [data-id="${id}"]`);
+  if (el.tagName === "TEXTAREA") el.value = value; else el.textContent = value;
+  el.dispatchEvent(new w.Event("input", { bubbles: true }));
 }
 
 await check("an edit is held until Save, which sends only it and asks nothing", async () => {
@@ -344,6 +365,34 @@ await check("a language is added by name, or by its code for one the list lacks"
   assert(post && post.body.code === "de", JSON.stringify(post && post.body));
   await pick(w, d, "__add");
   assert(asked.some((a) => a.placeholder === "sl"), "Add a language… in the picker did not ask for a code");
+});
+
+await check("a line changed on dev and not published shows dev's text, marked, and saves to both copies", async () => {
+  /* Chase, 2026-10-08: the editor showed the Mission heading on one line while
+     dev.thauma.one drew two — the break was on dev, waiting for Publish. */
+  const was = EN_LINES[6];
+  EN_LINES[6] = { ...was, waiting: "Real\nchurches," };
+  try {
+    const ctx = await boot();
+    const { d } = ctx;
+    const box = d.querySelector('[data-thin="site:home.who_h2_thin"]');
+    assert(box, "the heading's box is missing");
+    assert(/Real<br>churches,/.test(box.innerHTML), `the box shows ${box.innerHTML}, not dev's two lines`);
+    assert(box.getAttribute("contenteditable") === "true", "a waiting line is locked");
+    assert(box.closest(".c-row").querySelector(".badge.waiting"), "nothing says the line is waiting to publish");
+    assert(!box.closest(".c-row").classList.contains("is-dirty"), "a waiting line counts as an unsaved change");
+    /* Chase, 2026-10-08: "why can't I edit the values right now" — edited,
+       it saves checked against the saved copy, and says it was waiting so
+       the server writes dev too. */
+    const { w } = ctx;
+    box.innerHTML = "Real<br>churches, all";
+    box.dispatchEvent(new w.Event("input", { bubbles: true }));
+    ctx.d.getElementById("cSave").click();
+    await tick(120);
+    const save = ctx.sent.find((x) => x.body && x.body.action === "save");
+    const item = save && save.body.items.find((i) => i.id === "site:home.who_h2_thin");
+    assert(item && item.waiting === true && item.was === "Real churches,", `saved as ${JSON.stringify(item)}`);
+  } finally { EN_LINES[6] = was; }
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

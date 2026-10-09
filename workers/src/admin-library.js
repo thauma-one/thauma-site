@@ -72,7 +72,9 @@ const COLLECTIONS = {
          and it is why the session list still exists. */
       cadence: ["weekly", "fortnightly", "monthly", "custom"],
     },
-    flags: ["application_required"],
+    /* featured: shown as an invitation at the top of the Events page; any
+       number may be (2026-10-08). None means the next one, as before. */
+    flags: ["application_required", "featured"],
     lists: ["photos", "sessions"],
     /* end_date IS OPTIONAL AND MEANS MULTI-DAY. A gathering is often a
        weekend, and one date with a start time cannot say so — leaving people

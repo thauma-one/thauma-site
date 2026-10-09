@@ -101,6 +101,8 @@
     gatherings: [
       { name: 'type', kind: 'choice', label: 'Kind', vocab: 'type' },
       { name: 'status', kind: 'choice', label: 'Status', vocab: 'status' },
+      { name: 'featured', kind: 'flag', label: tr('lib.featured', 'Highlighted at the top'),
+        when: function (it) { return (it.status || 'upcoming') === 'upcoming'; } },
       { name: 'date', kind: 'date', label: 'First day',
         when: function (it) { return it.type !== 'cohort'; } },
       { name: 'end_date', kind: 'date', label: 'Last day',
@@ -179,11 +181,13 @@
   /* WHICH LANGUAGES THIS ITEM HAS, shown on the closed row. It is the thing
      somebody scanning the list wants to know — what still needs translating —
      and it is invisible if you have to open every item to find out. */
+  /* THE LANGUAGES IT IS STILL MISSING, said as Updates and the Site Creator
+     say it — "missing HR, SR" (2026-10-07, suggestion 2) — rather than a row
+     of lit and unlit codes to decode. Missing means no title, as Updates
+     counts it. */
   function langChips(item) {
-    return LANGS.map(function (l) {
-      var has = !!(item.title || {})[l];
-      return '<span class="lib-lang' + (has ? ' is-on' : '') + '">' + esc(l) + '</span>';
-    }).join('');
+    var miss = LANGS.filter(function (l) { return !String(((item.title || {})[l]) || '').trim(); });
+    return miss.length ? '<span class="lib-miss">' + esc(tr('ms.missing', 'missing') + ' ' + miss.join(', ').toUpperCase()) + '</span>' : '';
   }
 
   /* WHEN SOMETHING HAPPENS DECIDES WHERE IT SITS.
@@ -291,15 +295,39 @@
       if (item.format) out.push('<span class="role-tag partner">' + esc(label(item.format)) + '</span>');
       if (item.moment) out.push('<span class="role-tag">' + esc(label(item.moment)) + '</span>');
     } else {
-      if (item.status) out.push('<span class="role-tag st-' + esc(item.status) + '">' +
-        esc(label(item.status)) + '</span>');
+      /* No status tag: the group heading above already says Coming up,
+         Canceled or Already happened, and saying it twice was a third of the
+         row's tags. */
+      /* HIGHLIGHTED AT THE TOP (2026-10-08, Chase: "a toggle … for a
+         highlighted event … controls for highlighting multiple"): a star on
+         every coming event, pressed in the list without opening it. */
+      if ((item.status || 'upcoming') === 'upcoming') {
+        out.push('<button type="button" class="lib-star" data-lib-feature="' + esc(item.slug) + '" aria-pressed="' + (item.featured === true) + '"' +
+          ' title="' + esc(tr('lib.featured', 'Highlighted at the top')) + '">' +
+          '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.2l-3.9 2.2.9-4.3-3.3-3 4.4-.5z"/></svg>' +
+          '<span>' + esc(tr(item.featured === true ? 'lib.featuredOn' : 'lib.featureIt', item.featured === true ? 'Highlighted' : 'Highlight')) + '</span></button>');
+      }
       if (item.type) out.push('<span class="role-tag partner">' + esc(label(item.type)) + '</span>');
-      var when = item.date || '';
-      /* A gathering can run over a weekend, and one date cannot say so. */
-      if (item.end_date && item.end_date !== item.date) when += ' – ' + item.end_date;
+      var when = whenText(item.date, item.end_date);
       if (when) out.push('<span class="role-tag">' + esc(when) + '</span>');
     }
     return out.join('');
+  }
+
+  /* A date as a person says it, in the console's language — "Mar 14 – 15,
+     2027" — rather than 2027-03-14. A gathering can run over a weekend, and
+     one date cannot say so. A date typed as prose is shown as typed. */
+  function whenText(from, to) {
+    if (!ISO.test(String(from || ''))) return from || '';
+    var a = new Date(from + 'T00:00:00Z');
+    var b = ISO.test(String(to || '')) && to !== from ? new Date(to + 'T00:00:00Z') : null;
+    try {
+      var f = new Intl.DateTimeFormat((window.StaffI18n && window.StaffI18n.lang) || 'en',
+        { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      return b && f.formatRange ? f.formatRange(a, b) : f.format(a) + (b ? ' – ' + f.format(b) : '');
+    } catch (e) {
+      return from + (b ? ' – ' + to : '');
+    }
   }
 
   /* One field, drawn from its description. */
@@ -650,11 +678,32 @@
          so the panel that reopens has to be the one the server just wrote. */
       state.open = collection + '/' + body.slug;
       toast(tr('toast.saved', 'Saved'), 'ok');
+      document.dispatchEvent(new CustomEvent('web:saved'));
       await load();
     } catch (e) {
       say(tr('err.unreachable', 'Could not reach the server.') + ' ' + e.message);
     } finally {
       btn.disabled = false;
+    }
+  }
+
+  /* The star: the event saved as it is, highlighted or not. */
+  async function feature(btn) {
+    var item = find('gatherings', btn.dataset.libFeature);
+    if (!item) return;
+    var payload = Object.assign({}, item, { collection: 'gatherings', featured: item.featured !== true });
+    btn.disabled = true;
+    try {
+      var res = await fetch(API, { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) { btn.disabled = false; return toast(body.error || tr('err.refused', 'Refused.'), 'bad'); }
+      toast(tr('toast.saved', 'Saved'), 'ok');
+      document.dispatchEvent(new CustomEvent('web:saved'));
+      await load();
+    } catch (e) {
+      btn.disabled = false;
+      toast(tr('err.unreachable', 'Could not reach the server.'), 'bad');
     }
   }
 
@@ -680,6 +729,7 @@
       if (!res.ok) return toast(body.error || tr('err.refused', 'Refused.'), 'bad');
       state.open = null;
       toast(tr('toast.deleted', 'Removed'), 'ok');
+      document.dispatchEvent(new CustomEvent('web:saved'));
       await load();
     } catch (e) {
       toast(tr('err.unreachable', 'Could not reach the server.'), 'bad');
@@ -725,6 +775,9 @@
       if (cropBtn) cropBtn.remove();
       return;
     }
+
+    var star = e.target.closest('[data-lib-feature]');
+    if (star) return feature(star);
 
     var save0 = e.target.closest('[data-lib-save]');
     if (save0) {

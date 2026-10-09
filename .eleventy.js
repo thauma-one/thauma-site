@@ -9,6 +9,28 @@ module.exports = function (eleventyConfig) {
   const md = require("markdown-it")({ html: false, linkify: true });
   eleventyConfig.addFilter("md", (s) => (s ? md.render(String(s)) : ""));
 
+  /* THE SITE'S WORDS WITH THEIR FORMATTING (src/js/site-rich.js; Website › Pages,
+     2026-10-07). `rich` where words are shown: bold, italic, underline, a
+     link, a size, a color and the line breaks that were typed — and, given
+     the key, a <span data-k> the live preview finds them by. `plain` where
+     formatting cannot go (an attribute, a <title>): the words alone. */
+  const { richHtml, richPlain } = require("./src/js/site-rich.js");
+  const { runtime } = require("nunjucks");
+  eleventyConfig.addFilter("rich", (s, key) => {
+    const html = richHtml(s);
+    return new runtime.SafeString(key ? `<span data-k="${String(key).replace(/[^\w.\-]/g, "")}">${html}</span>` : html);
+  });
+  eleventyConfig.addFilter("plain", (s) => richPlain(s));
+
+  /* A footer link as an icon (Website › Links, 2026-10-07): the host its
+     site's icon is asked for (embed/v1/icon), and the initials shown when
+     there is none — as the partner sites do (site/render.js). */
+  eleventyConfig.addFilter("hostOf", (u) => { try { return /^https?:/.test(u) ? new URL(u).hostname : ""; } catch { return ""; } });
+  eleventyConfig.addFilter("initials", (t) => {
+    const ws = String(t || "").replace(/^https?:\/\/(www\.)?/i, "").split(/[\s./_-]+/).filter((x) => /[\p{L}\p{N}]/u.test(x));
+    return ((ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || "?").slice(0, 2)) || "?").toUpperCase();
+  });
+
   /* A DATE, OR A SPAN OF THEM, IN THE READER'S LANGUAGE.
    *
    * "2027-03-14 – 2027-03-15" is a database value shown to a person. On an

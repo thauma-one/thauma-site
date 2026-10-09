@@ -163,7 +163,7 @@
           ? '<button type="button" class="ghost-btn sm" data-keep="' + esc(id) + '">' + esc(tr('up.keep')) + '</button>'
           : '<button type="button" class="switch" role="switch" data-pub="' + esc(id) + '"' +
             ' aria-checked="' + (g.is_public ? 'true' : 'false') + '" aria-label="' + esc(tr('ms.published')) + '">' +
-            '<span class="switch-track"><span class="switch-state">' + (g.is_public ? 'On' : 'Off') +
+            '<span class="switch-track"><span class="switch-state">' + tr(g.is_public ? 'switch.on' : 'switch.off') +
             '</span><span class="switch-knob"></span></span></button>') +
         '</div>' +
       '</div>';

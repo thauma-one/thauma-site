@@ -60,8 +60,6 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .top{position:sticky;top:0;z-index:20;min-height:var(--header-h);
   background:rgba(11,15,21,.86);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line)}
-.top-in{max-width:1240px;margin:0 auto;padding:8px var(--gutter);min-height:var(--header-h);
-  display:flex;align-items:center;gap:24px}
 .mark{font-family:var(--font-display);font-weight:var(--w-hair);
   letter-spacing:var(--ls-mark);font-size:15px;white-space:nowrap}
 .mark em{font-style:normal;font-weight:var(--w-bold);letter-spacing:var(--ls-caps);
@@ -94,14 +92,19 @@ main{max-width:1240px;margin:0 auto;padding:32px var(--gutter) 80px;
 .cue::before{content:"";width:26px;height:1px;background:currentColor;flex:none}
 
 /* ---------- stat tiles ---------- */
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-  gap:1px;background:var(--line);border:1px solid var(--line)}
-.tile{background:var(--panel);padding:20px 22px;display:flex;flex-direction:column;gap:6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;margin:1px}
+.tile{background:var(--panel);padding:20px 22px;display:flex;flex-direction:column;gap:6px;
+  outline:1px solid var(--line)}
 .tile .k{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
   font-weight:var(--w-bold);color:var(--dim)}
 .tile .v{font-family:var(--font-display);font-weight:var(--w-hair);font-size:38px;
   line-height:1;letter-spacing:.01em}
 .tile .s{font-size:var(--fs-tiny);color:var(--dim)}
+/* An Overview tile is a link: a number you can see but not click is an
+   invitation to go hunting for where it lives. */
+a.tile{color:inherit;text-decoration:none;transition:background var(--dur-2) var(--ease-main)}
+a.tile:hover{background:var(--bg2)}
+a.tile:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
 .tile.alert{background:linear-gradient(180deg,var(--crit-dim),transparent 70%),var(--panel);
   box-shadow:inset 2px 0 0 var(--crit)}
 .tile.alert .v{color:var(--crit)}
@@ -112,17 +115,9 @@ main{max-width:1240px;margin:0 auto;padding:32px var(--gutter) 80px;
 .goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;
   background:var(--line);border:1px solid var(--line)}
 .goal{background:var(--panel);padding:22px 24px}
-.goal-t{display:flex;align-items:baseline;gap:10px}
-.goal-t h3{font-family:var(--font-display);font-weight:var(--w-bold);font-size:14px;
-  letter-spacing:.04em}
-.goal-t .kind{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
-  color:var(--dim)}
-.goal-t .pct{margin-left:auto;font-family:var(--font-display);font-weight:var(--w-hair);
-  font-size:26px;line-height:1;color:var(--voice-human)}
 .bar{height:3px;background:rgba(255,255,255,.07);margin:16px 0 10px;position:relative}
 .bar i{position:absolute;inset:0 auto 0 0;background:var(--voice-human);
   box-shadow:var(--voice-human-glow)}
-.goal-f{display:flex;justify-content:space-between;font-size:var(--fs-tiny);color:var(--dim)}
 
 /* ---------- contacts table ---------- */
 .tw{overflow-x:auto;border:1px solid var(--line)}
@@ -203,25 +198,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .ev-tag{font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:var(--w-bold);
   color:var(--dim);margin-left:8px}
 
-/* ---------- audit ---------- */
-.audit{border:1px solid var(--line);background:var(--panel)}
-/* minmax(0,1fr) ON THE LAST COLUMN, not 1fr. A bare 1fr floors at min-content,
-   so a long entity id and address in the third column could not shrink and
-   pushed the whole row past the viewport — 73px of sideways scroll on a
-   390px phone, on both consoles' Activity pages. The two fixed columns plus
-   the gaps and padding already account for 304px of those 390. */
-.audit-r{display:grid;grid-template-columns:150px 90px minmax(0,1fr);gap:14px;
-  padding:10px 18px;overflow-wrap:anywhere;
-  border-bottom:1px solid var(--line-soft);font-size:var(--fs-tiny);color:var(--dim)}
-/* Below this the three columns have no room to be columns: the timestamp
-   alone is most of the width. Stacked, each row reads as what it is —
-   when, what, to whom — instead of three cramped slivers. */
-@media (max-width:560px){
-  .audit-r{grid-template-columns:1fr;gap:2px}
-}
-.audit-r:last-child{border-bottom:0}
-.audit-r b{color:var(--text);font-weight:var(--w-bold)}
-
 .note{border-left:2px solid var(--voice-tech);padding:2px 0 2px 18px;
   font-size:var(--fs-tiny);color:var(--dim);max-width:76ch}
 .note b{color:var(--text)}
@@ -255,7 +231,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 
 /* ---------- signed-out gate ---------- */
 .gate{min-height:calc(100vh - var(--header-h));display:flex;align-items:center}
-.gate-in{max-width:1240px;margin:0 auto;padding:0 var(--gutter)}
 .gate h1{font-family:var(--font-display);font-weight:var(--w-hair);
   font-size:clamp(34px,6vw,64px);line-height:1.08;margin:14px 0 0}
 .gate h1 b{font-weight:var(--w-bold);color:var(--voice-tech)}
@@ -274,8 +249,11 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .rolegate b{color:var(--warn)}
 
 /* ---------- directory / resource cards ---------- */
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line)}
+/* Hairlines between cards are each card's own outline, meeting in the 1px gap.
+   (They were the grid's background showing through the gap, which also
+   filled the empty cells of a short last row with a gray block.) */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;margin:1px}
+.cards > *{outline:1px solid var(--line)}
 .card{background:var(--panel);padding:20px 22px;position:relative}
 .card h4{font-family:var(--font-display);font-weight:var(--w-bold);font-size:15px;
   letter-spacing:.02em;padding-right:76px}
@@ -328,21 +306,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 .top nav a[aria-current]{color:var(--text);border-bottom-color:var(--voice-tech)}
 .page-head{margin-bottom:4px}
 .page-head .sec-h{margin-bottom:0}
-
-/* Dashboard quick-links. Each is a number worth acting on, and the whole
-   card is the target — a number you can see but not click is an invitation
-   to go hunting for where it lives. */
-.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line);margin-top:38px}
-.quick-card{background:var(--panel);padding:22px 24px;display:flex;flex-direction:column;
-  gap:5px;text-decoration:none;transition:background var(--dur-3) var(--ease-main)}
-.quick-card:hover{background:var(--bg2)}
-.quick-card:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
-.qk{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
-  font-weight:var(--w-bold);color:var(--voice-tech)}
-.qv{font-family:var(--font-display);font-weight:var(--w-hair);font-size:34px;
-  line-height:1;color:var(--text)}
-.qs{font-size:var(--fs-tiny);color:var(--dim)}
 
 .empty code{font-family:var(--font-mono);font-size:11.5px;color:var(--text)}
 
@@ -426,16 +389,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
    otherwise invisible until somebody switches language on the live page. */
 .ms-warn{color:var(--warn)}
 
-.ms-row-actions{display:flex;gap:8px}
-.ms-row-actions button{background:none;border:1px solid rgba(255,255,255,.18);
-  color:var(--dim);font-family:var(--font-display);font-size:10px;
-  letter-spacing:var(--ls-caps);text-transform:uppercase;font-weight:var(--w-bold);
-  padding:7px 12px;border-radius:var(--radius);cursor:pointer;transition:.2s}
-@media(hover:hover){
-  .ms-row-actions button:hover{border-color:var(--voice-tech);color:var(--voice-tech)}
-  .ms-row-actions .del:hover{border-color:var(--crit,#FF6B6B);color:var(--crit,#FF6B6B)}
-}
-
 /* ---- the form ---- */
 .ms-form{margin-top:28px;background:var(--panel);border:1px solid var(--line);
   padding:26px 24px}
@@ -503,7 +456,6 @@ tbody tr[aria-expanded="true"]{background:rgba(255,255,255,.045)}
 @media (max-width:760px){
   .ms-grid{grid-template-columns:1fr}
   .ms-row{grid-template-columns:1fr;gap:14px}
-  .ms-row-actions{justify-content:flex-start}
 }
 
 /* ---- "Writing X beside Y": one language's fields, the other shown above ---- */
@@ -848,7 +800,6 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 .who b, .who span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Wrapping is allowed, and now costs height rather than overlap. */
 .top nav{min-width:0;flex-wrap:wrap;row-gap:4px}
-.top-in{flex-wrap:wrap;row-gap:10px}
 
 /* Below the width where the nav and the identity block can share a line, the
    identity drops its cap and the nav wraps rather than being squeezed. */
@@ -857,7 +808,6 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
 }
 @media (max-width:820px){
   .top{height:auto;padding:10px 0}
-  .top-in{align-items:flex-start}
   .who{max-width:none;text-align:left}
   .top-r{margin-left:0;width:100%;justify-content:space-between}
 }
@@ -889,7 +839,6 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
    competing with it. */
 .who{max-width:180px}
 .who span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.who-for{color:var(--text)}
 
 /* The link into administration. Same treatment as the one back out, so the
    two areas feel like two rooms rather than a place and its settings. */
@@ -967,10 +916,6 @@ html.role-communications .console-actions.has-mysite .area-public{display:inline
   letter-spacing:.08em;padding:11px 13px;border-radius:var(--radius)}
 .dlg-type input:focus{outline:none;border-color:var(--crit,#FF6B6B)}
 .dlg .solid-btn[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}
-/* The thing being destroyed, unmissable — typing DELETE proves intent to
-   delete something, not that the right row was picked. */
-.dlg-target{display:block;margin-top:6px;font-family:var(--font-display);
-  font-size:var(--fs-md);color:var(--text)}
 
 /* ============================================================
    ACTING AS SOMEBODY ELSE
@@ -1095,10 +1040,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
      scrollbar is not what the thing looks like on a real page. */
   transition:block-size .35s cubic-bezier(.16,1,.3,1)}
 @media(prefers-reduced-motion:reduce){ .emb-stage iframe{transition:none} }
-.emb-colour{display:flex;align-items:center;gap:8px}
-.emb-colour input[type=color]{inline-size:44px;block-size:34px;padding:2px;
-  border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
-  cursor:pointer}
 .emb-hex{inline-size:10ch;font-family:var(--font-mono);text-transform:uppercase}
 
 /* The stage bar: how wide to show it. */
@@ -1183,22 +1124,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
    MAILING
    ============================================================ */
 
-/* The scope switch. Only rendered for accounts the API says may use it, so
-   its presence is itself information: if you can see it, you can send as the
-   organization. */
-.ml-scope{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.ml-scope-label{color:var(--voice-tech);font-family:var(--font-display);
-  font-size:10px;letter-spacing:var(--ls-caps);text-transform:uppercase;
-  font-weight:var(--w-bold);margin-right:2px}
-
-.ml-people{margin-top:8px}
-.ml-people-title{font-size:var(--fs-sm);color:var(--text);font-weight:600}
-
-/* A subscriber row is not an expander — there is nothing behind it to open —
-   so it must not adopt the pointer and hover the editable rows use. */
-.ml-people .ms-row{cursor:default}
-@media(hover:hover){ .ml-people .ms-row:hover{background:transparent} }
-
 /* FINDING AND ADDING, one line (board 10): search takes the room, adding
    somebody is an address and a button beside it, and the person added appears
    in the table directly beneath. */
@@ -1208,7 +1133,6 @@ body.has-savebar .acting-mark{bottom:calc(var(--ms-savebar-h,72px) + 12px)}
 .ml-add input{flex:1 1 auto;min-width:0;font-size:13px;padding:8px 11px}
 .ml-add-status:empty{display:none}
 .ml-add-status{display:block;margin-top:6px;font-size:11px}
-.ml-people .status-pick{font-size:12px;padding:5px 8px}
 @media (max-width:560px){ .ml-add{flex-basis:100%} }
 
 /* ---- MAIL'S FIRST CARD: write an update (board 10) ----
@@ -1315,30 +1239,6 @@ button.ml-sentall-row{width:100%;background:none;border:0;text-align:left;font:i
 @media(hover:hover){ .ml-back:hover{color:var(--text)} }
 .ml-back:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
 
-/* The sign-up form's configuration, and what it will look like.
-
-   THE PREVIEW IS THE REAL WIDGET, in a frame, drawn by the same form.js a
-   visitor's browser fetches. It was hand-built markup imitating the form,
-   which is fine until the two disagree — and they did, the moment the real one
-   became a bordered card in the ministry's accent while the imitation stayed a
-   stack of gray inputs. A picture of a form nobody would ever see is worse
-   than no picture.
-
-   The frame is NOT given a background: the widget paints its own, and the
-   checkerboard behind it is how you see that it does. */
-.ml-form-config{margin:22px 0;padding:20px;border:1px solid var(--line);
-  border-radius:var(--radius);background:var(--bg2,#0b1119)}
-.ml-preview{margin:16px 0;padding:10px;border:1px dashed var(--line);
-  border-radius:var(--radius);min-height:430px;
-  background:
-    linear-gradient(45deg,rgba(127,127,127,.07) 25%,transparent 25%,transparent 75%,rgba(127,127,127,.07) 75%),
-    linear-gradient(45deg,rgba(127,127,127,.07) 25%,transparent 25%,transparent 75%,rgba(127,127,127,.07) 75%);
-  background-size:18px 18px;background-position:0 0,9px 9px}
-.ml-preview iframe{display:block;width:100%;height:430px;border:0;
-  background:transparent;color-scheme:light dark}
-#mlSnippet{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:11.5px;line-height:1.5;resize:vertical}
-
 /* ============================================================
    MAILING — tabs
    ============================================================ */
@@ -1380,11 +1280,6 @@ button.ml-sentall-row{width:100%;background:none;border:0;text-align:left;font:i
 /* A locked field must look locked. Read-only inputs that look editable are how
    somebody types into one and wonders why nothing saved. */
 input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
-
-.ml-soon{border:1px dashed var(--line);border-radius:var(--radius);
-  padding:28px;max-width:36rem}
-.ml-soon h3{margin:0 0 .5rem;font-size:1.1rem}
-.ml-soon p{margin:0 0 .6rem;color:var(--dim,#8a93a3);line-height:1.6}
 
 /* A pair of pills choosing between two things (a form, a look). */
 .ml-whose-opts{display:flex;gap:4px}
@@ -1537,8 +1432,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 @media(hover:hover){ .cp-row>button:not(.ghost-btn):hover{background:var(--line);color:var(--text)} }
 .cp-row>button[aria-pressed="true"]{background:var(--voice-tech);color:#0b1119}
 .cp-row input{min-width:240px;flex:1}
-.cp-row-field{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--dim,#8a93a3)}
-.cp-row-field input{min-width:120px;flex:0 1 160px}
 #cpSizeRow [data-sz="sm"]{font-size:12px}
 #cpSizeRow [data-sz="lg"]{font-size:16px}
 #cpSizeRow [data-sz="xl"]{font-size:19px}
@@ -1628,7 +1521,6 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 
 /* ---- the bottom bar ---- */
 .cp-actions{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-.cp-actions-gap{flex:1}
 .cp-actions-end{display:inline-flex;gap:8px;margin-left:auto;flex-wrap:nowrap}
 /* Where "Send me a test" goes (0048): the address, pressable to change it. */
 .cp-testto{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1663,29 +1555,19 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .ct-topics{margin:24px 0 20px;padding-top:20px;border-top:1px solid var(--line)}
 .ct-topics .hint{display:block;margin:6px 0 12px;line-height:1.5;max-width:64ch}
 .ct-topic{display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto;
+  grid-template-columns:auto minmax(0,1fr) minmax(0,1.3fr) auto;
   gap:10px;align-items:center;margin-bottom:8px}
 
-/* Stacked arrows in one column, so reordering costs one column rather than
-   two and the row keeps its shape at four reasons or at ten. */
 /* A reason's name, with its other language small above it (0041). */
 .ct-topic-name{display:flex;flex-direction:column;gap:3px;min-width:0}
-.ct-topic-move{display:flex;flex-direction:column;gap:2px}
-.ct-topic-move button{background:none;border:0;color:var(--dim,#8a93a3);
-  font-size:9px;line-height:1;padding:3px 5px;cursor:pointer;
-  border-radius:4px;transition:.15s}
-.ct-topic-move button[disabled]{opacity:.25;cursor:default}
-@media(hover:hover){
-  .ct-topic-move button:not([disabled]):hover{color:var(--text);
-    background:rgba(255,255,255,.08)}
-}
 .ct-topic input{font-size:13px;padding:8px 10px;min-width:0}
+.ct-topic .sort-grip{background:none;border:0;padding:4px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
 .ct-topic .del{background:none;border:0;color:var(--dim,#8a93a3);font-size:18px;
   line-height:1;padding:2px 6px;cursor:pointer;border-radius:6px;transition:.15s}
 @media(hover:hover){
   .ct-topic .del:hover{color:var(--crit,#FF6B6B);background:rgba(255,107,107,.1)}
 }
-@media (max-width:620px){ .ct-topic{grid-template-columns:1fr auto} }
+@media (max-width:620px){ .ct-topic{grid-template-columns:auto 1fr auto} .ct-topic-to{grid-column:2} }
 
 /* ---- the contact form's visualiser ----
    Settings on the left, the real widget on the right. A browser preview is
@@ -2412,10 +2294,10 @@ html.console-menu-open{overflow:hidden}
 .sh-period{display:grid;grid-template-columns:1fr;gap:0}
 /* Reasons in a narrow column: what it says above where it goes. */
 .sh-side .ct-topics{margin:4px 0 0;padding-top:14px}
-.sh-side .ct-topic{grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto auto;
+.sh-side .ct-topic{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;
   row-gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
-.sh-side .ct-topic-to{grid-column:1;grid-row:2}
-.sh-side .ct-topic-move{grid-column:2;grid-row:1 / span 2}
+.sh-side .ct-topic .sort-grip{grid-column:1;grid-row:1 / span 2}
+.sh-side .ct-topic-to{grid-column:2;grid-row:2}
 .sh-side .ct-topic .del{grid-column:3;grid-row:1 / span 2}
 .sh-side .ct-topics .ghost-btn{margin-top:10px}
 
@@ -2660,12 +2542,7 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-list{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
 .ws-page{display:grid;grid-template-columns:auto 130px minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
 .ws-page:first-child{border-top:0}
-.ws-page.is-off .ws-pname,.ws-page.is-off .ws-plabel{opacity:.5}
-.ws-pname{font-weight:600}
-.ws-plabel{display:flex;flex-direction:column;gap:4px;min-width:0}
-.ws-plabel input{width:100%}
 .ws-always{font-size:12.5px;color:var(--dim);min-width:92px}
-.ws-move{display:flex;gap:4px}
 .ws-icon{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:none;
   border:1px solid rgba(255,255,255,.14);color:var(--dim);border-radius:var(--radius);cursor:pointer}
 .ws-icon:hover:not(:disabled){border-color:var(--voice-tech);color:var(--text)}
@@ -2673,35 +2550,25 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-icon.del{color:var(--crit)}
 .ws-sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
 .ws-sec + .ws-sec{margin-top:10px}
-.ws-sec-head{display:flex;align-items:center;gap:8px}
-.ws-num{font:600 11px var(--font-display);letter-spacing:.2em;color:var(--voice-tech);width:26px}
-.ws-type{flex:1 1 auto}
 .ws-sec-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ws-small{font-size:12.5px;color:var(--dim)}
 .ws-chips{display:flex;gap:6px;flex-wrap:wrap}
 .ws-chip{font:13px var(--font-body);padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:none;color:var(--dim);cursor:pointer}
 .ws-chip[aria-pressed="true"]{border-color:var(--voice-tech);background:var(--voice-tech-dim);color:var(--text)}
-.ws-photo img{width:88px;height:50px;object-fit:cover;border-radius:2px}
 .ws-nophoto{font-size:12.5px;color:var(--dim);border:1px dashed rgba(255,255,255,.2);padding:12px 14px;border-radius:2px}
 .ws-file{cursor:pointer;text-decoration:none}
 .ws-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
 .ws-fields .ws-wide{grid-column:1/-1}
-.ws-fields input,.ws-fields textarea,.ws-item input,.ws-rows input,.ws-rows select{width:100%}
+.ws-fields input,.ws-fields textarea,.ws-rows input,.ws-rows select{width:100%}
 .ws-data{margin:0;font-size:13px;color:var(--dim)}
 .ws-data a{color:var(--voice-tech)}
-.ws-items,.ws-customs{display:flex;flex-direction:column;gap:8px}
-.ws-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) auto;gap:8px;align-items:center}
-.ws-customs .ws-item{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto}
-.ws-customs .ws-item .ms-ref{grid-column:1/-1}
 .ws-addbtn{display:flex;align-items:center;justify-content:center;height:48px;margin-top:10px;border:1px dashed rgba(47,216,255,.45);
   background:none;color:var(--voice-tech);font:500 11px var(--font-display);letter-spacing:.18em;text-transform:uppercase;cursor:pointer;width:100%}
 .ws-rows{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
-.ws-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px 18px;align-items:center;padding:14px 16px;border-top:1px solid var(--line)}
+.ws-row{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px 18px;align-items:center;padding:14px 16px;border-top:1px solid var(--line)}
 .ws-row:first-child{border-top:0}
 .ws-lbl{font:300 15px var(--font-display)}
 .ws-ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
-.ws-swatch{width:22px;height:22px;border-radius:50%;display:inline-block;border:2px solid var(--bg)}
-.ws-swatch + .ws-swatch{margin-left:-12px}
 .ws-looks{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
 .ws-look{padding:0;background:none;border:1px solid rgba(255,255,255,.14);color:var(--text);text-align:left;cursor:pointer;font:14px var(--font-body)}
 .ws-look[aria-pressed="true"]{border:2px solid var(--voice-tech)}
@@ -2725,7 +2592,12 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-preview{position:sticky;top:calc(var(--header-h,64px) + 16px);display:flex;flex-direction:column;gap:8px}
 .ws-preview[hidden]{display:none}
 .ws-preview-head{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
-.ws-preview-frame{height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
+.ws-preview-frame{position:relative;height:min(78vh,760px);overflow:hidden;border:1px solid var(--line);border-radius:6px;background:#000}
+/* The next copy of the page, drawn hidden over the one showing until it has
+   loaded, then faded in over it (staff-site.js refreshFrame, swapIn) — so a
+   change never blanks the preview; it appears. */
+.ws-preview-frame iframe.is-next{position:absolute;left:0;top:0;visibility:hidden;opacity:0}
+.ws-preview-frame iframe.is-next.is-fading{visibility:visible;opacity:1;transition:opacity .35s cubic-bezier(.55,.05,.45,.95)}
 /* ALWAYS A REAL DESKTOP, shrunk to fit (Chase, 2026-10-04: the preview was
    "this weird hybrid between desktop and mobile"). It was 250% of the pane,
    so a narrow pane gave the site ~1100px: below the width where a long menu
@@ -2757,9 +2629,8 @@ html.has-ai .lang-ai{display:inline-block}
 @media (max-width:1180px){.ws.with-preview{grid-template-columns:180px minmax(0,1fr)}.ws-preview{display:none!important}}
 @media (max-width:760px){
   .ws{grid-template-columns:1fr}.ws-side{flex-direction:row;overflow-x:auto;position:static}
-  .ws-page{grid-template-columns:auto minmax(0,1fr);}.ws-page .ws-plabel{grid-column:1/-1}
+  .ws-page{grid-template-columns:auto minmax(0,1fr);}
   .ws-fields,.ws-looks,.ws-starts{grid-template-columns:1fr}.ws-row{grid-template-columns:1fr}
-  .ws-item,.ws-customs .ws-item{grid-template-columns:1fr}
 }
 /* A checkbox is a box, even inside a row whose fields fill it. */
 .ws-rows .chk input,.ws-sec .chk input{width:auto;padding:0;border:0;background:none;flex:none}
@@ -2771,7 +2642,6 @@ html.has-ai .lang-ai{display:inline-block}
 .ws-card-pic{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .ws-card-pic img{width:150px;height:94px;object-fit:cover;border-radius:2px}
 .ws-card-pic .ws-nophoto{width:150px;text-align:center;padding:30px 8px}
-.ws-card-words{display:flex;flex-direction:column;gap:8px;min-width:0}.ws-card-words input{width:100%}
 .ws-foot-sketch{height:64px}
 /* Changes not yet published, on a tab or a page: the same amber as the bar. */
 .ws-dot{display:inline-block;width:7px;height:7px;margin-left:8px;border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
@@ -2801,7 +2671,9 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 @media (max-width:760px){.ws-card{grid-template-columns:1fr}}
 .ws-looks{margin-bottom:12px}
 .ws-head + .ws-rows{margin-top:0}
-.ws-rows + .ws-head{margin-top:22px}
+/* Every heading after the first starts a new group, whatever came before it
+   (an empty "No links yet", a text box) — not only after a block of rows. */
+* + .ws-head{margin-top:26px}
 
 /* ---- Website › Pages, reworked (Chase, 2026-09-29; canvas "Round two") --
    Page tabs; the page as a stack of pictures with one line each; one
@@ -2810,7 +2682,6 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-pagename{display:flex;flex-direction:column;gap:6px;flex:1 1 220px;min-width:0;font-size:12.5px;color:var(--dim)}
 .ws-pagename input{width:100%}
 .ws-stack{display:flex;flex-direction:column;gap:6px}
-.ws-srow{display:flex;align-items:stretch;gap:8px}
 .ws-stile{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:16px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);text-align:left;cursor:pointer;font:14px var(--font-body)}
 .ws-stile:hover,.ws-stile:focus-visible{border-color:var(--voice-tech)}
 .ws-sketch.ws-sketch-sm{width:120px;height:68px;flex:none}
@@ -2821,7 +2692,6 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-stile-words .ws-miss,.ws-prow-open .ws-miss{color:var(--warn);font-size:12.5px}
 .ws-prow-sub{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;min-width:0}
 .ws-prow-open .ws-prow-sub .ws-miss{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ws-stile-edit{font-size:12.5px;color:var(--voice-tech)}
 .ws-stile-tools{display:flex;flex-direction:column;gap:4px;justify-content:center}
 .ws-stile-tools .ws-icon{width:28px;height:28px}
 .ws-insert{align-self:stretch;background:none;border:0;border-top:1px dashed rgba(255,255,255,.12);color:var(--dim);font:12px var(--font-body);padding:6px 0 4px;cursor:pointer;opacity:.7}
@@ -2847,6 +2717,10 @@ html.has-ai .ai-one{display:inline-flex;align-items:center;justify-content:cente
 .ws-linkrows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
 .ws-linkrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
 .ws-linkrow:first-child{border-top:0}
+/* one link or card (its row and, open, its editing) moves as one */
+.ws-linkitem+.ws-linkitem>.ws-linkrow{border-top:1px solid var(--line)}
+.ws-linkitem:first-child>.ws-linkrow{border-top:0}
+.ws-linkitem>.ws-linkrow{border-top:0}
 .ws-linkrow img{width:44px;height:30px;object-fit:cover;border-radius:3px}
 .ws-linkrow b{font-weight:600}.ws-linkrow span{flex:1 1 auto;color:var(--dim);font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ws-linkrow.is-open{background:rgba(47,216,255,.06)}
@@ -3035,7 +2909,7 @@ html.pe-open{overflow:hidden}
 
 /* ---- Advanced: search and sharing previews (2026-10-04) ---- */
 .ws-adv-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:18px}
-.ws-serp{display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:#fff;border-radius:10px;color:#202124;font-family:Arial,sans-serif}
+.ws-serp{align-self:start;display:flex;flex-direction:column;gap:4px;padding:16px 18px;background:#fff;border-radius:10px;color:#202124;font-family:Arial,sans-serif}
 .ws-serp .ws-lbl2{color:#70757a}
 .ws-serp-url{font-size:13px;color:#202124}
 .ws-serp-title{font-size:19px;font-weight:400;color:#1a0dab;line-height:1.3}
@@ -3083,3 +2957,92 @@ html.pe-open{overflow:hidden}
 .ws-tabstyle{display:flex;flex-wrap:wrap;gap:6px 24px;padding:12px 0 4px}
 .ws-tabedit{display:flex;align-items:flex-end;gap:12px;padding:12px 0 0}
 .ws-tabedit .ws-pagename{flex:1;margin:0}
+
+/* ---- the Site Creator, tidied (2026-10-07) ----------------------------- */
+
+/* A SECTION'S LOOK IN FOUR GROUPS: a small heading, its chips, and any
+   on/off settings as switches side by side. */
+.ws-grp{border:0;margin:0;padding:14px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px;min-width:0}
+.ws-grp:first-of-type{border-top:0;padding-top:0}
+.ws-grp legend{float:left;width:100%;padding:0;margin:0 0 2px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim)}
+.ws-grp legend+*{clear:both}
+.ws-flags{display:flex;flex-wrap:wrap;gap:10px 22px}
+.ws-flags .switch-label{font-size:13px}
+.ws-note{margin:0;font-size:13px;color:var(--dim)}
+
+/* THE GRIP: drag it, or focus it and use the arrow keys (StaffSort). */
+.sort-grip{cursor:grab;touch-action:none;color:var(--dim)}
+.sort-grip svg{width:14px;height:14px;fill:currentColor}
+.sort-grip:active{cursor:grabbing}
+.ws-linkrow .sort-grip{width:26px;height:26px;flex:none;margin-left:-6px}
+.ws-prow .sort-grip{flex:none}
+.is-dragging{position:relative;z-index:5;box-shadow:0 14px 34px -12px rgba(0,0,0,.75);outline:1px solid var(--voice-tech);opacity:.96}
+.is-sorting>.ws-insert,.is-sorting>.ws-joinmark{visibility:hidden}
+.ws-tabs .is-tab{cursor:grab;touch-action:pan-y}
+.ws-tabs .is-tab.is-dragging{cursor:grabbing}
+@media (prefers-reduced-motion:no-preference){.ws-acc,.ws-prow,.ws-linkitem,.ws-tabchip{transition:transform .15s ease}}
+
+/* JOINED TO THE SECTION ABOVE: the two rows close together, tied by a line
+   and said in words, where "Add a section here" would be. */
+.ws-joinmark{display:flex;align-items:center;gap:8px;margin:-6px 0;padding:0 14px;height:26px;position:relative}
+.ws-joinmark-line{position:absolute;left:34px;top:-2px;bottom:-2px;width:2px;background:color-mix(in srgb,var(--voice-tech) 55%,transparent)}
+.ws-joinmark-word{position:relative;display:inline-flex;align-items:center;gap:6px;margin-left:30px;padding:2px 9px;border-radius:999px;
+  background:var(--panel);border:1px solid color-mix(in srgb,var(--voice-tech) 45%,transparent);font-size:11.5px;color:var(--voice-tech)}
+.ws-joinmark-word svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.ws-joinmark-add{margin-left:auto;width:22px;height:22px;border-radius:50%;border:1px dashed rgba(255,255,255,.2);background:none;color:var(--dim);cursor:pointer;line-height:1}
+.ws-joinmark-add:hover,.ws-joinmark-add:focus-visible{color:var(--voice-tech);border-color:var(--voice-tech)}
+.ws-acc.is-joined{border-top-color:color-mix(in srgb,var(--voice-tech) 45%,transparent)}
+
+
+/* THE TABS ROW among a page's sections (staff-site.js): a row like the
+   others, dashed because it holds sections rather than being one, and its
+   arrow points in (ws-chev-r) — it opens the tabs, it does not unfold. */
+.ws-tabsrow .ws-stile{border-style:dashed}
+
+/* THE LOOK TAB'S ROWS (2026-10-08): what it is, its control, and any switch
+   that belongs to that choice beside it. The label column is fixed so the
+   controls line up down the tab; switches sit on the control's line with
+   room around them, never under the row above. */
+.ws-lrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;align-items:center;min-height:40px}
+.ws-lctl{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;min-width:0}
+.ws-lctl .ws-note{margin:0}
+.ws-grp{gap:14px}
+.ws-grp .ws-flags{padding:4px 0}
+/* one choice, one joined control */
+.ws-seg{display:inline-flex;border:1px solid rgba(255,255,255,.16);border-radius:999px;overflow:hidden;flex:none}
+.ws-segbtn{font:13px var(--font-body);padding:7px 14px;background:none;border:0;border-left:1px solid rgba(255,255,255,.12);color:var(--dim);cursor:pointer;white-space:nowrap}
+.ws-segbtn:first-child{border-left:0}
+.ws-segbtn:hover{color:var(--text)}
+.ws-segbtn[aria-pressed="true"]{background:var(--voice-tech-dim);color:var(--text)}
+.ws-segbtn:focus-visible{outline:2px solid var(--voice-tech);outline-offset:-2px}
+.ws-seg-icons .ws-segbtn{padding:7px 12px;line-height:0}
+.ws-seg-icons svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.ws-pick{min-width:0;max-width:100%;padding:8px 12px;font-size:13px}
+@media (max-width:560px){.ws-lrow{grid-template-columns:1fr;gap:8px}}
+
+/* A CHOICE WITH PICTURES (staff-site.js picPick): a wide box showing the one
+   chosen — its small picture left, its name and what it is right — and,
+   opened, the same for every option, over what is below. The pictures are
+   the cards' own, drawn at twice the size and halved, so they stay crisp. */
+.ws-pp{position:relative;width:100%}
+.ws-row.ws-row-wide{grid-template-columns:1fr;gap:10px}
+.ws-pp[data-tint]{--nav-tint:var(--ws-acc,#1AE4FF)}.ws-pp[data-tint="white"]{--nav-tint:#FFFFFF}
+.ws-pp-btn,.ws-pp-opt{display:flex;align-items:center;gap:14px;width:100%;padding:8px 14px 8px 8px;background:var(--bg2,#0b1119);
+  border:1px solid rgba(255,255,255,.16);border-radius:var(--radius);color:var(--text);font:14px var(--font-body);text-align:left;cursor:pointer}
+.ws-pp-btn:hover,.ws-pp.is-open .ws-pp-btn{border-color:var(--voice-tech)}
+.ws-pp-btn .ws-chev{margin-left:auto;flex:none}
+.ws-pp-pic{flex:none;width:112px;height:64px;overflow:hidden;border-radius:3px;background:#0D0D0D;position:relative}
+.ws-pp-in{position:absolute;left:0;top:0;width:224px;height:128px;transform:scale(.5);transform-origin:0 0;display:flex;flex-direction:column;justify-content:center}
+.ws-pp-in > *{width:100%;flex:none}
+.ws-pp-in > .ws-look-sample,.ws-pp-in > .ws-foot-sketch,.ws-pp-in > .ws-phone-sample{height:100%}
+.ws-pp-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ws-pp-txt b{font-weight:600}
+.ws-pp-txt span{font-size:12.5px;color:var(--dim)}
+.ws-pp-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;display:flex;flex-direction:column;gap:4px;padding:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 18px 40px rgba(0,0,0,.45);max-height:60vh;overflow:auto}
+.ws-pp-list[hidden]{display:none}
+.ws-pp-opt{border-color:transparent;background:none}
+.ws-pp-opt:hover,.ws-pp-opt:focus-visible{background:var(--bg2,#0b1119);outline:none}
+.ws-pp-opt[aria-selected="true"]{border-color:var(--voice-tech);background:var(--voice-tech-dim)}
+/* words, then the rows of choices under them: room between the two */
+.ws-fields + .ws-rows{margin-top:22px}

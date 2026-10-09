@@ -63,8 +63,17 @@ export function linesFor(source, enDoc, langDoc) {
 }
 
 /** A short, stable fingerprint of one English string. */
+/* THE WORDS, NOT HOW THEY ARE SET (2026-10-07). A line break or a bold word
+   added in English is not new English to translate, so the fingerprint is
+   taken of the words alone: tags dropped, entities read, every run of white
+   space (a typed line break included) one space. A line with neither — every
+   line before formatting existed — fingerprints exactly as it always did. */
+export function wordsOnly(text) {
+  return String(text).replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+}
 export async function hashText(text) {
-  const bytes = new TextEncoder().encode(String(text));
+  const bytes = new TextEncoder().encode(wordsOnly(text));
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
   return [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -145,8 +154,10 @@ export function noteFor(line, englishByKey) {
 
 /* Spreadsheets honor exactly one kind of formatting from a CSV: a newline
    inside a quoted cell. So long reference text is soft-wrapped for reading,
-   and the returned translation is unwrapped — no line on the site contains a
-   newline of its own (asserted in the tests), so nothing real is lost. */
+   and the returned translation is unwrapped. A line's OWN line break (a
+   heading set on two lines, 2026-10-07) travels as <br>, which the translator
+   keeps or moves to where their language should break, and comes back as a
+   line break. */
 const WRAP_AT = 60;
 
 export function wrapCell(text) {
@@ -163,8 +174,11 @@ export function wrapCell(text) {
 }
 
 export function unwrapCell(text) {
-  return String(text == null ? "" : text).replace(/\s*\r?\n\s*/g, " ").trim();
+  return String(text == null ? "" : text).replace(/\s*\r?\n\s*/g, " ").trim()
+    .replace(/\s*<br\s*\/?>\s*/gi, "\n");
 }
+/* A line's own break, as the file writes it. */
+const brOut = (t) => String(t == null ? "" : t).replace(/\n/g, "<br>");
 
 export function csvCell(v) {
   v = String(v == null ? "" : v);
@@ -224,15 +238,15 @@ export function buildFile({ lang, langName, brief, lines, englishByKey }) {
     "How to fill this in:",
     `- Write each translation in the last column, "${name} (${lang})". Leave every other column exactly as it is.`,
     `- Translate the meaning for people who read ${name}, not word for word, in the same warm and plain tone.`,
-    "- Keep anything in {curly braces} and any <b> </b> tags exactly as written.",
+    "- Keep anything in {curly braces} and any tags such as <b> </b> exactly as written. A <br> is a new line: keep it, or move it to where the line should break in your language.",
     "- If you are unsure of a line, leave its last column empty. Empty lines are skipped, never erased.",
     "- Return the whole file as CSV, in the same order, with the id column unchanged.",
   ];
   const rows = rules.map((r) => [r ? `# ${r}` : "#"]);
   rows.push(["id", "English", "Notes", `Current ${name} (may be out of date)`, `${name} (${lang})`]);
   for (const line of lines) {
-    rows.push([line.id, wrapCell(line.english), noteFor(line, englishByKey || {}),
-      wrapCell(line.current), ""]);
+    rows.push([line.id, wrapCell(brOut(line.english)), noteFor(line, englishByKey || {}),
+      wrapCell(brOut(line.current)), ""]);
   }
   /* The BOM is not optional: without it Excel opens UTF-8 as the local code
      page, and Croatian and Serbian come back as mojibake a translator "fixes". */
@@ -340,8 +354,10 @@ export function checkLine({ english, proposed, lang, notes }) {
 /** A value fit to store: a string, not blank, not a novel. */
 export function cleanValue(v) {
   if (typeof v !== "string") return null;
-  const s = v.trim();
-  return s && s.length <= MAX_VALUE ? s : null;
+  /* Spaces off the ends, but a line break kept: a heading's light half may
+     end on one, to put its bold half on a line of its own (2026-10-07). */
+  const s = v.replace(/\r/g, "").replace(/^[ \t]+|[ \t]+$/g, "").replace(/^\n+/, "");
+  return s.trim() && s.length <= MAX_VALUE ? s : null;
 }
 
 /**

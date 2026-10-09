@@ -248,6 +248,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 }
 .lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
   font-size:12px;letter-spacing:.1em;font-weight:600}
+/* The button's words: the code closed, the language's name open (main.js).
+   Letter-spacing off while a code rolls, as the cascade does, so each
+   character box sits where the resting letter will. */
+.lang-dropdown-label{display:inline-block;white-space:nowrap}
+.lang-dropdown.open .lang-dropdown-label{letter-spacing:.06em}
+.lang-dropdown-label.is-rolling{letter-spacing:0;font-kerning:none}
+.lang-dropdown-label.is-rolling .cr-box{margin-right:.15em}
+.lang-dropdown-list{white-space:nowrap}
 
 /* Upward variant — the landing page puts the picker at the bottom of a
    viewport locked to 100% height with overflow:hidden, so the default
@@ -269,13 +277,14 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    navigates. Its buttons were styled by a bare `.lang-toggle` rule until
    7b724c3 rescoped that to `.lang-dropdown-list .lang-toggle` to unify the
    picker — which orphaned them, leaving default browser chrome on the page.
-   Scoped to .nav-actions rather than restoring the bare selector, so it can
-   never bleed back into the dropdown's own buttons. */
-.nav-actions .lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);
+   Scoped to buttons directly in .nav-actions rather than restoring the bare
+   selector, so it can never bleed back into the dropdown's own buttons —
+   which also sit in .nav-actions, and wore these borders until 2026-10-08. */
+.nav-actions > .lang-toggle{background:none;border:1px solid rgba(255,255,255,.18);
   color:var(--dim);font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.15em;
   font-weight:600;padding:7px 12px;border-radius:2px;cursor:pointer;transition:.2s}
 @media(hover:hover){
-  .nav-actions .lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
+  .nav-actions > .lang-toggle:hover{border-color:var(--blue);color:var(--blue)}
 }
 
 /* will-change:transform gives the button its own compositor layer — it
@@ -332,14 +341,24 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    longer body copy only touches the last few lines to prevent orphans.
    Both are progressive — ignored where unsupported, no fallback needed. */
 h1,h2{font-family:'Sora',sans-serif;font-weight:100;letter-spacing:.01em;text-wrap:balance}
-h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
+/* NO WIDTH OF THEIR OWN (2026-10-07, Chase: "the times when a new line is
+   started defined in the text box itself"): a heading's lines break where
+   they were typed in Website › Pages (src/js/site-rich.js turns each into <br>). It
+   was a 660px cap that broke them wherever the width ran out, which the box
+   never showed. On a screen too narrow for a typed line, the line still
+   wraps, balanced. */
+h2{font-size:clamp(30px,4.4vw,48px);line-height:1.15}
 /* EVERY PAGE NEEDS EXACTLY ONE h1 and no page had one — the whole site
    opened at heading level two. On most pages the first section heading IS
    the page's title, so it became the h1 and wears the same look; the class
    carries the size rather than the element, because the home page's hero
    line and About's dictionary word are also h1 now and set their own. */
-h1.page-h1{font-size:clamp(30px,4.4vw,48px);line-height:1.15;max-width:660px}
+h1.page-h1{font-size:clamp(30px,4.4vw,48px);line-height:1.15}
 h1 b,h2 b{font-weight:600}
+/* Formatted words (src/js/site-rich.js, Website › Pages): the named sizes, relative
+   to whatever the words are; a picked size or color arrives inline. */
+.rt-sm{font-size:.82em}.rt-lg{font-size:1.25em}.rt-xl{font-size:1.6em}
+
 .lede{margin-top:22px;max-width:560px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.85;text-wrap:pretty}
 .body-text{margin-top:22px;max-width:620px;color:var(--dim);font-size:15.5px;font-weight:200;line-height:1.9;text-wrap:pretty}
 
@@ -669,21 +688,6 @@ form.stay-form .btn:disabled{opacity:.6;cursor:default;transform:none}
 .bio-text p{margin-bottom:1em}
 @media(max-width:820px){.team-grid{grid-template-columns:1fr}.bio-layout{grid-template-columns:1fr}}
 
-/* ---------- Staff-area cards ---------- */
-.staff-h{font-family:'Sora',sans-serif;font-weight:600;font-size:20px;margin:34px 0 8px}
-.staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:14px}
-.s-card{background:var(--panel);border:1px solid rgba(255,255,255,.07);padding:26px;transition:.25s}
-.s-card:hover{box-shadow:inset 0 2px 0 var(--foam)}
-.s-card h4{font-family:'Sora',sans-serif;font-weight:600;font-size:16.5px}
-.s-role{color:var(--foam);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;margin-top:6px}
-.s-card p{color:var(--dim);font-size:13.5px;font-weight:300;line-height:1.7;margin-top:10px}
-.s-photo{aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(47,216,255,.2);margin-bottom:16px;
-  background:linear-gradient(160deg,#16202e 0%,#0b0f15 75%)}
-.s-photo img{width:100%;height:100%;object-fit:cover}
-.s-link{display:inline-block;margin-top:14px;color:var(--blue);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
-.s-link:hover{color:var(--blue-hi)}
-@media(max-width:820px){.staff-grid{grid-template-columns:1fr}}
-
 /* ---------- Navigation experience ---------- */
 /* Voice-aware text selection (2026-07-20): the site's two-color system
    (BLUE = technical voice, FOAM = ministry voice) carries through to
@@ -728,6 +732,17 @@ section .cue, .work .label, .val .n, .conviction .num{font-kerning:none;font-var
 .foot-socials{display:flex;align-items:center;gap:16px}
 .foot-socials a{color:var(--dim);display:inline-flex;transition:.2s}
 .foot-socials a:hover{color:var(--foam)}
+/* The site's own links as icons (Website › Links): the site's icon drawn as
+   a silhouette in the icons' color when it has a clear ground (main.js), a
+   small gray picture when it does not, the initials when there is none. */
+.foot-socials .favi{width:18px;height:18px;align-items:center;justify-content:center;text-decoration:none}
+.foot-socials .favi img{width:18px;height:18px;border-radius:4px;filter:grayscale(1);opacity:.75}
+.foot-socials .favi.own img{filter:none;opacity:1}
+.foot-socials .favi .lt{display:none;font:600 10px/1 'Inter',sans-serif;letter-spacing:.02em}
+.foot-socials .favi.no-icon img{display:none}.foot-socials .favi.no-icon .lt{display:inline}
+.foot-socials .favi.mono img{display:none}
+.foot-socials .favi.mono::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:var(--fi) center/contain no-repeat;mask:var(--fi) center/contain no-repeat}
+.foot-own{margin-top:12px}
 
 /* ---------- Numbered cue labels (sections only; header cues keep the line) ---------- */
 body{counter-reset:cue}

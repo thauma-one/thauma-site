@@ -126,4 +126,25 @@
     });
   });
   markDirty();
+
+  /* ---- which tabs hold changes not published yet ----------------------
+     The same dot as an unsaved change, as the Site Creator marks its tabs
+     (Chase, 2026-10-08). Asked once, and again after anything is saved;
+     Pages is told which lines, for the dots on its pages. */
+  var asking = null;
+  function askChanges() {
+    if (asking) return;
+    asking = fetch('/api/admin/publish?changes', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        asking = null;
+        if (!d || !d.tabs) return;
+        links.forEach(function (a) { a.classList.toggle('has-changes', d.tabs.indexOf(a.getAttribute('data-web-tab')) !== -1); });
+        document.dispatchEvent(new CustomEvent('web:changes', { detail: { lines: d.lines || [] } }));
+      })
+      .catch(function () { asking = null; });
+  }
+  askChanges();
+  document.addEventListener('web:saved', function () { setTimeout(askChanges, 1500); });
+  document.addEventListener('thauma:site-saved', function () { setTimeout(askChanges, 1500); });
 })();

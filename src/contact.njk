@@ -9,9 +9,9 @@ pageTitle: contact
 ---
 {% set t = i18n[lang] %}
 <header class="page"><div class="wrap">
-  <div class="cue rise">{{ t.contact.cue }}</div>
-  <h1 class="page-h1 rise-2">{{ t.contact.h2_thin }} <b>{{ t.contact.h2_bold }}</b></h1>
-  <p class="lede rise-3">{{ t.contact.lede }}</p>
+  <div class="cue rise">{{ t.contact.cue | rich("contact.cue") }}</div>
+  <h1 class="page-h1 rise-2">{{ t.contact.h2_thin | rich("contact.h2_thin") }} <b>{{ t.contact.h2_bold | rich("contact.h2_bold") }}</b></h1>
+  <p class="lede rise-3">{{ t.contact.lede | rich("contact.lede") }}</p>
 </div></header>
 
 <section><div class="wrap">
@@ -28,12 +28,12 @@ pageTitle: contact
      form was never pointed at it. -#}
   <form class="contact" name="contact" method="POST" action="/api/contact">
     <p hidden><label>Do not fill: <input name="bot-field"></label></p>
-    <label class="vh" for="contact-name">{{ t.contact.form_name }}</label>
+    <label class="vh" for="contact-name">{{ t.contact.form_name | rich("contact.form_name") }}</label>
     <input type="text" id="contact-name" name="name"
-           placeholder="{{ t.contact.form_name }}" required>
-    <label class="vh" for="contact-email">{{ t.contact.form_email }}</label>
+           placeholder="{{ t.contact.form_name | plain }}" required>
+    <label class="vh" for="contact-email">{{ t.contact.form_email | rich("contact.form_email") }}</label>
     <input type="email" id="contact-email" name="email"
-           placeholder="{{ t.contact.form_email }}" required>
+           placeholder="{{ t.contact.form_email | plain }}" required>
     {#- THE REASONS COME FROM THE DATABASE, so they cannot be rendered here:
        this page is built by CI, which has no database. The select is filled by
        the script below from /api/contact, and stays hidden if that returns
@@ -47,24 +47,24 @@ pageTitle: contact
     {#- aria-label rather than a <label> of its own: this control is hidden
        until the script fills it, and a label sitting beside a control that may
        never appear is a name for nothing. -#}
-    <select name="topic" id="contact-reason" aria-label="{{ t.contact.form_reason }}" hidden></select>
-    <label class="vh" for="contact-subject">{{ t.contact.form_subject }}</label>
+    <select name="topic" id="contact-reason" aria-label="{{ t.contact.form_reason | plain }}" hidden></select>
+    <label class="vh" for="contact-subject">{{ t.contact.form_subject | rich("contact.form_subject") }}</label>
     <input type="text" id="contact-subject" name="subject" maxlength="160"
-           placeholder="{{ t.contact.form_subject }}">
-    <label class="vh" for="contact-message">{{ t.contact.form_message }}</label>
+           placeholder="{{ t.contact.form_subject | plain }}">
+    <label class="vh" for="contact-message">{{ t.contact.form_message | rich("contact.form_message") }}</label>
     <textarea id="contact-message" name="message"
-              placeholder="{{ t.contact.form_message }}" required></textarea>
+              placeholder="{{ t.contact.form_message | plain }}" required></textarea>
     <div class="btn-row" style="margin-top:10px">
-      <button class="btn solid" type="submit">{{ t.contact.form_send }}</button>
+      <button class="btn solid" type="submit">{{ t.contact.form_send | rich("contact.form_send") }}</button>
     </div>
   </form>
-  <p class="legal-note" id="sent-note" style="display:none">{{ t.contact.form_success }}</p>
+  <p class="legal-note" id="sent-note" style="display:none">{{ t.contact.form_success | rich("contact.form_success") }}</p>
   {#- A REFUSED SUBMISSION HAS TO SAY SO. The handler redirects back with
      ?error=1 when a field does not pass, and nothing here read it — so a
      visitor who mistyped their address landed on an ordinary-looking contact
      page with their message gone and no idea it had not been sent. The one
      failure mode a contact form must never have. -#}
-  <p class="legal-note contact-error" id="error-note" style="display:none">{{ t.contact.form_error }}</p>
+  <p class="legal-note contact-error" id="error-note" style="display:none">{{ t.contact.form_error | rich("contact.form_error") }}</p>
   <script>
     var q = new URLSearchParams(location.search);
     if (q.get('sent')) { showSent(); }
@@ -136,7 +136,7 @@ pageTitle: contact
           var topics = (body && body.topics) || [];
           if (!topics.length) return;
           sel.innerHTML =
-            '<option value="">{{ t.contact.form_reason | escape }}</option>' +
+            '<option value="">{{ t.contact.form_reason | plain }}</option>' +
             topics.map(function (t) {
               var o = document.createElement('option');
               o.value = t.id;

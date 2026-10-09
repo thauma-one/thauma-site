@@ -101,13 +101,11 @@ await check("an empty collection says so rather than looking broken", async () =
 await check("the row shows which languages an item actually has", async () => {
   /* What still needs translating is the thing somebody scanning wants, and it
      is invisible if you have to open every item to find out. */
+  /* Said as Updates says it (2026-10-07): "missing SR". */
   const { d } = await boot({ resources: [GLOSSARY] });
-  const chips = [...d.querySelectorAll(".lib-lang")];
-  assert(chips.length >= 3, `only ${chips.length} language chips`);
-  const on = chips.filter((c) => c.classList.contains("is-on")).map((c) => c.textContent);
-  assert(on.includes("en") && on.includes("hr"), `lit: ${on.join(",")}`);
-  const off = chips.filter((c) => !c.classList.contains("is-on")).map((c) => c.textContent);
-  assert(off.includes("sr"), "a language with no title is not shown as missing");
+  const note = d.querySelector(".lib-miss");
+  assert(note && /missing/.test(note.textContent) && /SR/.test(note.textContent), "a language with no title is not shown as missing");
+  assert(!/EN|HR/.test(note.textContent), `a language it has is called missing: ${note.textContent}`);
 });
 
 await check("an item with ONE language saves", async () => {
@@ -238,8 +236,10 @@ await check("a gathering's row shows the whole span, not just the first day", as
     slug: "weekend", title: { en: "Weekend" }, summary: {}, type: "gathering",
     status: "upcoming", date: "2027-03-14", end_date: "2027-03-15", sessions: [] }] });
   const tags = [...d.querySelectorAll(".lib-tags .role-tag")].map((t) => t.textContent);
-  assert(tags.some((t) => t.includes("2027-03-14") && t.includes("2027-03-15")),
+  assert(tags.some((t) => /Mar 14/.test(t) && /15/.test(t) && /2027/.test(t)),
     `the row shows ${tags.join(" | ")} — a weekend reads as a single day`);
+  assert(!tags.some((t) => /\d{4}-\d{2}-\d{2}/.test(t)), `a stored date reached the row: ${tags.join(" | ")}`);
+  assert(!tags.some((t) => /^upcoming$/i.test(t)), "the row repeats its group's heading");
 });
 
 /* ----------------------------------------------------- multi-day and cadence */
@@ -401,6 +401,23 @@ await check("resources are not forced into gathering groups", async () => {
   const { d } = await boot({ resources: [GLOSSARY] });
   assert(!d.querySelector('[data-lib-list="resources"] .lib-group'),
     "the resources list grew a group heading it has no basis for");
+});
+
+await check("a coming event has a star: pressed in the list, it saves that event highlighted, body and all", async () => {
+  /* Chase, 2026-10-08: "a toggle … for a highlighted event … controls for
+     highlighting multiple". */
+  const ev = { slug: "weekend", title: { en: "Weekend" }, summary: {}, type: "gathering", status: "upcoming",
+    date: "2027-03-14", sessions: [], body: "Longer words." };
+  const past = { ...ev, slug: "old", status: "past" };
+  const { d, posts } = await boot({ gatherings: [ev, past] });
+  const star = d.querySelector('[data-lib-feature="weekend"]');
+  assert(star && star.getAttribute("aria-pressed") === "false", "no star on a coming event");
+  assert(!d.querySelector('[data-lib-feature="old"]'), "a past event can be highlighted");
+  star.click();
+  await new Promise((r) => setTimeout(r, 80));
+  const sent = posts.pop();
+  assert(sent && sent.featured === true && sent.body === "Longer words." && sent.collection === "gatherings", `sent ${JSON.stringify(sent)}`);
+  assert(!d.querySelector('[data-lib-item="gatherings/weekend"]').classList.contains("is-open"), "pressing the star opened the event");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

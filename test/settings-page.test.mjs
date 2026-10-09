@@ -67,10 +67,11 @@ async function boot() {
 }
 const names = (d) => [...d.querySelectorAll("#sRoot .s-name")].map((n) => n.textContent);
 
-await check("settings carry their real names, the social links in the site's own card", async () => {
+await check("settings carry their real names; the social links are on Website › Links now", async () => {
   const { d } = await boot();
   const n = names(d);
-  for (const want of ["Site name", "Address", "YouTube link", "X link"]) assert(n.includes(want), `no "${want}" in ${n}`);
+  for (const want of ["Site name", "Address"]) assert(n.includes(want), `no "${want}" in ${n}`);
+  assert(!n.includes("YouTube link") && !d.querySelector('[data-path^="socials."]'), "the social links are still here too");
   const first = d.querySelector("#sRoot .s-group h3").textContent;
   assert(first === "The site", `the first card is "${first}"`);
 });
@@ -82,7 +83,7 @@ await check("a donation form for every language, the missing one ready to fill",
   const fields = [...card.querySelectorAll("[data-path]")].map((i) => i.getAttribute("data-path"));
   assert(fields.join() === "donorbox.en,donorbox.hr,donorbox.sr", `fields: ${fields}`);
   assert(card.querySelector('[data-path="donorbox.en"]').value === "en-form", "English's form");
-  assert(/\(sr\)/.test(card.textContent), "each line named by its language");
+  assert(/Српски|Serbian/.test(card.textContent) && !/\(sr\)/.test(card.textContent), "each line named by its language, not its code");
   assert(d.getElementById("sSaveBar").hidden, "an untouched empty slot counts as an unsaved change");
 });
 
@@ -104,10 +105,24 @@ await check("languages and pictures are not shown here twice", async () => {
   assert(!d.querySelector('[data-path="defaultLang"]'), "the default language on Settings");
 });
 
-await check("what visitors can see is in Preview site and Everyone columns", async () => {
+await check("what visitors can see: Only your team, then Visitors — dev before public — each with its site to open", async () => {
   const { d } = await boot();
   const heads = [...d.querySelectorAll("[data-web-panel=\"settings\"] .v-head b")].map((b) => b.textContent);
-  assert(heads.join() === "Preview site,Everyone", `columns: ${heads}`);
+  assert(heads.join() === "Only your team,Visitors", `columns: ${heads}`);
+  const opens = [...d.querySelectorAll("[data-web-panel=\"settings\"] .v-head .v-open")].map((a) => a.getAttribute("href"));
+  assert(opens.join() === "https://dev.thauma.one/,https://thauma.one/", `links: ${opens}`);
+});
+
+await check("Site on: shown the right way round over the coming-soon gate, and turning it on is the launch", async () => {
+  /* Chase, 2026-10-08: "just be like site on and site off". */
+  const { w, d } = await boot();
+  const row = [...d.querySelectorAll(".v-row")].find((r) => /Active/.test(r.textContent));
+  assert(row, "no Active row");
+  const live = row.querySelector('[data-path="visibility.comingSoon.live"]'), dev = row.querySelector('[data-path="visibility.comingSoon.dev"]');
+  assert(live.getAttribute("aria-checked") === "false" && dev.getAttribute("aria-checked") === "true", "comingSoon live:true/dev:false should read Off for visitors, On for the team");
+  let asked = 0; w.StaffConfirm = async () => { asked++; return true; };
+  live.click(); await tick();
+  assert(asked === 1 && live.getAttribute("aria-checked") === "true", "turning the site on did not ask, or did not turn on");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -51,7 +51,7 @@
     if (text && kind && window.StaffToast) window.StaffToast(text, kind);
   }
 
-  function langLabel(l) { return (l.native_name || l.name) + ' (' + l.code + ')'; }
+  function langLabel(l) { return l.native_name || l.name; }
 
   /* ---- tabs ---------------------------------------------------------- */
 
@@ -116,7 +116,7 @@
           (isDefault ? ' disabled' : '') +
           ' aria-label="Publish ' + esc(l.name) + '">' +
           '<span class="switch-track"><span class="switch-state">' +
-            (l.is_enabled ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+            tr(l.is_enabled ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
         '</button>' +
         '<span class="switch-label">' + esc(langLabel(l)) +
           (isDefault ? '<span class="switch-note">' + tr('set.defaultLangNote') + '</span>'
@@ -139,7 +139,7 @@
       var yes = on.indexOf(p) !== -1;
       return '<button type="button" class="switch small" role="switch" aria-checked="' + yes + '" ' +
         attrs + ' data-part="' + p + '">' +
-        '<span class="switch-track"><span class="switch-state">' + (yes ? 'On' : 'Off') +
+        '<span class="switch-track"><span class="switch-state">' + tr(yes ? 'switch.on' : 'switch.off') +
         '</span><span class="switch-knob"></span></span>' +
         '<span class="switch-label">' + esc(tr('set.part.' + p)) + '</span></button>';
     }).join('');
@@ -378,7 +378,7 @@
       r.selectNode($('setKeyValue'));
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(r);
-      setStatus('Selected — press Ctrl/Cmd C', 'ok');
+      toastKey('set.keySelected', 'ok');
     }
   });
 

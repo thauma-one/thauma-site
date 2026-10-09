@@ -66,7 +66,7 @@ async function boot(opts = {}) {
   w.scrollTo = () => {};
   w.scrollBy = () => {};
   w.HTMLElement.prototype.scrollIntoView = () => {};
-  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
+  for (const f of ["staff-i18n.js", "staff.js", "color-pair.js", "rich-text.js", "staff-site.js"]) w.eval(readFileSync("src/js/" + f, "utf8"));
   w.StaffToast = () => {};
   await settle(200);
   const d = w.document;
@@ -98,7 +98,7 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   assert(own > 0, "Give has its own sections");
   click(d.querySelector("[data-tabs-add]"));
   const chips = () => [...d.querySelectorAll(".ws-tabchip")].map((c) => c.textContent);
-  eq(chips(), ["Above the tabs", "Tab 1", "Tab 2", "+"], "the strip");
+  eq(chips(), ["The page", "Tab 1", "Tab 2", "+"], "the strip");
   eq(d.querySelector(".ws-tabchip.is-on").textContent, "Tab 1", "the first tab is open");
   eq(d.querySelectorAll(".ws-acc").length, 0, "a new tab has no sections of its own");
   assert(!d.querySelector(".ws-tabstyle"), "the bar's look is out of the way");
@@ -109,9 +109,36 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   name.dispatchEvent(new w.Event("input", { bubbles: true }));
   eq(chips()[1], "Give", "named in place");
   click(d.querySelector('[data-tab-view=""]'));
-  eq(d.querySelectorAll(".ws-acc").length, own, "above the tabs: the page's own sections");
+  eq(d.querySelectorAll(".ws-acc:not(.ws-tabsrow)").length, own, "the page: its own sections");
   click(d.querySelector("[data-tab-add]"));
-  eq(chips(), ["Above the tabs", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
+  eq(chips(), ["The page", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
+});
+
+await check("the tabs are a row among the page's sections: a section can go below them, and the row drags", async () => {
+  /* Chase, 2026-10-08: "we have the ability to add sections above the tab,
+     but we also need the ability to add sections below." */
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="give"]'));
+  const own = d.querySelectorAll(".ws-acc").length;
+  click(d.querySelector("[data-tabs-add]"));
+  click(d.querySelector('[data-tab-view=""]'));
+  const rows = () => [...d.querySelectorAll(".ws-stack > .ws-acc")].map((r) => r.classList.contains("ws-tabsrow") ? "TABS" : r.dataset.sid);
+  eq(rows()[own], "TABS", "the Tabs row comes after the page's own sections");
+  assert(/Tab 1 · Tab 2/.test(d.querySelector(".ws-tabsrow").textContent), "it names its tabs");
+  const below = d.querySelector(".ws-tabsrow + .ws-insert");
+  assert(below && below.hasAttribute("data-after-tabs"), "no place to add a section below the tabs");
+  click(below);
+  click(d.querySelector('[data-add-type="text"]'));
+  eq(rows().indexOf("TABS"), own, "the tabs stayed where they were");
+  eq(rows().length, own + 2, "the new section is below them");
+  /* Up one with the keyboard: the Tabs row moves above the last section. */
+  const grip = d.querySelector(".ws-tabsrow .sort-grip");
+  grip.focus();
+  grip.dispatchEvent(new d.defaultView.KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+  eq(rows().indexOf("TABS"), own - 1, "moved up one");
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "give").tabs.at, own - 1, "saved where it sits");
 });
 
 await check("a page opens to its sections as rows; All pages and the page menu lead out", async () => {
@@ -299,11 +326,11 @@ await check("every section lines up left, centered or right, and Indented is a s
   click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
   click(d.querySelector('[data-sectab="look"]'));
   eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right"], "choices");
-  eq([...d.querySelectorAll('[data-chip="indent:0"]')].map((b) => b.dataset.value), ["on", "off"], "Indented, on or off");
+  assert(d.querySelector('[data-sec-flag="0:indent"][role="switch"]'), "Indented is a switch");
   eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
   assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
   click(d.querySelector('[data-chip="align:0"][data-value="right"]'));
-  click(d.querySelector('[data-chip="indent:0"][data-value="on"]'));
+  click(d.querySelector('[data-sec-flag="0:indent"]'));
   await settle(900);
   const saved = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0];
   eq([saved.align, saved.indent], ["right", true], "saved: right, indented");
@@ -320,14 +347,16 @@ await check("a header can be added; its Look has background, top line and title 
   eq([...d.querySelectorAll('[data-chip="raised:0"]')].map((b) => b.dataset.value), ["plain", "raised", "tint", "accent"], "every section's backgrounds, and the header's Accent");
   assert(!d.querySelector('[data-chip^="hbg:"]'), "no second background control");
   click(d.querySelector('[data-chip="raised:0"][data-value="tint"]'));
-  click(d.querySelector('[data-chip="topline:0"][data-value="off"]'));
+  click(d.querySelector('[data-sec-flag="0:topline"]'));
   await settle(900);
   const s = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections;
   eq([s[0].type, s[0].tint, s[0].bg, s[0].topline], ["header", true, "plain", false], "saved");
 
   click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
   click(d.querySelector('[data-sectab="look"]'));
-  eq([...d.querySelectorAll('[data-chip="verse:1"]')].map((b) => b.dataset.value), ["quote", "line", "mark"], "verse looks");
+  /* the Look tab in its four groups; a verse's look waits for a verse */
+  eq([...d.querySelectorAll(".ws-grp legend")].map((l) => l.textContent), ["Layout", "Alignment", "Title", "Background"].filter((x) => x !== "Layout" || d.querySelector(".ws-grp:first-of-type [data-chip^=variant]")), "the groups");
+  assert(!d.querySelector('[data-chip="verse:1"]'), "a verse's look offered with no verse");
 });
 
 await check("the opening's Look has this page's scroll indicator switch; off saves on the page", async () => {
@@ -444,8 +473,15 @@ await check("Navigation: the page-you-are-on look, its color, the line and the p
   click(d.querySelector('[data-ws-tab="nav"]'));
   assert(!d.getElementById("wsNav").hidden, "the Navigation panel");
   assert(!d.getElementById("wsPreviewPane").hidden, "with the site beside it");
-  assert(d.querySelectorAll('#wsNav .ws-look[data-chip="nav:current"]').length === 6, "six looks");
+  /* Chase, 2026-10-08: a choice with pictures is a wide box that opens to
+     every option, its picture left and its name right. */
+  assert(d.querySelectorAll('#wsNav .ws-pp-opt[data-chip="nav:current"]').length === 6, "six looks");
+  const box = d.querySelector('#wsNav [data-pp-toggle="nav:current"]');
+  assert(/Lit/.test(box.textContent) && box.querySelector(".ws-pp-pic") && d.querySelector("#wsNav .ws-pp-list").hidden, "the box shows the chosen look, closed");
+  click(box);
+  assert(!d.querySelector("#wsNav .ws-pp-list").hidden, "the box does not open");
   click(d.querySelector('[data-chip="nav:current"][data-value="under"]'));
+  assert(d.querySelector("#wsNav .ws-pp-list").hidden && /underlined/i.test(d.querySelector('#wsNav [data-pp-toggle="nav:current"]').textContent), "choosing closes it and shows the choice");
   click(d.querySelector('[data-chip="nav:tint"][data-value="accent"]'));
   click(d.querySelector('[data-chip="nav:line"][data-value="accent"]'));
   click(d.querySelector('[data-chip="nav:phone"][data-value="drawer"]'));
@@ -501,11 +537,50 @@ await check("Design: Custom's colors and what visitors see appear only when Cust
   const { d, sent, click } = await boot();
   assert(!d.querySelector('[data-color="background"]'), "a preset has no color pickers");
   click(d.querySelector('[data-chip="look"][data-value="custom"]'));
-  assert(d.querySelector('[data-color="background"]') && d.querySelector('[data-chip="mode"][data-value="auto"]'), "Custom does");
-  click(d.querySelector('[data-chip="mode"][data-value="dark"]'));
+  /* long choices are a menu (2026-10-08) */
+  const mode = d.querySelector('select[data-chip-pick="mode"]');
+  assert(d.querySelector('[data-color="background"]') && mode && mode.value === "auto", "Custom does");
+  mode.value = "dark";
+  mode.dispatchEvent(new d.defaultView.Event("change", { bubbles: true }));
   await settle(900);
   const design = sent.filter((x) => x.action === "save").pop().draft.design;
   eq([design.look, design.mode], ["custom", "dark"], "saved");
+});
+
+await check("a section merged with the one above says Merged in the list, and its background is the one above's", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));
+  click(d.querySelector('[data-sectab="look"]'));
+  assert(!d.querySelector('[data-sec-flag="0:join"]'), "the first section offered a section above");
+  click(d.querySelector('[data-sec-flag="1:join"]'));
+  assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-joined"), "the row is not marked");
+  const mark = d.querySelector(".ws-joinmark");
+  assert(mark && mark.nextElementSibling === d.querySelector('.ws-acc[data-si="1"]') && /Merged/.test(mark.textContent), "no marker between the two");
+  assert(!d.querySelector('[data-chip="raised:1"]') && /background of the section it is merged with/.test(d.querySelector(".ws-grp .ws-note").textContent), "its own background still offered");
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].join, true, "saved");
+});
+
+await check("the Look tab is rows: a long list of layouts is a menu, and a switch sits beside the choice it belongs to", async () => {
+  /* Chase, 2026-10-08: "if there is a toggle tied to that selection, then it
+     is positioned just to the right of it". */
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="home"]'));
+  click(d.querySelector('[data-edit-sec="1"]'));            // Photo and words: five layouts
+  click(d.querySelector('[data-sectab="look"]'));
+  const menu = d.querySelector('select[data-chip-pick="variant:1"]');
+  assert(menu && menu.options.length === 5, "five layouts are not a menu");
+  menu.value = "above";
+  menu.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const rowOf = (sel) => d.querySelector(sel).closest(".ws-lrow");
+  assert(rowOf('[data-sec-flag="1:indent"]') === rowOf('[data-chip="align:1"]'), "Indented is not beside the alignment");
+  assert(rowOf('[data-sec-flag="1:join"]') === rowOf('[data-chip="raised:1"]'), "Merge is not beside the background");
+  assert(d.querySelector('[data-chip="align:1"] svg') && d.querySelector('[data-chip="align:1"]').getAttribute("aria-label"), "alignment is not pictures with names");
+  await settle(900);
+  eq(sent.filter((x) => x.action === "save").pop().draft.pages[0].sections[1].variant, "above", "the menu's choice saved");
 });
 
 await check("Undo steps back through changes; a reload opens where you left off", async () => {
@@ -514,7 +589,9 @@ await check("Undo steps back through changes; a reload opens where you left off"
   click(d.querySelector('[data-open-page="home"]'));
   const order = () => [...d.querySelectorAll(".ws-stile-words b")].map((b) => b.textContent);
   eq(order(), ["Hero", "Photo and words"], "as it starts");
-  click(d.querySelector('[data-sec-down="0"]'));
+  /* the grip, moved with the keyboard (StaffSort, staff.js) */
+  const grip = d.querySelector('.ws-acc[data-si="0"] .sort-grip');
+  grip.dispatchEvent(new w.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
   eq(order(), ["Photo and words", "Hero"], "moved");
   assert(!d.getElementById("wsUndo").disabled, "Undo is offered");
   click(d.getElementById("wsUndo"));

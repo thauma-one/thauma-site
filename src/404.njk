@@ -29,18 +29,18 @@ permalink: /404.html
 <nav data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}><div class="wrap nav-in">
   <a class="logo" href="/{{ lang }}/">THAUMA</a>
   <div class="links">
-    <a href="/{{ lang }}/about/">{{ t.nav.about }}</a>
-    <a href="/{{ lang }}/mission/">{{ t.nav.mission }}</a>
-    <a href="/{{ lang }}/values/">{{ t.nav.values }}</a>
-    <a href="/{{ lang }}/team/">{{ t.nav.team }}</a>
-    <a href="/{{ lang }}/resources/">{{ t.nav.resources }}</a>
-    <a href="/{{ lang }}/contact/">{{ t.nav.contact }}</a>
-    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events }}</a>{% endif %}
+    <a href="/{{ lang }}/about/">{{ t.nav.about | rich("nav.about") }}</a>
+    <a href="/{{ lang }}/mission/">{{ t.nav.mission | rich("nav.mission") }}</a>
+    <a href="/{{ lang }}/values/">{{ t.nav.values | rich("nav.values") }}</a>
+    <a href="/{{ lang }}/team/">{{ t.nav.team | rich("nav.team") }}</a>
+    <a href="/{{ lang }}/resources/">{{ t.nav.resources | rich("nav.resources") }}</a>
+    <a href="/{{ lang }}/contact/">{{ t.nav.contact | rich("nav.contact") }}</a>
+    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events | rich("nav.events") }}</a>{% endif %}
   </div>
   <div class="nav-actions">
     {%- for l in activeLangs %}{% if l != lang %}
-    <button class="lang-toggle" data-lang="{{ l }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
-    <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give }}</a>
+    <button class="lang-toggle" data-lang="{{ l }}" lang="{{ l }}" aria-label="{{ i18n[l].name or l }}" title="{{ i18n[l].name or l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
+    <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give | rich("nav.give") }}</a>
   </div>
 </div></nav>
 {% endfor %}
@@ -50,12 +50,12 @@ permalink: /404.html
 {% set t = i18n[lang] %}
 <div data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}>
   <div class="dict"><div class="wrap">
-    <div class="cue foam">{{ t.notFound.cue }}</div>
-    <h1 class="dict-word" data-arcade-door="404">{{ t.notFound.dict_word }}</h1>
-    <div class="dict-ipa">{{ t.notFound.dict_ipa }}</div>
-    <div class="dict-defs"><p>{{ t.notFound.dict_def }}</p></div>
-    <p class="lede">{{ t.notFound.lede }}</p>
-    <p class="btn-row"><a class="btn solid" href="/{{ lang }}/">{{ t.notFound.cta }}</a></p>
+    <div class="cue foam">{{ t.notFound.cue | rich("notFound.cue") }}</div>
+    <h1 class="dict-word" data-arcade-door="404">{{ t.notFound.dict_word | rich("notFound.dict_word") }}</h1>
+    <div class="dict-ipa">{{ t.notFound.dict_ipa | rich("notFound.dict_ipa") }}</div>
+    <div class="dict-defs"><p>{{ t.notFound.dict_def | rich("notFound.dict_def") }}</p></div>
+    <p class="lede">{{ t.notFound.lede | rich("notFound.lede") }}</p>
+    <p class="btn-row"><a class="btn solid" href="/{{ lang }}/">{{ t.notFound.cta | rich("notFound.cta") }}</a></p>
   </div></div>
 </div>
 {% endfor %}
@@ -65,11 +65,11 @@ permalink: /404.html
 {% set t = i18n[lang] %}
 <footer data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}><div class="wrap foot-in">
   <div class="foot-col">
-    <div class="foot-tag">{{ t.footer.tagline }}</div>
-    <div class="foot-legal">{{ t.footer.legal }}</div>
+    <div class="foot-tag">{{ t.footer.tagline | rich("footer.tagline") }}</div>
+    <div class="foot-legal">{{ t.footer.legal | rich("footer.legal") }}</div>
   </div>
   <div class="foot-col foot-right">
-    <span class="foot-region">{{ t.footer.region }}</span>
+    <span class="foot-region">{{ t.footer.region | rich("footer.region") }}</span>
   </div>
 </div></footer>
 {% endfor %}

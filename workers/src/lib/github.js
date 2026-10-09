@@ -264,18 +264,26 @@ export async function getFile(env, path, fetchImpl = fetch) {
   finally { if (inFlight.get(key) && inFlight.get(key).promise === promise) inFlight.delete(key); }
 }
 
+/** One file as another branch or commit holds it. Not shared in flight:
+    a read of a past commit is rare and never the same as the live one. */
+export async function getFileAt(env, path, ref, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  return readFile(env, cfg, path, fetchImpl, ref);
+}
+
 function forget(env, path) {
   const cfg = githubConfig(env);
   if (!cfg.error) inFlight.delete(`${cfg.repo}@${cfg.branch}:${path}`);
 }
 
-async function readFile(env, cfg, path, fetchImpl) {
+async function readFile(env, cfg, path, fetchImpl, ref = cfg.branch) {
 
   const h = await headers(env, fetchImpl);
   if (h.error) return { error: h.error, status: 500 };
 
   const url = `${API}/repos/${cfg.repo}/contents/${encodeURI(path)}` +
-              `?ref=${encodeURIComponent(cfg.branch)}`;
+              `?ref=${encodeURIComponent(ref)}`;
 
   const res = await fetchImpl(url, { headers: h.headers });
 
@@ -337,7 +345,7 @@ export async function listDir(env, path, fetchImpl = fetch) {
  * there" — the precise accident this whole mechanism is meant to prevent. A
  * caller that has genuinely lost the SHA should re-read the file, not omit it.
  */
-export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet, create }, fetchImpl = fetch) {
+export async function putFile(env, { path, text, sha, message, authorName, authorEmail, quiet, create, branch }, fetchImpl = fetch) {
   forget(env, path);
   const cfg = githubConfig(env);
   if (cfg.error) return { error: cfg.error, status: 500 };
@@ -381,7 +389,9 @@ export async function putFile(env, { path, text, sha, message, authorName, autho
       content: toBase64(text),
       // Omitted entirely on a create; GitHub rejects an explicit null.
       ...(sha ? { sha } : {}),
-      branch: cfg.branch,
+      /* another branch only when asked: a line waiting on dev is saved to
+         both (admin-translate.js) */
+      branch: branch || cfg.branch,
       // Attribution is the point of an audit trail somebody else can read.
       // `git log` should name the person who typed the words, not the Worker.
       committer: { name: authorName || "Thauma console", email: authorEmail || "admin@thauma.one" },
@@ -453,6 +463,9 @@ export async function compareBranches(env, base, head, fetchImpl = fetch) {
       date: (c.commit && c.commit.author && c.commit.author.date) || "",
     })).reverse(), // newest first, as everything else in this console is
     files: (body.files || []).map((f) => f.filename),
+    /* Where the two last agreed — what tells "changed on head" apart from
+       "changed on base and not carried across yet". */
+    merge_base: (body.merge_base_commit && body.merge_base_commit.sha) || null,
     permalink: body.permalink_url || body.html_url || null,
   };
 }

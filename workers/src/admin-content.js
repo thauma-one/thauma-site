@@ -106,6 +106,32 @@ export function leafPaths(obj, prefix = "", out = {}) {
  * matter more than the write: this is the only thing standing between a text
  * box and the data structure the site is built from.
  */
+/**
+ * THE FOOTER'S OWN LINKS (Website › Links, 2026-10-07: "one footer and links
+ * model", as the Site Creator's Links tab). The one list this endpoint will
+ * replace whole — a list cannot be edited leaf by leaf — and so it is cleaned
+ * here, item by item: where it goes (https, mailto, or one of the site's own
+ * pages), its name in each language, in line with the socials or separated,
+ * as words or an icon, and its own icon (one of our uploads). Anything else
+ * is dropped. Returns null when it is not a list at all.
+ */
+export function cleanSiteLinks(v) {
+  if (!Array.isArray(v)) return null;
+  return v.slice(0, 20).map((k) => {
+    if (!k || typeof k !== "object") return null;
+    const url = String(k.url || "").trim();
+    if (!(/^https:\/\/[^\s"<>]{3,300}$/.test(url) || /^mailto:[^\s"<>@]+@[^\s"<>]+$/.test(url) || /^page:[a-z]{2,20}$/.test(url))) return null;
+    const label = {};
+    for (const [l, t] of Object.entries(k.label && typeof k.label === "object" ? k.label : {})) {
+      if (/^[a-z]{2,3}$/.test(l) && typeof t === "string" && t.trim()) label[l] = t.trim().slice(0, 40);
+    }
+    const out = { url, label, place: k.place === "inline" ? "inline" : "apart", show: k.show === "icon" ? "icon" : "words" };
+    const icon = String(k.iconImg || "");
+    if (/^\/media\/[A-Za-z0-9._\/-]{1,200}$/.test(icon) && !icon.includes("..")) out.iconImg = icon;
+    return out;
+  }).filter(Boolean);
+}
+
 export function setLeaf(doc, path, value, creatable) {
   const parts = String(path).split(".");
   let node = doc;
@@ -291,7 +317,9 @@ function languageNames(code) {
       return n && n !== code ? n : null;
     } catch { return null; }
   };
-  return { name: nameIn("en") || code, native_name: nameIn(code) || nameIn("en") || code };
+  /* Capitalized as a name in a list: Intl gives Slovenian as "slovenščina". */
+  const cap = (n) => n.charAt(0).toLocaleUpperCase(code) + n.slice(1);
+  return { name: nameIn("en") || code, native_name: cap(nameIn(code) || nameIn("en") || code) };
 }
 
 /* THE CATALOG IS THE OTHER HALF OF ADDING A LANGUAGE, and for a long time it
@@ -717,7 +745,13 @@ async function write(request, env, db, user, me, cfg) {
   }
 
   const applied = [];
-  for (const p of paths) {
+  if (body.file === "site" && Object.prototype.hasOwnProperty.call(changes, "links")) {
+    const links = cleanSiteLinks(changes.links);
+    if (!links) return json({ error: "links must be a list of links.", path: "links" }, 400);
+    doc.links = links;
+    applied.push("links");
+  }
+  for (const p of paths.filter((x) => x !== "links" || body.file !== "site")) {
     const before = leafPaths(doc)[p];
     const problem = setLeaf(doc, p, changes[p], creatable);
     if (problem) return json({ error: problem, path: p }, 400);

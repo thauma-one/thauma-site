@@ -21,8 +21,9 @@
 
    comingSoon IS NOT AN ORDINARY SWITCH. It is the gate over the
    entire public site: with it on, every page is the holding
-   page. Turning it OFF is the launch, and it is the one control
-   here that says so and asks first.
+   page. It is shown as "Site on", the other way round (switchCell),
+   so turning the site ON is the launch — the one control here
+   that says so and asks first.
    ============================================================ */
 (function () {
   'use strict';
@@ -187,7 +188,7 @@
   function langName(code) {
     try {
       var n = new Intl.DisplayNames([code], { type: 'language' }).of(code);
-      if (n && n !== code) return n.charAt(0).toUpperCase() + n.slice(1) + ' (' + code + ')';
+      if (n && n !== code) return n.charAt(0).toUpperCase() + n.slice(1);
     } catch (e) { /* a code Intl does not know */ }
     return code;
   }
@@ -203,6 +204,9 @@
   }
 
   var isImage = function (p) { return p.indexOf('images.') === 0; };
+  /* Edited on their own tabs: the social links and the site's own links on
+     Website › Links, each page's share picture on Pages (2026-10-07). */
+  var isElsewhere = function (p) { return /^(socials|links|share)(\.|$)/.test(p); };
 
   /* THE PICTURES ARE ON Website › Photos (mockup board 14), where the focus
      is a dot on the picture rather than four numbers. isImage() keeps their
@@ -220,7 +224,7 @@
     var seen = {};
     state.order.forEach(function (p) {
       // Visibility and images each get their own block below.
-      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p) || isDonation(p)) return;
+      if (isVisibility(p) || isImage(p) || isFrozenList(p) || isLanguage(p) || isDonation(p) || isElsewhere(p)) return;
       var g = cardOf(p);
       if (!seen[g]) { seen[g] = true; groups.push(g); }
     });
@@ -229,7 +233,7 @@
     $('sRoot').innerHTML =
       groups.map(function (g) {
         var rows = state.order.filter(function (p) {
-          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && !isDonation(p) && cardOf(p) === g;
+          return !isVisibility(p) && !isImage(p) && !isFrozenList(p) && !isLanguage(p) && !isDonation(p) && !isElsewhere(p) && cardOf(p) === g;
         });
         return '<section class="s-group">' +
           '<h3>' + esc(groupLabel(g)) + '</h3>' +
@@ -251,15 +255,19 @@
      because that is what a dev site is for. Turning one off there answers
      "what does this look like without it?" without touching the public. */
 
+  /* SITE ON (Chase, 2026-10-08: "just be like site on and site off" — the
+     holding page may one day say "maintenance" instead). Stored as it always
+     was, visibility.comingSoon, which is the opposite: shown inverted. */
+  var inverted = function (path) { return /^visibility\.comingSoon\./.test(path); };
   function switchCell(path, extraClass) {
-    var v = state.draft[path];
+    var v = inverted(path) ? !state.draft[path] : state.draft[path];
     var dirty = state.draft[path] !== state.saved[path];
     return '<span class="v-cell ' + (extraClass || '') + (dirty ? ' is-dirty' : '') +
              '" data-field="' + esc(path) + '">' +
       '<button type="button" class="switch small" role="switch" data-path="' + esc(path) + '"' +
       ' aria-checked="' + (v ? 'true' : 'false') + '"' + (v ? ' data-on="1"' : '') + '>' +
         '<span class="switch-track"><span class="switch-state">' +
-          (v ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+          tr(v ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
       '</button></span>';
   }
 
@@ -292,8 +300,15 @@
     var head =
       '<div class="v-head">' +
         '<div class="v-label"></div>' +
-        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b></span>' +
-        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b></span>' +
+        /* WHO SEES IT, and a way to look: the team's own dev.thauma.one
+           first, then visitors on the live site — the order the work goes in
+           (Chase, 2026-10-08: "the workflow is dev and then public"). The
+           preview build at next.thauma.one follows the visitors' column, so
+           it shows what is about to be published (visible.js). */
+        '<span class="v-cell is-dev"><b>' + esc(tr('vis.devCol')) + '</b>' +
+          '<a class="v-open" href="https://dev.thauma.one/" target="_blank" rel="noopener">dev.thauma.one ↗</a></span>' +
+        '<span class="v-cell is-live"><b>' + esc(tr('vis.liveCol')) + '</b>' +
+          '<a class="v-open" href="https://thauma.one/" target="_blank" rel="noopener">thauma.one ↗</a></span>' +
       '</div>';
 
     var body = '';
@@ -310,7 +325,7 @@
     if (sections.length) {
       body += '<div class="v-sub">' + esc(tr('vis.sections')) + '</div>' +
         sections.map(function (id) {
-          return visRow(humanise(id), 'visibility.sections.' + id);
+          return visRow(has('vis.sec.' + id) ? tr('vis.sec.' + id) : humanise(id), 'visibility.sections.' + id);
         }).join('');
     }
 
@@ -348,7 +363,7 @@
         '<button type="button" class="switch" role="switch" data-path="' + esc(p) + '"' +
         ' aria-checked="' + (v ? 'true' : 'false') + '"' + (v ? ' data-on="1"' : '') + '>' +
           '<span class="switch-track"><span class="switch-state">' +
-            (v ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+            tr(v ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
         '</button>';
     } else if (typeof v === 'number') {
       control = '<input type="number" data-path="' + esc(p) + '"' +
@@ -457,9 +472,10 @@
     }
 
     state.draft[p] = next;
-    sw.setAttribute('aria-checked', next ? 'true' : 'false');
-    if (next) sw.setAttribute('data-on', '1'); else sw.removeAttribute('data-on');
-    sw.querySelector('.switch-state').textContent = next ? 'On' : 'Off';
+    var shown = inverted(p) ? !next : next;
+    sw.setAttribute('aria-checked', shown ? 'true' : 'false');
+    if (shown) sw.setAttribute('data-on', '1'); else sw.removeAttribute('data-on');
+    sw.querySelector('.switch-state').textContent = tr(shown ? 'switch.on' : 'switch.off');
     markField(p);
     renderSaveBar();
   });

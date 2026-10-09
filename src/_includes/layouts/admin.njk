@@ -85,6 +85,8 @@
    cropper opens the one photo editor, so that comes first. -#}
 <script src="/js/photo-editor.js?v={{ "/js/photo-editor.js" | v }}"></script>
 <script src="/js/photo-crop.js?v={{ "/js/photo-crop.js" | v }}"></script>
+<script src="/js/rich-text.js?v={{ "/js/rich-text.js" | v }}"></script>
+<script src="/js/site-rich.js?v={{ "/js/site-rich.js" | v }}"></script>
 <script src="/js/admin.js?v={{ "/js/admin.js" | v }}"></script>
 {#- Page-specific behavior, loaded only where it is used. admin.js is the
    shared shell — identity, the role gate, the pages that read /api/admin.
@@ -98,7 +100,7 @@
    and nowhere else. -#}
 {#- THE WEBSITE AREA IS ONE PAGE: every tab's script, so every tab loads at
    once, then the shell that moves between them (admin-website.js). -#}
-{% if websiteTab %}{% for f in ["admin-content", "admin-library", "admin-photos", "admin-site", "admin-publish", "admin-dbsync", "admin-forms", "admin-arcade", "staff-mailing", "admin-website"] %}
+{% if websiteTab %}{% for f in ["admin-content", "admin-library", "admin-photos", "admin-site", "admin-publish", "admin-dbsync", "admin-forms", "admin-arcade", "admin-links", "staff-mailing", "admin-website"] %}
 <script src="/js/{{ f }}.js?v={{ ("/js/" + f + ".js") | v }}"></script>{% endfor %}
 {#- Thauma's Mail tab writes with the same composer as the staff Mail page,
    after staff-mailing.js, which it reads (see staff.njk). -#}

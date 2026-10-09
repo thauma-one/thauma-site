@@ -15,7 +15,7 @@
  *   · a save changing the SHAPE of the document rather than a value in it
  *   · a save landing on top of somebody else's edit
  */
-import handler, { pathFor, setLeaf, leafPaths, blankLike } from "../src/admin-content.js";
+import handler, { pathFor, setLeaf, leafPaths, blankLike, cleanSiteLinks } from "../src/admin-content.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -833,6 +833,24 @@ await check("every leaf in the language files is a string", async () => {
       .map(([p, v]) => `${p} is ${v === null ? "null" : typeof v}`);
     eq(bad, [], `${code}.json has non-string leaves`);
   }
+});
+
+
+await check("the footer's own links are a list, cleaned link by link", async () => {
+  const got = cleanSiteLinks([
+    { url: "page:give", label: { en: "Give monthly", hr: "  ", "<x>": "no" }, place: "inline", show: "icon" },
+    { url: "https://github.com", label: { en: "GitHub" }, place: "sideways", show: "dots", iconImg: "/media/site/link-icon.png" },
+    { url: "javascript:alert(1)", label: { en: "x" } },
+    { url: "mailto:hello@thauma.one", label: {}, iconImg: "https://evil.example/x.png" },
+    "not a link",
+  ]);
+  const want = [
+    { url: "page:give", label: { en: "Give monthly" }, place: "inline", show: "icon" },
+    { url: "https://github.com", label: { en: "GitHub" }, place: "apart", show: "words", iconImg: "/media/site/link-icon.png" },
+    { url: "mailto:hello@thauma.one", label: {}, place: "apart", show: "words" },
+  ];
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error("got " + JSON.stringify(got));
+  if (cleanSiteLinks("[]") !== null) throw new Error("a string passed for a list");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

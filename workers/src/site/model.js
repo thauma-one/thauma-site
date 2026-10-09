@@ -387,8 +387,24 @@ export function starter(kind, { name, langs, fallback, give }) {
  * makes for itself when the owner has written none.
  */
 const SMALL_EN = new Set(["a", "an", "the", "and", "but", "or", "nor", "for", "as", "at", "by", "in", "of", "on", "per", "to", "via", "with", "from"]);
+/* Words typed in capitals ("NEWS, PRAYER AND THE ROAD AHEAD" — a small line
+   above a heading often is) read as shouting in a search result. Mostly
+   capitals is read as ordinary text first (Chase, 2026-10-08: the
+   description "still looks like it is in all caps"); a capitalized word or
+   two in ordinary text (USA, PCO) is left alone. */
+export function shouting(text) {
+  const letters = String(text || "").match(/\p{L}/gu) || [];
+  const upper = letters.filter((c) => c !== c.toLowerCase()).length;
+  return letters.length >= 6 && upper / letters.length > 0.6;
+}
 export function titleCase(text, lang) {
-  if (String(lang || "").split("-")[0] !== "en") return text;
+  const en = String(lang || "").split("-")[0] === "en";
+  if (shouting(text)) {
+    text = String(text).toLocaleLowerCase(lang || undefined);
+    /* other languages write a description as a sentence */
+    if (!en) return text.replace(/\p{L}/u, (c) => c.toLocaleUpperCase(lang || undefined));
+  }
+  if (!en) return text;
   const ws = String(text || "").split(/(\s+)/);
   const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
   const first = real[0], last = real[real.length - 1];
@@ -702,8 +718,9 @@ function cleanSection(raw, langs) {
  * A PAGE'S TABS (2026-10-06, Chase: "Maybe it isn't a section at all, but an
  * option at the top of each page that acts like tabs open on a browser,
  * where + adds a tab to the page with distinct looks"), after chaseroush.com's
- * Give | Pray. The page's own sections come first and are on every tab; then
- * the bar, and each tab's own sections under it. Up to six tabs. How the bar
+ * Give | Pray. The page's own sections are on every tab; the bar sits among
+ * them (`at`, 2026-10-08 — the end unless moved), each tab's own sections
+ * under it. Up to six tabs. How the bar
  * looks: joined (chaseroush.com's), pills or an underline; centered or left.
  */
 export const TAB_STYLES = ["joined", "pills", "underline"];
@@ -719,7 +736,10 @@ export function cleanTabs(raw, langs) {
     return { id, label, sections: (Array.isArray(t && t.sections) ? t.sections : []).slice(0, 30).map((x) => cleanSection(x, langs)).filter(Boolean) };
   });
   if (!items.length) return null;
-  return { style: TAB_STYLES.includes(raw.style) ? raw.style : "joined", align: raw.align === "left" ? "left" : "center", items };
+  /* `at`: where the bar sits among the page's own sections (an index; the
+     end when absent). Clamped to the page's sections where it is drawn. */
+  const at = Number.isInteger(raw.at) && raw.at >= 0 ? { at: Math.min(raw.at, 30) } : {};
+  return { style: TAB_STYLES.includes(raw.style) ? raw.style : "joined", align: raw.align === "left" ? "left" : "center", ...at, items };
 }
 /** Every section of a page, its tabs' too, in order. */
 export function allSections(page) {

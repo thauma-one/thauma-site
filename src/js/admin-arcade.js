@@ -50,7 +50,7 @@
     return '<span class="v-cell is-' + column + '">' +
       '<button type="button" class="switch small" role="switch" data-game="' + id + '" data-column="' + column + '"' +
       ' aria-checked="' + (on ? 'true' : 'false') + '"' + (on ? ' data-on="1"' : '') + '>' +
-      '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') + '</span><span class="switch-knob"></span></span>' +
+      '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
       '</button></span>';
   }
 

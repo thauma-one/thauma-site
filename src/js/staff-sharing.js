@@ -63,7 +63,7 @@
   function setSwitch(btn, on) {
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
     var st = btn.querySelector('.switch-state');
-    if (st) st.textContent = on ? 'On' : 'Off';
+    if (st) st.textContent = tr(on ? 'switch.on' : 'switch.off');
   }
   function isForm(item) { return item === 'signup' || item === 'contact'; }
 
@@ -298,7 +298,7 @@
         var on = !!d.lists[l.id];
         return '<button type="button" class="switch small" role="switch" aria-checked="' + on + '"' +
           ' data-list="' + esc(l.id) + '">' +
-          '<span class="switch-track"><span class="switch-state">' + (on ? 'On' : 'Off') +
+          '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
           '</span><span class="switch-knob"></span></span>' +
           '<span class="switch-label">' + esc(l.name) + '</span></button>';
       }).join('') : '<p class="empty">' + esc(tr('ml.empty')) + '</p>';
@@ -356,6 +356,11 @@
     return (state.settings && state.settings.partner && state.settings.partner.default_lang) || 'en';
   }
   function topicName(x, lang) { return lang === topicHome() ? x.label : ((x.labels || {})[lang] || ''); }
+  /* A topic's own key while the page is open (topics carry no id), so a
+     dragged one keeps focus through the redraw (StaffSort, staff.js). */
+  var topicKeys = new WeakMap(), topicN = 0;
+  function topicKey(x) { if (!topicKeys.has(x)) topicKeys.set(x, 't' + (++topicN)); return topicKeys.get(x); }
+
   function drawTopics() {
     var t = state.draft.contact.topics;
     var writing = state.writing || topicHome(), beside = state.beside;
@@ -364,7 +369,8 @@
     $('shTopicsLang').textContent = many && named ? ' · ' + (named.native_name || named.name || writing) : '';
     $('shTopics').innerHTML = t.length ? t.map(function (x, i) {
       var ref = beside && beside !== writing ? topicName(x, beside) : '';
-      return '<div class="ct-topic" data-topic="' + i + '">' +
+      return '<div class="ct-topic" data-topic="' + i + '" data-k="' + topicKey(x) + '">' +
+        (window.StaffSort ? StaffSort.grip(tr('ws.dragMove')) : '') +
         '<span class="ct-topic-name">' +
           (ref ? '<small class="ms-ref" lang="' + esc(beside) + '">' + esc(ref) + '</small>' : '') +
           '<input type="text" class="ct-topic-label" maxlength="80" lang="' + esc(writing) + '"' +
@@ -373,12 +379,7 @@
         '</span>' +
         '<input type="email" class="ct-topic-to" maxlength="200" value="' + esc(x.deliver_to) + '"' +
           ' placeholder="' + esc(tr('ml.ctTopicTo')) + '">' +
-        '<span class="ct-topic-move">' +
-          '<button type="button" data-move-topic="' + i + '" data-dir="-1"' + (i === 0 ? ' disabled' : '') +
-            ' aria-label="' + esc(tr('ml.ctMoveUp')) + '">&#9650;</button>' +
-          '<button type="button" data-move-topic="' + i + '" data-dir="1"' + (i === t.length - 1 ? ' disabled' : '') +
-            ' aria-label="' + esc(tr('ml.ctMoveDown')) + '">&#9660;</button>' +
-        '</span>' +
+
         '<button type="button" class="del" data-drop-topic="' + i + '" aria-label="' + esc(tr('common.delete')) + '">×</button>' +
       '</div>';
     }).join('') : '<p class="hint">' + esc(tr('ml.ctNoTopics')) + '</p>';
@@ -454,7 +455,7 @@
       state.lang = langs.some(function (l) { return l.code === 'en'; }) ? 'en' : (langs[0] ? langs[0].code : 'en');
     }
     $('shLang').innerHTML = langs.map(function (l) {
-      return '<option value="' + esc(l.code) + '">' + esc((l.native_name || l.name) + ' (' + l.code + ')') + '</option>';
+      return '<option value="' + esc(l.code) + '">' + esc(l.native_name || l.name) + '</option>';
     }).join('');
     $('shLang').value = state.lang;
   }
@@ -780,15 +781,12 @@
     t.deliver_to = row.querySelector('.ct-topic-to').value;
     changed();
   });
+  /* topics drag into order, or move by the arrow keys on their grip */
+  if (window.StaffSort) StaffSort($('shTopics'), { items: '.ct-topic', handle: '.ct-topic .sort-grip',
+    key: function (it) { return it.dataset.k; },
+    drop: function (l, from, to) { var t = state.draft.contact.topics; t.splice(to, 0, t.splice(from, 1)[0]); drawTopics(); changed(); } });
   $('shTopics').addEventListener('click', function (e) {
     var t = state.draft.contact.topics;
-    var mv = e.target.closest('[data-move-topic]');
-    if (mv) {
-      var i = +mv.dataset.moveTopic, j = i + (+mv.dataset.dir);
-      if (j < 0 || j >= t.length) return;
-      var x = t[i]; t[i] = t[j]; t[j] = x;
-      drawTopics(); changed(); return;
-    }
     var dr = e.target.closest('[data-drop-topic]');
     if (dr) { t.splice(+dr.dataset.dropTopic, 1); drawTopics(); changed(); }
   });

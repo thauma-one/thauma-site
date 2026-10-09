@@ -21,18 +21,25 @@
     100% height with overflow:hidden, so a downward list would open
     off-screen and be clipped away entirely.
     ============================================================ -#}
+{#- NAMES IN THE LIST, THE CODE ON THE CLOSED BUTTON (Chase, 2026-10-08:
+    language pickers show "the language long name and not the 2 letter code
+    … except when the language selection dropdown in the menu bar
+    collapses, it should show the code to preserve screen space"). Open, the
+    button says the language's name; closed, the name clears and the code
+    rolls back in, per character (main.js). Each name in its own language
+    (i18n/<l>.json `name`). -#}
 {% macro langDropdown(modifier="") %}
 <div class="lang-dropdown{% if modifier %} {{ modifier }}{% endif %}">
-  <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">{{ lang | upper }}</button>
+  <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="lang-dropdown-label" data-code="{{ lang | upper }}" data-name="{{ i18n[lang].name or (lang | upper) }}">{{ lang | upper }}</span></button>
   <ul class="lang-dropdown-list" role="listbox">
     {#- activeLangs: offering a language that was not built is a menu item
        that 404s. -#}
     {%- for l in activeLangs %}
     <li role="option" aria-selected="{{ 'true' if l == lang else 'false' }}">
       {%- if l == lang %}
-      <span class="lang-dropdown-current">{{ l | upper }}</span>
+      <span class="lang-dropdown-current" lang="{{ l }}">{{ i18n[l].name or (l | upper) }}</span>
       {%- else %}
-      <button type="button" class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" aria-label="Switch language to {{ l }}">{{ l | upper }}</button>
+      <button type="button" class="lang-toggle" data-lang="{{ l }}" data-target="{{ page.url | langSwap(l) }}" lang="{{ l }}">{{ i18n[l].name or (l | upper) }}</button>
       {%- endif %}
     </li>
     {%- endfor %}
