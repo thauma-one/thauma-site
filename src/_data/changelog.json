@@ -210,6 +210,26 @@
         "hr": "Što je novo opisuje izmjene vaših stranica; izmjene drugdje su jedan redak, „Ostale izmjene”. Zvonce vam javlja samo objavu u kojoj ima nešto vaše.",
         "sr": "Шта је ново описује измене ваших страница; измене другде су један ред, „Остале измене”. Звонце вам јавља само објаву у којој има нешто ваше."
       }
+    },
+    {
+      "id": "2026-10-13-headerfit",
+      "date": "2026-10-13",
+      "page": "console",
+      "text": {
+        "en": "The header fits again: Your site and Public site are now the first lines under your name.",
+        "hr": "Zaglavlje opet stane: Vaša stranica i Javna stranica sada su prvi retci pod vašim imenom.",
+        "sr": "Заглавље опет стане: Ваш сајт и Јавни сајт сада су први редови под вашим именом."
+      }
+    },
+    {
+      "id": "2026-10-13-buildcard",
+      "date": "2026-10-13",
+      "page": "admin:website",
+      "text": {
+        "en": "Publish and Preview keep showing their progress on every page, in a small card. A finished build closes itself; a failed one stays until you close it.",
+        "hr": "Objava i Pregled prikazuju napredak na svakoj stranici, u maloj kartici. Završena izrada se sama zatvara; neuspjela ostaje dok je ne zatvorite.",
+        "sr": "Објава и Преглед приказују напредак на свакој страници, у малој картици. Завршена израда се сама затвара; неуспела остаје док је не затворите."
+      }
     }
   ]
 }

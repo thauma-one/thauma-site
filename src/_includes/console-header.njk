@@ -90,25 +90,19 @@
       {%- endfor %}
     </div>
 
-    {#- The public site, then YOU: your name opens what is about you —
-       Settings, your Activity, Sign out (mockup board 1). Sign out used to sit
+    {#- YOU: your name opens what is about you — the sites, Settings, your
+       Activity, What's new, Sign out (mockup board 1). Sign out used to sit
        beside the navigation as the loudest button in the header, which is the
-       wrong thing to be loudest. -#}
+       wrong thing to be loudest.
+
+       THE SITES MOVED IN HERE (2026-10-13, Chase: "The nav doesn't fit
+       anymore in the header … the header needs a redesign again so that
+       everything fits well"). With the bell, "Your site ↗" and "Public
+       site ↗" beside the name took about 290px from the two rows, and the
+       staff row ran under the bell ("Site Cr…"). The header is now the mark,
+       the rows, the bell and your name; the two ways out of the console are
+       the first lines under your name. -#}
     <div class="console-actions">
-      {#- The ministry's own site, once it is switched on (0044) — filled and
-         shown by staff.js from /api/staff-site?brief. -#}
-      <a class="area-switch area-mysite" id="consoleMySite" href="#" target="_blank" rel="noopener" hidden>
-        <span data-i18n="nav.mySite">Your site</span>
-        <span class="area-arrow" aria-hidden="true">&#8599;</span>
-      </a>
-      {#- Beside "Your site", Thauma's own site steps aside for anyone who does
-          not look after it — partners and staff want their ministry's site,
-          and two "site ↗" links side by side read as the same link twice.
-          Administrators and communications keep both (staff.css). -#}
-      <a class="area-switch area-public" href="/" target="_blank" rel="noopener">
-        <span data-i18n="nav.viewSite">Public site</span>
-        <span class="area-arrow" aria-hidden="true">&#8599;</span>
-      </a>
       <div class="console-me">
         <button type="button" class="console-me-btn" id="consoleMeBtn"
                 aria-expanded="false" aria-controls="consoleMe">
@@ -117,6 +111,16 @@
           <span class="console-caret" aria-hidden="true"></span>
         </button>
         <div class="console-me-menu" id="consoleMe">
+          {#- The ministry's own site, once it is switched on (0044) — filled
+              and shown by staff.js from /api/staff-site?brief. Beside it,
+              Thauma's own site steps aside for anyone who does not look
+              after it — partners and staff want their ministry's site, and
+              two "site ↗" lines read as the same link twice. Administrators
+              and communications keep both (staff.css). -#}
+          <a class="console-site area-mysite" id="consoleMySite" href="#" target="_blank" rel="noopener" hidden>
+            <span data-i18n="nav.mySite">Your site</span> <span class="area-arrow" aria-hidden="true">&#8599;</span></a>
+          <a class="console-site area-public" href="/" target="_blank" rel="noopener">
+            <span data-i18n="nav.viewSite">Public site</span> <span class="area-arrow" aria-hidden="true">&#8599;</span></a>
           {%- for p in consoleNav.menu %}
           <a href="{{ p.url }}" class="r-{{ p.roles | join(' r-') }}"
              data-roles="{{ p.roles | join(' ') }}"

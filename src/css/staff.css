@@ -846,10 +846,10 @@ body.has-savebar .toasts{--toast-lift:var(--ms-savebar-h,72px)}
   border:1px solid var(--line-hard);border-radius:var(--radius);
   padding:6px 12px;white-space:nowrap;transition:.2s}
 .area-switch[hidden]{display:none}
-/* One "site ↗" link, not two: see console-header.njk. */
-.console-actions.has-mysite .area-public{display:none}
-html.role-admin .console-actions.has-mysite .area-public,
-html.role-communications .console-actions.has-mysite .area-public{display:inline-flex}
+/* One "site ↗" line, not two: see console-header.njk. */
+.console-me-menu.has-mysite .area-public{display:none !important}
+html.role-admin .console-me-menu.has-mysite .area-public,
+html.role-communications .console-me-menu.has-mysite .area-public{display:flex !important}
 @media(hover:hover){
   .area-switch:hover{color:var(--warn,#F5B845);border-color:var(--warn,#F5B845)}
 }
@@ -1962,6 +1962,10 @@ html:not(.roles-known)[data-area="admin"] .console-row[data-row="admin"] nav a{d
 .console-me-menu a:hover,.console-me-menu a:focus-visible{color:var(--text);background:var(--bg2)}
 .console-me-menu a[aria-current]{color:var(--text)}
 .console-signout{border-top:1px solid var(--line);margin-top:4px;padding-top:12px !important}
+/* the two ways out of the console, first under your name, ruled off */
+.console-me-menu .console-site{display:flex;align-items:center;gap:7px}
+.console-me-menu .console-site[hidden]{display:none}
+.console-me-menu .area-public{border-bottom:1px solid var(--line);margin-bottom:4px;padding-bottom:12px}
 /* The roles decide these exactly as they decide the rows (see above). */
 .console-me-menu a[data-roles]{display:none}
 html.role-staff .console-me-menu a.r-staff:not([hidden]),
@@ -2019,12 +2023,20 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
 @media (max-width:1100px){
   .console-mark{display:none}
 }
+/* Just above the phone menu the eight staff links are a few pixels too many
+   (measured 41px over at 901): the row's label and the gaps give them back. */
+@media (min-width:901px) and (max-width:1000px){
+  .console-in{gap:14px}
+  .console-badge{width:96px}
+  .console-row nav{gap:11px}
+}
 
 /* ---- A phone: one Menu button ------------------------------------------
-   Two rows of links do not fit 390px, so below 820px the rows, the public
-   site and what is under your name fold behind Menu and open as one list,
-   44px a line (mockup board 1, the phone menu). */
-@media (max-width:820px){
+   Two rows of links do not fit 390px, so up to 900px the rows, the sites
+   and what is under your name fold behind Menu and open as one list, 44px a
+   line (mockup board 1, the phone menu). 900, not 820, since the bell
+   (2026-10-13): between them the eight staff links ran 45px over. */
+@media (max-width:900px){
   .console-in{flex-wrap:wrap;align-items:center;gap:0;min-height:56px}
   .console-mark{display:flex}
   .console-menu-btn{display:inline-flex;margin-left:8px;height:40px}
@@ -2061,6 +2073,7 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
   html.role-board .console-me-menu a.r-board:not([hidden]),
   html.role-communications .console-me-menu a.r-communications:not([hidden]),
   html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display:flex}
+  .console-me-menu .area-public{margin:0;padding:0 12px;border-bottom:1px solid var(--line-hard)}
   .console-signout{border-color:var(--voice-tech) !important;color:var(--voice-tech) !important;
     padding-top:0 !important}
 }
@@ -3224,3 +3237,37 @@ html.pe-open{overflow:hidden}
 .ws-pp-opt[aria-selected="true"]{border-color:var(--voice-tech);background:var(--voice-tech-dim)}
 /* words, then the rows of choices under them: room between the two */
 .ws-fields + .ws-rows{margin-top:22px}
+
+/* ---- A build, followed on every page (staff.js buildCard) ---------------
+   Bottom right, over the page, small: what is building and its stages, the
+   same marks as the publish bar's (done seafoam with a tick, running pulses,
+   failed red). × closes it; a finished one goes by itself after 20s, a
+   failed one stays. */
+.build-card{position:fixed;right:20px;bottom:20px;z-index:35;width:min(380px,calc(100vw - 32px));
+  display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--panel);
+  border:1px solid var(--line-hard);border-radius:var(--radius);box-shadow:0 18px 40px rgba(0,0,0,.45);
+  font-size:13px;line-height:1.45;color:var(--text)}
+.build-card.is-done{border-color:var(--ok)}
+.build-card.is-failed{border-color:var(--crit)}
+html.build-in-bar .build-card{display:none}
+.build-head{display:flex;align-items:flex-start;gap:10px}
+.build-word{flex:1}
+.build-word a{color:var(--voice-tech);white-space:nowrap}
+.build-x{flex:none;width:24px;height:24px;margin:-4px -6px 0 0;border:0;border-radius:var(--radius);background:none;
+  color:var(--dim);font-size:17px;line-height:1;cursor:pointer}
+.build-x:hover,.build-x:focus-visible{color:var(--text);background:var(--bg2)}
+.build-stages{display:flex;flex-wrap:wrap;gap:4px 12px;margin:0;padding:0;list-style:none;font-size:12px;color:var(--dim)}
+.build-stages:empty{display:none}
+.build-stages li{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.build-stages li::before{content:"";width:7px;height:7px;border-radius:50%;border:1px solid currentColor;box-sizing:border-box}
+.build-stages li.is-done{color:var(--ok)}
+.build-stages li.is-done::before{content:"\2713";width:auto;height:auto;border:0;font-size:11px}
+.build-stages li.is-running{color:var(--text)}
+.build-stages li.is-running::before{background:var(--voice-tech);border-color:var(--voice-tech);
+  animation:build-pulse 1.2s cubic-bezier(.55,.05,.45,.95) infinite}
+.build-stages li.is-failed{color:var(--crit)}
+.build-stages li.is-failed::before{background:var(--crit);border-color:var(--crit)}
+.build-stages li.is-skipped{opacity:.45;text-decoration:line-through}
+@keyframes build-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.build-stages li.is-running::before{animation:none}}
+@media (max-width:640px){.build-card{right:16px;bottom:16px}}

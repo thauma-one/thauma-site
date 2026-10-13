@@ -136,14 +136,30 @@ const menu = (w) => visible(w, ".console-me-menu a").map((a) => a.textContent.tr
 
 await check("Settings and Activity are under your name, not in the row", async () => {
   const w = boot(STAFF_PAGE, { roles: ["staff"] });
-  eq(menu(w), ["Activity", "Settings", "What's new", "Sign out"], "the name menu");
+  eq(menu(w), ["Public site ↗", "Activity", "Settings", "What's new", "Sign out"], "the name menu");
   for (const p of ["Settings", "Activity"]) assert(!links(w, "staff").includes(p), `${p} still in the row`);
 });
 
 await check("an administrator has What's new and Sign out there — their Activity is in their row", async () => {
   const w = boot(STAFF_PAGE, { roles: ["admin"] });
-  eq(menu(w), ["What's new", "Sign out"], "the name menu");
+  eq(menu(w), ["Public site ↗", "What's new", "Sign out"], "the name menu");
   assert(links(w, "admin").includes("Activity"), "admin Activity left the row");
+});
+
+await check("the sites are the first lines under your name, and the header holds only the rows, the bell and you (2026-10-13)", async () => {
+  /* "The nav doesn't fit anymore in the header … the header needs a redesign
+     again so that everything fits well." */
+  const staff = boot(STAFF_PAGE, { roles: ["staff"] });
+  const mine = staff.document.getElementById("consoleMySite");
+  assert(mine && mine.closest("#consoleMe"), "Your site is not under your name");
+  assert(!staff.document.querySelector(".console-actions > a"), "a link still sits in the header beside your name");
+  mine.hidden = false; mine.href = "https://chase.thauma.one/";
+  mine.parentNode.classList.add("has-mysite");
+  eq(menu(staff).slice(0, 2), ["Your site ↗", "Activity"], "staff with a site of their own: their site, not Thauma's");
+  const admin = boot(STAFF_PAGE, { roles: ["admin"] });
+  const a = admin.document.getElementById("consoleMySite");
+  a.hidden = false; a.parentNode.classList.add("has-mysite");
+  eq(menu(admin).slice(0, 2), ["Your site ↗", "Public site ↗"], "an administrator keeps both");
 });
 
 await check("the name opens its menu, and Escape or a click elsewhere closes it", async () => {
