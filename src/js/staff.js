@@ -712,9 +712,14 @@
     if (q.length < 2) { $('shareFound').innerHTML = ''; return; }
     share.findTimer = setTimeout(async function () {
       var seq = ++share.findSeq;
-      var res = await fetch(STAFF_API + '?people=' + encodeURIComponent(q), { credentials: 'same-origin' });
-      var body = await res.json().catch(function () { return {}; });
+      var res = await fetch(STAFF_API + '?people=' + encodeURIComponent(q), { credentials: 'same-origin' }).catch(function () { return null; });
+      var body = res ? await res.json().catch(function () { return {}; }) : {};
       if (seq !== share.findSeq) return;
+      /* A search that failed says so — "nobody by that name" would be a lie. */
+      if (!res || !res.ok) {
+        $('shareFound').innerHTML = '<p class="hint">' + esc(body.error || tr('err.unreachable')) + '</p>';
+        return;
+      }
       var have = {};
       ((share.data && share.data.people) || []).forEach(function (p) { have[p.user_id] = true; });
       var found = (body.people || []).filter(function (p) { return !have[p.user_id]; });
@@ -725,7 +730,7 @@
         ? found.map(function (p) {
             return '<button type="button" class="share-hit" data-share-add="' + esc(p.user_id) + '">' +
               '<span class="share-name">' + esc(p.name) + '</span>' +
-              (p.ministries ? '<span class="share-sub">' + esc(p.ministries) + '</span>' : '') +
+              (p.ministries || p.invited ? '<span class="share-sub">' + esc([p.ministries, p.invited ? tr('res.invited') : ''].filter(Boolean).join(' · ')) + '</span>' : '') +
             '</button>';
           }).join('')
         : '<p class="hint">' + esc(tr('res.noMatch')) + '</p>';

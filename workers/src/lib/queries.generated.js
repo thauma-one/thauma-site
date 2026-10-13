@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "17f3cbd97f95f955";
+export const SOURCE_DIGEST = "d5ab6d1d7c15cc49";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -775,17 +775,15 @@ JOIN partners p ON p.id = pu.partner_id
 WHERE u.email = :email
   AND u.status = 'active'
 ORDER BY p.display_name;`,
-  people_find: `SELECT u.id AS user_id, u.name,
+  people_find: `SELECT u.id AS user_id, u.name, u.email, u.status,
        (SELECT GROUP_CONCAT(p.display_name, ', ')
           FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
          WHERE pu.user_id = u.id) AS ministries
   FROM users u
- WHERE u.status = 'active'
+ WHERE u.status IN ('active', 'invited')
    AND u.id <> :user_id
    AND COALESCE(u.protected, 0) = 0
-   AND (u.name LIKE '%' || :q || '%' OR u.email LIKE :q || '%')
- ORDER BY u.name COLLATE NOCASE
- LIMIT 8;`,
+ ORDER BY u.name COLLATE NOCASE;`,
   prayer_delete: `DELETE FROM prayer WHERE id = :id AND partner_id = :partner_id;`,
   prayer_for_staff: `SELECT p.id, p.is_public, p.is_answered, p.answered_on, p.sort_order,
        p.created_at, p.updated_at

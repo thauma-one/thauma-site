@@ -2601,20 +2601,26 @@ LIMIT 1;
 -- name: people_find
 -- Type-to-find for sharing (Chase, 2026-09-28: not an email to type, and not
 -- a list of every staff member). Only after two letters, at most eight,
--- active accounts only, never the person asking or the master account. Each
--- carries the ministries they are on, so two people with one name can be
--- told apart without showing an address.
-SELECT u.id AS user_id, u.name,
+-- never the person asking or the master account. Each carries the
+-- ministries they are on, so two people with one name can be told apart
+-- without showing an address.
+--
+-- INVITED PEOPLE TOO, AND MATCHED WITHOUT ACCENTS (2026-10-12, Chase: "it
+-- says that there is no one with that name even though there is someone
+-- now"). Somebody just added on the People page is 'invited' until they
+-- accept, and was invisible here; and "Maric" never found "Marić". The
+-- candidates come back whole (an organization's worth of people) and
+-- staff-data.js matches and trims them, so the address used for matching
+-- never leaves the worker.
+SELECT u.id AS user_id, u.name, u.email, u.status,
        (SELECT GROUP_CONCAT(p.display_name, ', ')
           FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
          WHERE pu.user_id = u.id) AS ministries
   FROM users u
- WHERE u.status = 'active'
+ WHERE u.status IN ('active', 'invited')
    AND u.id <> :user_id
    AND COALESCE(u.protected, 0) = 0
-   AND (u.name LIKE '%' || :q || '%' OR u.email LIKE :q || '%')
- ORDER BY u.name COLLATE NOCASE
- LIMIT 8;
+ ORDER BY u.name COLLATE NOCASE;
 
 
 
