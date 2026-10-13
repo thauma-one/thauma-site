@@ -492,12 +492,18 @@
 
 .p-commits{display:flex;flex-direction:column;gap:1px;background:var(--line);
   border:1px solid var(--line);max-height:460px;overflow-y:auto}
+/* TWO COLUMNS, what changed and who (2026-10-13, Chase: "The Changes box in
+   the Review and Publish side bar is too big. Not only can I scroll up and
+   down, but left and right as well"). The rows lost their short id and kept
+   a three-column grid, so the message sat in the `auto` column, never
+   wrapped, and pushed the list wider than the panel. */
 .p-commit{background:var(--panel);padding:11px 14px;display:grid;
-  grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:baseline}
+  grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:baseline}
 .p-sha{font-family:var(--font-mono);font-size:var(--fs-micro);
   color:var(--voice-tech);opacity:.75}
-.p-msg{font-size:var(--fs-tiny);color:var(--text);overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
+/* two lines at most, then … — readable without widening anything */
+.p-msg{font-size:var(--fs-tiny);color:var(--text);line-height:1.45;overflow:hidden;
+  overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .p-who{font-size:var(--fs-micro);color:var(--dim);white-space:nowrap}
 
 /* Collapsed by group. A flat list of 58 paths is not something anybody reads;
@@ -517,8 +523,7 @@
 
 @media (max-width:900px){
   .p-cols{grid-template-columns:1fr}
-  .p-commit{grid-template-columns:auto minmax(0,1fr);row-gap:4px}
-  .p-who{grid-column:2}
+  .p-commit{grid-template-columns:minmax(0,1fr);row-gap:4px}
 }
 
 /* ---- visibility: two columns of switches ----
@@ -1002,6 +1007,10 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .web-review-head h2{font:300 20px var(--font-display);margin:0;color:var(--text)}
 .web-review .adm-publish{margin-top:0}
 .web-review .p-cols{grid-template-columns:1fr}
+/* in the review the panel is the one thing that scrolls — no box inside it
+   scrolling too */
+.web-review .p-commits{max-height:none;overflow:visible}
+.web-review .p-commit{grid-template-columns:minmax(0,1fr);row-gap:3px;padding:10px 14px}
 .p-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .p-acts .solid-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
 
