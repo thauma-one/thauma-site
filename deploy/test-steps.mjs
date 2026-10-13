@@ -35,7 +35,7 @@ export const WORKFLOWS = [".github/workflows/deploy.yml", ".github/workflows/dep
    The same list both workflows ran before, in production's order. */
 export const PAGE_TESTS = [
   "visibility", "csv", "composer-toolbar", "mailing-preview", "videos-console",
-  "console-nav", "changes-page", "console-banner", "mailing-views", "mail-drafts", "mail-tags", "photo-crop",
+  "console-nav", "changes-page", "build-card", "console-banner", "mailing-views", "mail-drafts", "mail-tags", "photo-crop",
   "us-english", "profile-save", "contact-page", "library", "events-page",
   "presentation", "admin-console", "deploy-test-steps",
 ];

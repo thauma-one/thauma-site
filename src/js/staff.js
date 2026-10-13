@@ -1215,7 +1215,7 @@
     /* A phone turned sideways past the breakpoint should not come back to a
        wide header with the phone menu still open underneath it. */
     if (window.matchMedia) {
-      var wide = window.matchMedia('(min-width: 821px)');
+      var wide = window.matchMedia('(min-width: 901px)');
       var onWide = function () { if (wide.matches) setMenu(false); };
       if (wide.addEventListener) wide.addEventListener('change', onWide);
     }
@@ -1340,6 +1340,123 @@
     document.addEventListener('visibilitychange', count);
     count();
     setInterval(count, 3 * 60 * 1000);
+  })();
+
+  /* =====================================================================
+     A BUILD, FOLLOWED ON EVERY PAGE (Chase, 2026-10-13: "the github checks
+     needs to be persistent between pages. I loaded a different page while
+     it was checking and it disappeared. It would just need a good way to
+     clear itself once complete, either with an X or some time based thing.")
+     =====================================================================
+     Publish and Preview are started from the Website pages' publish bar
+     (admin-publish.js), which follows the build in the bar while you stay.
+     It also hands the build to this card (StaffBuild.start), kept in the
+     browser, so any other console page — or a reload — shows the same
+     stages in a small card in the corner until it ends. Live: the card says
+     so and goes by itself after 20 seconds. Failed: it stays, with where it
+     stopped and what happened, until × — a failure should not slip away.
+     × closes it at any time. On a page where the bar is following the build
+     (html.build-in-bar) the card keeps out of the way. */
+  (function buildCard() {
+    var KEY = 'thauma.build', API = '/api/admin/publish', LIVE_FOR = 20000;
+    var WORD = { ready: 'pub.stReady', build: 'pub.stBuild', tests: 'pub.stTests', database: 'pub.stDatabase',
+                 deploy: 'pub.stDeploy', verify: 'pub.stVerify', live: 'pub.stLive' };
+    var card = null, timer = null, hideAt = null;
+    function read() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+    function write(b) { try { if (b) localStorage.setItem(KEY, JSON.stringify(b)); else localStorage.removeItem(KEY); } catch (e) {} }
+    function inBar() { return document.documentElement.classList.contains('build-in-bar'); }
+
+    function close() { write(null); stop(); if (card) { card.remove(); card = null; } }
+    function stop() { clearInterval(timer); timer = null; clearTimeout(hideAt); hideAt = null; }
+
+    function render(b, p) {
+      if (inBar()) { if (card) { card.remove(); card = null; } return; }
+      if (!card) {
+        card = document.createElement('div');
+        card.className = 'build-card';
+        card.setAttribute('role', 'status');
+        card.innerHTML = '<div class="build-head"><span class="build-word"></span>' +
+          '<button type="button" class="build-x" aria-label="' + esc(tr('nav.close')) + '">&times;</button></div>' +
+          '<ol class="build-stages"></ol>';
+        card.querySelector('.build-x').addEventListener('click', close);
+        document.body.appendChild(card);
+      }
+      var site = b.site || (b.action === 'publish' ? 'thauma.one' : 'next.thauma.one');
+      var word = card.querySelector('.build-word'), ol = card.querySelector('.build-stages');
+      card.className = 'build-card' + (b.done ? (b.done.ok ? ' is-done' : ' is-failed') : ' is-building');
+      if (b.done && b.done.late) {
+        word.textContent = tr('pub.tooLong');
+      } else if (b.done) {
+        word.innerHTML = esc(b.done.ok ? fill(b.action === 'publish' ? 'pub.nowLive' : 'pub.nowPreview', { site: site }) : tr('pub.buildFailed')) +
+          (b.done.ok ? ' <a href="https://' + esc(site) + '/" target="_blank" rel="noopener">' + esc(tr('pub.open')) + ' ↗</a>'
+                     : (b.done.url ? ' <a href="' + esc(b.done.url) + '" target="_blank" rel="noopener">' + esc(tr('pub.whatHappened')) + ' ↗</a>' : ''));
+      } else {
+        word.textContent = fill(b.action === 'publish' ? 'pub.buildingLive' : 'pub.buildingPreview', { site: site });
+      }
+      var stages = p && p.stages ? p.stages : b.stages;
+      if (p && p.stages) { b.stages = p.stages; b.tests = p.tests; b.failed = p.failed; write(b); }
+      var tests = (p && p.tests) || b.tests;
+      if (!stages) { ol.innerHTML = b.done ? '' : '<li class="is-running">' + esc(tr('pub.stQueued')) + '</li>'; return; }
+      ol.innerHTML = stages.map(function (st) {
+        var label = st.key === 'tests' && tests && tests.total ? fill('pub.stTestsCount', { n: tests.passed, total: tests.total }) : tr(WORD[st.key]);
+        return '<li class="is-' + esc(st.state) + '">' + esc(label) + '</li>';
+      }).join('');
+    }
+
+    function finish(b) {
+      stop();
+      render(b);
+      /* live: goes by itself; failed or too long: stays until × */
+      if (b.done.ok) hideAt = setTimeout(close, Math.max(0, b.done.at + LIVE_FOR - Date.now()));
+    }
+
+    function tick() {
+      var b = read();
+      if (!b) return close();
+      if (b.done) return finish(b);
+      if (Date.now() - b.since > 15 * 60 * 1000) { b.done = { ok: false, late: true, at: Date.now() }; write(b); return finish(b); }
+      if (inBar()) return render(b);
+      fetch(API + '?progress=' + encodeURIComponent(b.action), { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (p) {
+          var now = read();
+          if (!now || now.since !== b.since) return;
+          var mine = p && p.run && Date.parse(p.run.started) >= now.since - 90000;
+          if (mine && p.run.status === 'completed') {
+            now.done = { ok: p.run.conclusion === 'success', url: p.run.url, at: Date.now() };
+            if (p.stages) { now.stages = p.stages; now.tests = p.tests; }
+            write(now);
+            return finish(now);
+          }
+          render(now, mine ? p : null);
+        })
+        .catch(function () { render(b); });
+    }
+
+    function follow() {
+      var b = read();
+      if (!b) return;
+      if (b.done) {
+        if (b.done.ok && Date.now() - b.done.at > LIVE_FOR) return close();
+        return finish(b);
+      }
+      tick();
+      clearInterval(timer);
+      timer = setInterval(tick, 4000);
+    }
+
+    /* The publish bar: a build has been asked for (or found running), and,
+       when the bar saw its end and said so itself, that it needs no card. */
+    window.StaffBuild = {
+      start: function (action, since, site) {
+        var b = read();
+        if (b && b.action === action && Math.abs(b.since - since) < 90000 && !b.done) return;
+        write({ action: action, since: since, site: site || null });
+        follow();
+      },
+      finish: close
+    };
+    follow();
   })();
 
   /* WORDS THAT STAYED, WENT AND CAME, by the longest run they share: struck

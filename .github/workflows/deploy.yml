@@ -119,6 +119,8 @@ jobs:
         run: node test/console-nav.test.mjs
       - name: Test · changes-page
         run: node test/changes-page.test.mjs
+      - name: Test · build-card
+        run: node test/build-card.test.mjs
       - name: Test · console-banner
         run: node test/console-banner.test.mjs
       - name: Test · mailing-views

@@ -465,10 +465,15 @@
       };
       stopFollowing(ok);
       toast(said, ok ? 'ok' : 'err');
+      /* the bar has said it; no card for it elsewhere */
+      document.documentElement.classList.remove('build-in-bar');
+      if (window.StaffBuild) window.StaffBuild.finish();
       return followBuild();
     }
     if (Date.now() - pending.since > 15 * 60 * 1000) {
       stopFollowing(true);
+      document.documentElement.classList.remove('build-in-bar');
+      if (window.StaffBuild) window.StaffBuild.finish();
       lastWord = { cls: 'is-failed', html: esc(tr('pub.tooLong')) };
       return followBuild();
     }
@@ -480,6 +485,12 @@
      middle of a deploy picks it up instead of going quiet. */
   function startFollowing(action, since) {
     pending = { action: action, since: since || Date.now() };
+    /* handed to the card every console page shows (staff.js StaffBuild), so
+       the build is still followed after you leave this page; while the bar
+       follows it here, the card keeps out of the way */
+    document.documentElement.classList.add('build-in-bar');
+    if (window.StaffBuild) window.StaffBuild.start(action, pending.since,
+      action === 'publish' ? ($('pReviewPanel').getAttribute('data-live') || 'thauma.one') : 'next.thauma.one');
     lastWord = null; prog = null;
     clearInterval(poll); clearInterval(progTimer);
     poll = setInterval(function () { if (!busy) load(); }, 15000);
