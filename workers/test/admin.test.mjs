@@ -13,6 +13,7 @@ import fs from "node:fs";
 import handler, { STANDARD_SENDERS, orgDomain, senderProblem, syncPartnerRole } from "../src/admin.js";
 import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
+import { notify, noticesFor, noticeEmail } from "../src/lib/notify.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -470,6 +471,48 @@ await check("an address the contact form uses is not called unused", async () =>
   assert(/contact_topics t[\s\S]*AS form_receives/.test(q), "where the form delivers is not counted");
   const js = fs.readFileSync(new URL("../../src/js/admin.js", import.meta.url), "utf8");
   assert(/a\.form_sends\) uses\.push/.test(js) && /a\.form_receives\) uses\.push/.test(js), "the card does not show it");
+});
+
+await check("an accepted invitation emails each administrator who has not switched it off (0056)", async () => {
+  const admins = [
+    { user_id: "u_a", name: "A", email: "a@x.org", preferred_lang: "hr" },
+    { user_id: "u_b", name: "B", email: "b@x.org", preferred_lang: "en" },
+  ];
+  const db = (prefs) => ({ query: async (name, p) => {
+    if (name === "notify_role_holders") { eq(p.role, "admin", "asked for administrators"); return admins; }
+    if (name === "notify_prefs_for_user") {
+      if (prefs === null) throw new Error("no such table: notify_prefs");
+      return prefs[p.user_id] || [];
+    }
+    throw new Error("unexpected " + name);
+  } });
+  const sent = [];
+  const send = async (env, m) => { sent.push(m); return { ok: true }; };
+  const r = await notify({}, db({ u_b: [{ kind: "invite_accepted", is_on: 0 }] }), "invite_accepted",
+    { name: "Ana <x>", email: "ana@x.org" }, { origin: "https://dev.thauma.one", send });
+  eq([r.sent, sent.map((m) => m.to)], [1, ["a@x.org"]], "B switched it off");
+  assert(/pozivnica prihvaćena/.test(sent[0].subject), "not in A's language: " + sent[0].subject);
+  assert(sent[0].html.includes("Ana &lt;x&gt;") && !sent[0].html.includes("Ana <x>"), "the name is not escaped");
+  assert(sent[0].html.includes("https://dev.thauma.one/admin/users/"), "no link to People");
+
+  sent.length = 0;
+  await notify({}, db(null), "invite_accepted", { name: "Ana", email: "ana@x.org" }, { send });
+  eq(sent.length, 2, "no table yet: everyone gets the starting value (on)");
+
+  const failing = { query: async () => { throw new Error("down"); } };
+  eq((await notify({}, failing, "invite_accepted", {}, { send })).sent, 0, "a failure is swallowed, not thrown");
+  assert(/role = :role[\s\S]*status = 'active'[\s\S]*protected/.test(QUERIES.notify_role_holders), "inactive or master accounts could be mailed");
+});
+
+await check("Settings offers a notice only to the roles that receive it", async () => {
+  const db = { query: async () => [{ kind: "invite_accepted", is_on: 0 }] };
+  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false }], "an administrator, switched off");
+  eq(await noticesFor(db, "u_1", ["staff"]), [], "staff do not get administrators' notices");
+  const words = noticeEmail("invite_accepted", { lang: "sr", name: "N", email: "e" });
+  assert(/Позивница/.test(words.html) && !/notify\./.test(words.html + words.subject), "a key showed instead of words");
+  const src = fs.readFileSync(new URL("../src/confirm-account.js", import.meta.url), "utf8");
+  assert(/user_confirm[\s\S]{0,400}notify\(env, db, "invite_accepted"[\s\S]{0,200}\.catch\(/.test(src),
+    "confirming does not notify, or a failed notice could fail the confirmation");
 });
 
 await check("the four roles are exactly what the schema allows", async () => {

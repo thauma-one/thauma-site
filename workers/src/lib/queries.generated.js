@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d5ab6d1d7c15cc49";
+export const SOURCE_DIGEST = "70c1b5e88b2fd648";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -648,6 +648,15 @@ WHERE milestones.partner_id = :partner_id;`,
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
+  notify_pref_set: `INSERT INTO notify_prefs (user_id, kind, is_on, updated_at)
+VALUES (:user_id, :kind, :is_on, :now)
+ON CONFLICT(user_id, kind) DO UPDATE SET is_on = excluded.is_on, updated_at = excluded.updated_at;`,
+  notify_prefs_for_user: `SELECT kind, is_on FROM notify_prefs WHERE user_id = :user_id;`,
+  notify_role_holders: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+  JOIN user_roles r ON r.user_id = u.id AND r.role = :role
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;`,
   partner_colors_set: `UPDATE partners
    SET embed_accent = :embed_accent, embed_accent2 = :embed_accent2, embed_turn = :embed_turn, updated_at = :now
  WHERE id = :partner_id;`,

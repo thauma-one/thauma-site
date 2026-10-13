@@ -178,6 +178,13 @@
       "body": "You will now receive <b>{lists}</b>.",
       "stop": "Every message includes a link to stop, and it works without signing in to anything.",
       "and": "and"
+    },
+    "notify": {
+      "off": "You get this because it is switched on in Settings › Account › Email me when. Switch it off there.",
+      "invite_accepted_subject": "{name} accepted their invitation",
+      "invite_accepted_heading": "An invitation was accepted",
+      "invite_accepted_body": "<b>{name}</b> ({email}) confirmed their account and can now sign in to the console.",
+      "invite_accepted_button": "Open People"
     }
   },
   "hr": {
@@ -359,6 +366,13 @@
       "body": "Od sada ćete primati <b>{lists}</b>.",
       "stop": "Svaka poruka ima poveznicu za odjavu, koja radi bez prijave.",
       "and": "i"
+    },
+    "notify": {
+      "off": "Ovo primate jer je uključeno u Postavke › Račun › Pošalji mi e-poruku kad. Ondje to možete isključiti.",
+      "invite_accepted_subject": "{name}: pozivnica prihvaćena",
+      "invite_accepted_heading": "Pozivnica je prihvaćena",
+      "invite_accepted_body": "<b>{name}</b> ({email}): račun je potvrđen i prijava u konzolu sada je moguća.",
+      "invite_accepted_button": "Otvori Osobe"
     }
   },
   "sr": {
@@ -540,6 +554,13 @@
       "body": "Од сада ћете примати <b>{lists}</b>.",
       "stop": "Свака порука има везу за одјаву, која ради без пријаве.",
       "and": "и"
+    },
+    "notify": {
+      "off": "Ово примате јер је укључено у Подешавања › Налог › Пошаљи ми е-поруку кад. Тамо то можете искључити.",
+      "invite_accepted_subject": "{name}: позивница прихваћена",
+      "invite_accepted_heading": "Позивница је прихваћена",
+      "invite_accepted_body": "<b>{name}</b> ({email}): налог је потврђен и пријава у конзолу сада је могућа.",
+      "invite_accepted_button": "Отвори Особе"
     }
   },
   "sl": {
@@ -721,6 +742,13 @@
       "body": "Odslej boste prejemali <b>{lists}</b>.",
       "stop": "Vsako sporočilo ima povezavo za odjavo, ki deluje brez prijave.",
       "and": "in"
+    },
+    "notify": {
+      "off": "To prejemate, ker je vklopljeno v Nastavitve › Račun › Pošlji mi e-pošto, ko. Tam lahko to izklopite.",
+      "invite_accepted_subject": "{name}: povabilo sprejeto",
+      "invite_accepted_heading": "Povabilo je bilo sprejeto",
+      "invite_accepted_body": "<b>{name}</b> ({email}): račun je potrjen in prijava v konzolo je zdaj mogoča.",
+      "invite_accepted_button": "Odpri Osebe"
     }
   }
 }

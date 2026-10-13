@@ -27,6 +27,8 @@
  */
 import { createDb } from "./lib/db.js";
 import { verify } from "./lib/signed-link.js";
+import { notify } from "./lib/notify.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const PURPOSE = "confirm";
 
@@ -100,6 +102,10 @@ export default {
     }
 
     await db.query("user_confirm", { id });
+    /* Administrators who asked to be told (lib/notify.js, Settings › Account
+       › Email me when). Never a reason for confirming to fail. */
+    await notify(env, db, "invite_accepted", { name: me.name || me.email, email: me.email },
+      { origin: siteOrigin(env, request), link: "/admin/users/" }).catch(() => {});
 
     return page("Confirmed", `
       <h1>Your account is confirmed</h1>

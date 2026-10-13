@@ -3425,3 +3425,22 @@ SELECT html FROM mail_signatures WHERE owner = :owner;
 INSERT INTO mail_signatures (owner, html, updated_at, updated_by)
 VALUES (:owner, :html, :now, :user_id)
 ON CONFLICT(owner) DO UPDATE SET html = excluded.html, updated_at = excluded.updated_at, updated_by = excluded.updated_by;
+
+-- name: notify_prefs_for_user
+-- A person's own choices about notices (0056). A notice with no row keeps its
+-- starting value (lib/notify.js).
+SELECT kind, is_on FROM notify_prefs WHERE user_id = :user_id;
+
+-- name: notify_pref_set
+INSERT INTO notify_prefs (user_id, kind, is_on, updated_at)
+VALUES (:user_id, :kind, :is_on, :now)
+ON CONFLICT(user_id, kind) DO UPDATE SET is_on = excluded.is_on, updated_at = excluded.updated_at;
+
+-- name: notify_role_holders
+-- Who may receive a notice meant for a role: active people holding it, never
+-- the protected master account (a key, not a person reading mail).
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+  JOIN user_roles r ON r.user_id = u.id AND r.role = :role
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;

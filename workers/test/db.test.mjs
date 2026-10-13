@@ -326,6 +326,7 @@ await check("every real query converts with its documented params", async () => 
     subject: "June update", preheader: null, body_md: "# x",
     body_html: "<p>x</p>", body_text: "x",
     owner: "p_chase", html: "<strong>x</strong>", // a mail signature (0055)
+    is_on: 1, // a notice switch (0056)
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
     // resources: ownership and sharing
     resource_id: "rs_1", shared_by: "u_1", owner_user_id: null, is_admin: 0,

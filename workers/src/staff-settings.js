@@ -23,6 +23,7 @@
  * Every write is written to audit_log. The log is append-only by trigger, so
  * this endpoint can add to the record of who changed what and cannot edit it.
  */
+import { noticesFor } from "./lib/notify.js";
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
@@ -182,6 +183,9 @@ export default {
           // What this account may do, decided here rather than in the browser.
           // The UI hides what it cannot do; the endpoint refuses it.
           can: { set_default_lang: isAdmin },
+          /* "Email me when" (0056): the notices this person's roles may
+             receive, each with their own choice (lib/notify.js). */
+          notices: await noticesFor(db, me.user_id, roles),
         },
         partner: {
           id: partner.id,
@@ -231,6 +235,20 @@ export default {
         await audit(db, { user, partner, action: "update", entity: "user.preferred_lang",
                           entity_id: user.email, detail: { lang } });
         return json({ preferred_lang: lang });
+      }
+
+      // --- personal: a notice by email, on or off (0056, lib/notify.js) ---
+      if (body.notify !== undefined) {
+        const kind = String((body.notify && body.notify.kind) || "");
+        const mine = await noticesFor(db, me.user_id, roles);
+        if (!mine.some((n) => n.kind === kind)) return json({ error: "Not a notice you receive." }, 400);
+        const on = !!(body.notify && body.notify.on);
+        try {
+          await db.query("notify_pref_set", { user_id: me.user_id, kind, is_on: on ? 1 : 0, now: new Date().toISOString() });
+        } catch {
+          return json({ error: "This cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);
+        }
+        return json({ notices: await noticesFor(db, me.user_id, roles) });
       }
 
       // --- partner: which languages this site publishes ---

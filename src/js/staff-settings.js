@@ -108,6 +108,17 @@
         esc(langLabel(l)) + '</option>';
     }).join('');
 
+    /* Email me when (0056): a switch per notice these roles receive. */
+    var notices = (state.you && state.you.notices) || [];
+    $('setNotifyRow').hidden = !notices.length;
+    $('setNotify').innerHTML = notices.map(function (n) {
+      return '<button type="button" class="switch small" role="switch" data-notice="' + esc(n.kind) + '"' +
+        ' aria-checked="' + (n.on ? 'true' : 'false') + '">' +
+        '<span class="switch-track"><span class="switch-state">' + tr(n.on ? 'switch.on' : 'switch.off') +
+          '</span><span class="switch-knob"></span></span>' +
+        '<span class="switch-label">' + esc(tr('set.notify.' + n.kind)) + '</span></button>';
+    }).join('');
+
     $('setLangList').innerHTML = state.languages.map(function (l) {
       var isDefault = l.code === state.partner.default_lang;
       return '<div class="lang-row">' +
@@ -299,6 +310,12 @@
     // already in the new language.
     if (window.StaffI18n) window.StaffI18n.setLang(code);
     change({ preferred_lang: code }, e.target, 'toast.langChanged');
+  });
+
+  $('setNotify').addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-notice]');
+    if (!sw || sw.disabled) return;
+    change({ notify: { kind: sw.dataset.notice, on: sw.getAttribute('aria-checked') !== 'true' } }, sw);
   });
 
   $('setLangList').addEventListener('click', function (e) {

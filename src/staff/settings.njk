@@ -49,6 +49,13 @@ staffHeading: Your <b>account</b>
     <div class="set-ctl"><select id="setPrefLang" class="lang-pick"></select></div>
   </div>
 
+  {#- EMAIL ME WHEN (2026-10-12, 0056): one switch per notice this person's
+      roles receive (workers/src/lib/notify.js); hidden when there are none. -#}
+  <div class="set-r" id="setNotifyRow" hidden>
+    <span class="set-lbl" data-i18n="set.notify">Email me when</span>
+    <div class="set-ctl set-notify" id="setNotify"></div>
+  </div>
+
   <div class="set-r">
     <span class="set-lbl" data-i18n="set.canDo">What you can do</span>
     <div class="set-ctl role-tags" id="setRoles"></div>

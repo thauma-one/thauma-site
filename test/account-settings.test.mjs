@@ -51,7 +51,8 @@ async function boot() {
   await settle(150);
   return { w, d: w.document };
 }
-const labels = (d, panel) => [...d.querySelectorAll(`[data-panel="${panel}"] .set-lbl`)].map((l) => l.textContent.trim());
+const labels = (d, panel) => [...d.querySelectorAll(`[data-panel="${panel}"] .set-lbl`)]
+  .filter((l) => !l.closest("[hidden]")).map((l) => l.textContent.trim());
 
 await check("the heading is your name: first thin, the rest bold", async () => {
   const { d } = await boot();
@@ -64,6 +65,25 @@ await check("Account is the board's five lines, in its order", async () => {
   eq(d.getElementById("setEmail").textContent, "chase@thauma.one", "the address");
   assert(d.querySelector('[data-panel="account"] a[href="/staff/activity/"]'), "Activity links to the page");
   assert(d.querySelector('[data-panel="account"] a[href*="access/logout"]'), "Sign out signs out");
+});
+
+await check("Email me when: a switch per notice your roles receive, kept by PATCH (0056)", async () => {
+  /* Added to the board's lines on purpose (2026-10-12, Chase: "email
+     notifications … and the ability to toggle certain ones on and off"),
+     and only for somebody who receives a notice. */
+  ANSWER.you.notices = [{ kind: "invite_accepted", on: true }];
+  try {
+    const { w, d } = await boot();
+    eq(labels(d, "account"), ["Email", "Console language", "Email me when", "What you can do", "Activity", "Sign out"], "rows");
+    const sw = d.querySelector('[data-notice="invite_accepted"]');
+    eq([sw.getAttribute("aria-checked"), sw.textContent.trim()], ["true", "Onsomeone accepts their invitation"], "the switch");
+    let sent = null;
+    w.fetch = async (u, o) => { if (o && o.method === "PATCH") sent = JSON.parse(o.body);
+      return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(ANSWER)) }; };
+    sw.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    await settle(100);
+    eq(sent, { notify: { kind: "invite_accepted", on: false } }, "switching it off");
+  } finally { delete ANSWER.you.notices; }
 });
 
 await check("what you can do: your roles in order, then the ministry and how you are on it", async () => {
