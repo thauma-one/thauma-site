@@ -50,6 +50,14 @@ is served live through a tunnel at https://dev.thauma.one.
    production build. Trigger dev rebuilds by touching a watched source
    file (e.g. `touch src/404.njk`); check production output with
    `npx eleventy --output=/tmp/<dir>` and delete it after.
+10. WHAT'S NEW: every change a person would notice adds an entry to
+   src/_data/changelog.json IN THE SAME COMMIT — plain words for the
+   people using the console (never commit-speak, migrations or file
+   names), en/hr/sr, a new unique id, and the console page it belongs to
+   (staff:<slug> / admin:<slug> from consoleNav.js, or console / site).
+   Publish turns the unpublished entries into a release, everyone is
+   told in the bell, and each person sees only their pages
+   (workers/src/changes.js).
 
 ## How pages work
 - Page templates in src/*.njk paginate over site.languages via

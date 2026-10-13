@@ -55,7 +55,11 @@ const TYPES = {
    rather than by pretending it is a third kind of portrait. */
 /* `partnersite` is a picture on a ministry's own website (0044): the
    ministry's, scoped exactly like a newsletter image. */
-const KINDS = new Set(["photo", "bio_photo", "newsletter", "library", "site", "partnersite"]);
+/* photo_master / bio_photo_master: the uncropped original kept beside a
+   team photo (0031) so the crop can be widened later. The People page has
+   always sent them, and this list did not have them — so every one was
+   refused, quietly (the page treats a missing original as non-fatal). */
+const KINDS = new Set(["photo", "bio_photo", "photo_master", "bio_photo_master", "newsletter", "library", "site", "partnersite"]);
 
 export async function serve(request, env, key) {
   if (!env.MEDIA) return new Response("No media store on this deploy", { status: 500 });
@@ -147,11 +151,14 @@ export default {
       owner = "site";
       prefix = kind === "site" ? "site" : "library";
     } else {
-      if (!roles.includes("admin")) {
+      owner = String(url.searchParams.get("for") || "").trim() || me.user_id;
+      /* YOUR OWN, for the bio you send for approval (Settings › Your bio,
+         lib/bio.js): anybody may upload a team photo of themselves — it
+         reaches the page only if an administrator approves it. Anybody
+         else's stays an administrative act. */
+      if (owner !== me.user_id && !roles.includes("admin")) {
         return json({ error: "Administrator access is required" }, 403);
       }
-      owner = String(url.searchParams.get("for") || "").trim();
-      if (!owner) return json({ error: "for=<user_id> is required" }, 400);
       /* ANY STATUS: the same reason as admin-profile. A photo is usually
          added while the person is still waiting on their invitation. */
       const person = await db.queryOne("user_by_id_any_status", { id: owner });

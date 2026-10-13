@@ -84,8 +84,12 @@ async function catalogOf(db) {
   return (await db.query("languages_all", {})).filter((l) => l.is_active);
 }
 
-/** The row, made the first time: an address from the name, the full default site. */
-async function siteRow(db, partner, now) {
+/** The row, made the first time: an address from the name, the full default site.
+    Also made the moment an administrator creates the ministry (admin.js
+    makePartner), so its address — firstnamelastname.thauma.one — is held
+    from day one and shows on the Partners page. Closed until the owner
+    switches it on; the wildcard record already answers the name. */
+export async function siteRow(db, partner, now) {
   let row = await db.queryOne("partner_site_get", { partner_id: partner.id });
   if (row) return row;
   const owner = await db.queryOne("partner_site_owner", { partner_id: partner.id });

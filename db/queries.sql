@@ -1824,7 +1824,17 @@ SELECT sa.id, sa.partner_id, sa.address, sa.label, sa.can_receive, sa.created_at
        (SELECT COALESCE(SUM((SELECT COUNT(*) FROM subscribers s
                               WHERE s.list_id = l.id AND s.status = 'subscribed')), 0)
           FROM mailing_lists l
-         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers,
+       -- THE CONTACT FORM COUNTS TOO (2026-10-12, Chase: "it says that
+       -- contact@chaseroush.thauma.one isn't used, but it is used for the
+       -- contact form"). The form sends from one of these addresses, and may
+       -- deliver to one — its own, or one of its reasons'.
+       (SELECT COUNT(*) FROM contact_forms f
+         WHERE lower(f.from_address) = lower(sa.address)) AS form_sends,
+       (SELECT COUNT(*) FROM contact_forms f
+         WHERE lower(f.deliver_to) = lower(sa.address))
+     + (SELECT COUNT(*) FROM contact_topics t
+         WHERE lower(t.deliver_to) = lower(sa.address)) AS form_receives
 FROM sender_addresses sa
 LEFT JOIN partners p ON p.id = sa.partner_id
 ORDER BY p.display_name COLLATE NOCASE, sa.address COLLATE NOCASE;
@@ -2591,20 +2601,26 @@ LIMIT 1;
 -- name: people_find
 -- Type-to-find for sharing (Chase, 2026-09-28: not an email to type, and not
 -- a list of every staff member). Only after two letters, at most eight,
--- active accounts only, never the person asking or the master account. Each
--- carries the ministries they are on, so two people with one name can be
--- told apart without showing an address.
-SELECT u.id AS user_id, u.name,
+-- never the person asking or the master account. Each carries the
+-- ministries they are on, so two people with one name can be told apart
+-- without showing an address.
+--
+-- INVITED PEOPLE TOO, AND MATCHED WITHOUT ACCENTS (2026-10-12, Chase: "it
+-- says that there is no one with that name even though there is someone
+-- now"). Somebody just added on the People page is 'invited' until they
+-- accept, and was invisible here; and "Maric" never found "Marić". The
+-- candidates come back whole (an organization's worth of people) and
+-- staff-data.js matches and trims them, so the address used for matching
+-- never leaves the worker.
+SELECT u.id AS user_id, u.name, u.email, u.status,
        (SELECT GROUP_CONCAT(p.display_name, ', ')
           FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
          WHERE pu.user_id = u.id) AS ministries
   FROM users u
- WHERE u.status = 'active'
+ WHERE u.status IN ('active', 'invited')
    AND u.id <> :user_id
    AND COALESCE(u.protected, 0) = 0
-   AND (u.name LIKE '%' || :q || '%' OR u.email LIKE :q || '%')
- ORDER BY u.name COLLATE NOCASE
- LIMIT 8;
+ ORDER BY u.name COLLATE NOCASE;
 
 
 
@@ -3184,6 +3200,12 @@ SELECT draft, published FROM partner_sites;
 SELECT body_html, body_md FROM mailings;
 
 
+-- name: media_refs_signatures
+-- Every mail signature's words (0057): a signature's picture is kept as long
+-- as the signature holds it.
+SELECT html FROM mail_sigs;
+
+
 -- name: media_refs_attachments
 SELECT object_key FROM mailing_attachments;
 
@@ -3398,3 +3420,155 @@ SELECT id, color_mode FROM mailings
 -- the main load works before 0052 is applied.
 SELECT id, layout FROM mailings
  WHERE list_id = :list_id AND partner_id IS :partner_id;
+
+-- name: mail_sigs_for
+-- A sender's signatures (0057), in their order. :owner is a partner id or
+-- '~organisation'.
+SELECT id, name, html FROM mail_sigs WHERE owner = :owner ORDER BY sort_order, name COLLATE NOCASE;
+
+-- name: mail_sig_upsert
+-- Written whole. ONLY the sender's own: an id belonging to another sender is
+-- not overwritten (the WHERE on the update), so a request naming somebody
+-- else's signature changes nothing.
+INSERT INTO mail_sigs (id, owner, name, html, sort_order, updated_at, updated_by)
+VALUES (:id, :owner, :name, :html, :sort_order, :now, :user_id)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, html = excluded.html,
+  updated_at = excluded.updated_at, updated_by = excluded.updated_by
+WHERE mail_sigs.owner = excluded.owner;
+
+-- name: mail_sig_delete
+DELETE FROM mail_sigs WHERE id = :id AND owner = :owner;
+
+-- name: notify_prefs_for_user
+-- A person's own choices about notices (0056). A notice with no row keeps its
+-- starting value (lib/notify.js).
+SELECT kind, is_on FROM notify_prefs WHERE user_id = :user_id;
+
+-- name: notify_pref_set
+INSERT INTO notify_prefs (user_id, kind, is_on, updated_at)
+VALUES (:user_id, :kind, :is_on, :now)
+ON CONFLICT(user_id, kind) DO UPDATE SET is_on = excluded.is_on, updated_at = excluded.updated_at;
+
+-- name: notify_role_holders
+-- Who may receive a notice meant for a role: active people holding it, never
+-- the protected master account (a key, not a person reading mail).
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+  JOIN user_roles r ON r.user_id = u.id AND r.role = :role
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;
+
+-- name: profile_proposal_get
+-- A person's own waiting changes to their bio (0058), or nothing.
+SELECT user_id, payload, submitted_at FROM staff_profile_proposals WHERE user_id = :user_id;
+
+-- name: profile_proposals_all
+-- Every waiting change, for the People page (0058).
+SELECT user_id, payload, submitted_at FROM staff_profile_proposals ORDER BY submitted_at;
+
+-- name: profile_proposal_set
+-- Sending again replaces what was waiting.
+INSERT INTO staff_profile_proposals (user_id, payload, submitted_at)
+VALUES (:user_id, :payload, :now)
+ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = excluded.submitted_at;
+
+-- name: profile_proposal_delete
+DELETE FROM staff_profile_proposals WHERE user_id = :user_id;
+
+-- name: notify_everyone
+-- Every active account, for a notice to everyone (the site was published),
+-- never the protected master account.
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;
+
+-- name: notify_person
+-- One person a notice is meant for by name (an answer to their own bio),
+-- with what notify_role_holders gives for a role.
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.id = :user_id AND u.status = 'active';
+
+-- name: notice_add
+-- One notice in somebody's bell (0060).
+INSERT INTO notices (id, user_id, kind, vars, link, created_at)
+VALUES (:id, :user_id, :kind, :vars, :link, :now);
+
+-- name: notices_for_user
+-- The bell's list: the newest forty, read or not.
+SELECT id, kind, vars, link, created_at, read_at
+  FROM notices WHERE user_id = :user_id
+ ORDER BY created_at DESC LIMIT 40;
+
+-- name: notices_unread_count
+SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;
+
+-- name: notices_read_all
+UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;
+
+-- name: notices_current
+-- The bell's list (0061): not cleared, and unread or read since :since (six
+-- hours ago). The rest is Past.
+SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND cleared_at IS NULL AND (read_at IS NULL OR read_at > :since)
+ ORDER BY created_at DESC LIMIT 50;
+
+-- name: notices_past
+-- Cleared by hand, or read before :since — kept for a year, newest first.
+SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND (cleared_at IS NOT NULL OR read_at <= :since)
+ ORDER BY created_at DESC LIMIT 100;
+
+-- name: notice_clear
+-- One notice off the bell's list; clearing it is also reading it.
+UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE id = :id AND user_id = :user_id;
+
+-- name: notices_clear_all
+UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE user_id = :user_id AND cleared_at IS NULL;
+
+-- name: release_add
+-- What one Publish put live (0062).
+INSERT INTO releases (id, at, by_name, entries, content) VALUES (:id, :now, :by_name, :entries, :content);
+
+-- name: releases_recent
+-- What's new, newest first.
+SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60;
+
+-- name: releases_entry_ids
+-- Every changelog entry already published, to know what the next Publish adds.
+SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;
+
+-- name: notices_prune
+-- A year old, whatever: Past keeps everything until then.
+DELETE FROM notices WHERE created_at < :before;
+
+-- name: hit_add
+-- One page seen (0059). See the migration for what is kept and why.
+INSERT INTO page_hits (at, day, site, live, path, lang, country, referrer, device, session)
+VALUES (:now, :day, :site, :live, :path, :lang, :country, :referrer, :device, :session);
+
+-- name: hits_prune
+DELETE FROM page_hits WHERE day < :before;
+
+-- name: hits_by_day
+-- The Overview's graph: per day, visits (tabs) and pages seen. :site '' is
+-- every site; :live 1 is the real sites only.
+SELECT day, COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY day ORDER BY day;
+
+-- name: hits_breakdown
+-- The Overview's lists: visits by one dimension (:dim is checked by the
+-- caller against a fixed list, and chooses the column here, never text).
+SELECT CASE :dim WHEN 'country' THEN country WHEN 'path' THEN path WHEN 'referrer' THEN referrer
+                 WHEN 'device' THEN device WHEN 'lang' THEN lang WHEN 'site' THEN site END AS k,
+       COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY k ORDER BY visits DESC, views DESC LIMIT :limit;

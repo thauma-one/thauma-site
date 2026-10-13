@@ -41,15 +41,21 @@
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
   var ROLE_LABEL = { admin: 'Administration', partner: 'Partner',
-                     staff: 'Staff', board: 'Board' };
+                     staff: 'Staff', board: 'Board', communications: 'Communications' };
   // Order matters on screen: the two that change what somebody IS come first.
-  var ALL_ROLES = ['admin', 'partner', 'staff', 'board'];
+  /* COMMUNICATIONS (2026-10-13, Chase: "We should build out the
+     Communications role"): the schema has allowed it since 0015 and eight
+     endpoints already honor it — Thauma's own mail, the website's words,
+     its Library and translation — but nothing could grant it. */
+  var ALL_ROLES = ['admin', 'partner', 'staff', 'board', 'communications'];
 
   /* Roles that deserve a sentence before they are granted. Administration
      because of what it reaches, Partner because it CREATES something — a
      ministry record with its own supporters, goals and site. A toggle that
      quietly builds a thing should say so first. */
-  var CONFIRM_ROLES = { admin: true, partner: true };
+  var CONFIRM_ROLES = { admin: true, partner: true, communications: true };
+  /* in the reader's language (role.* in staff-i18n.js), English if missing */
+  function roleLabel(r) { var t = tr('role.' + r); return t && t !== 'role.' + r ? t : (ROLE_LABEL[r] || r); }
 
   /* ---- viewing somebody else's console --------------------------------- */
 
@@ -112,6 +118,10 @@
 
   async function load() {
     var res, body;
+    /* A reload redraws every person from what is saved, so an answer to a
+       bio being put together in the fields is no longer there to send. */
+    ui.pfEditing = null;
+    ui.pfChoice = {};
     try {
       /* Activity reads further back than Overview's forty. */
       res = await fetch(API + (page === 'activity' ? '?audit=300' : ''), { credentials: 'same-origin', cache: 'no-store' });
@@ -161,7 +171,24 @@
       if (window.StaffProblem) window.StaffProblem(tr('err.renderFailed') + ': ' + e.message, null);
       console.error('admin render failed:', e);
     }
+    if (!ui.hashDone) { ui.hashDone = true; openFromHash(); }
   }
+
+  /* A NOTICE OPENS WHERE IT HAPPENED (Chase, 2026-10-13: "When you press
+     the notification, it opens the notification to where it needs to").
+     People takes #<person id>, and #<person id>/team for their Team page —
+     the links the bell's notices carry (workers/src/lib/notify.js). Read once
+     the people are drawn, and again when the bell is pressed on this page. */
+  async function openFromHash() {
+    if (page !== 'users') return;
+    var m = /^#(u_[A-Za-z0-9_-]+)(?:\/(team|access))?$/.exec(location.hash || '');
+    if (!m || !document.querySelector('[data-person="' + m[1] + '"]')) return;
+    if (m[2]) ui.personTab = m[2];
+    if (state.editing !== m[1]) await togglePerson(m[1]);
+    var tab = m[2] && document.querySelector('[data-person="' + m[1] + '"] [data-pp-tab="' + m[2] + '"]');
+    if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click();
+  }
+  window.addEventListener('hashchange', openFromHash);
 
   /* Sends one change, then reloads. The server is the only thing that knows
      what actually happened — including the refusals, which are the point. */
@@ -253,7 +280,7 @@
       var roleTags = u.roles.length
         ? u.roles.map(function (r) {
             return '<span class="role-tag ' + esc(r) + '">' +
-              esc(ROLE_LABEL[r] || r) + '</span>';
+              esc(roleLabel(r)) + '</span>';
           }).join('')
         : '<span class="role-tag none">' + esc(tr('adm.noRoles')) + '</span>';
 
@@ -272,6 +299,7 @@
           '<div class="adm-tags">' + roleTags +
             (profileFor(u.id) && profileFor(u.id).is_public
               ? '<span class="role-tag on-site">' + esc(tr('adm.onSite')) + '</span>' : '') +
+            (proposalFor(u.id) ? '<span class="role-tag waiting">' + esc(tr('adm.pf.waitingTag')) + '</span>' : '') +
           '</div>' +
           '<div class="adm-access">' +
             (u.partner_names.length
@@ -297,40 +325,73 @@
      toggle is the whole decision; everything under it is only reachable once
      it is on, because a bio nobody will read is not worth the screen space.
 
-     Two language columns, the same shape as the milestone and prayer editors.
-     Learning one teaches all three, and a role title is exactly the kind of
-     thing that gets translated late. */
+     EDITING ⇄ REFERENCE, like every other editor (2026-10-12, Chase: "The
+     people's page doesn't have the same structure for language selection
+     and translation as the rest of the site. It's English beside Croatian,
+     not a single language with the reference language and auto translation
+     tools"). One language's fields, the reference language's words small
+     above each, the swap and Translate (console-translate.js, staff.js) as
+     everywhere. Every language's words are held while switching
+     (ui.pfDraft) and ALL of them are saved — the two columns sent only the
+     two shown, and the server drops a language it is not sent, so saving
+     English beside Croatian wiped a Serbian bio. */
   function profileLangs() {
     var on = (state.languages || []).filter(function (l) { return l.is_active; });
     if (!ui.profileLangA) ui.profileLangA = (on[0] || {}).code || null;
-    if (!ui.profileLangB) {
+    if (!ui.profileLangB || ui.profileLangB === ui.profileLangA) {
       var other = on.filter(function (l) { return l.code !== ui.profileLangA; });
       ui.profileLangB = (other[0] || {}).code || null;
     }
     return on;
   }
 
-  function langPicker(which, selected) {
-    /* Named, because there are two of these side by side — one per column —
-       and "select" twice tells somebody nothing about which is which. */
-    return '<select class="lang-pick" data-plang="' + which + '"' +
-             ' aria-label="' + esc(tr('adm.pf.lang')) + '">' +
-      profileLangs().map(function (l) {
+  function langPicker(which, selected, except) {
+    return '<select class="lang-pick" data-plang="' + which + '" ' + (which === 'a' ? 'data-lang-edit' : 'data-lang-ref') +
+             ' aria-label="' + esc(tr(which === 'a' ? 'con.editing' : 'con.reference')) + '">' +
+      profileLangs().filter(function (l) { return l.code !== except; }).map(function (l) {
         return '<option value="' + esc(l.code) + '"' +
           (l.code === selected ? ' selected' : '') + '>' +
           esc(l.native_name || l.name) + '</option>';
       }).join('') + '</select>';
   }
 
-  function profileColumn(u, which, code, text) {
-    var t = (code && text[code]) || { role_title: '', bio: '' };
-    return '<div class="pf-col">' +
-      langPicker(which, code) +
-      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' +
-        '<input type="text" data-pf="role_title" data-col="' + which + '"' +
+  /* Every language's words for one person, as being edited. */
+  function pfDraft(userId) {
+    ui.pfDraft = ui.pfDraft || {};
+    if (!ui.pfDraft[userId]) ui.pfDraft[userId] = profileText(profileFor(userId));
+    return ui.pfDraft[userId];
+  }
+  /* What the fields say now, into the draft, under the language they show. */
+  function pfStash(sect) {
+    var uid = sect && sect.getAttribute('data-profile');
+    var box = sect && sect.querySelector('.pf-langs');
+    if (!uid || !box) return;
+    var lang = box.getAttribute('data-editing');
+    var role = box.querySelector('[data-pf="role_title"]'), bio = box.querySelector('[data-pf="bio"]');
+    pfDraft(uid)[lang] = { role_title: role ? role.value : '', bio: bio ? bio.value : '' };
+  }
+
+  function profileLangsBlock(userId) {
+    var on = profileLangs();
+    var A = ui.profileLangA, B = ui.profileLangB;
+    var text = pfDraft(userId);
+    var t = text[A] || { role_title: '', bio: '' };
+    var r = (B && text[B]) || { role_title: '', bio: '' };
+    var ref = function (v) { return v ? '<small class="ms-ref" lang="' + esc(B) + '">' + esc(v) + '</small>' : ''; };
+    return '<div class="pf-langs" data-editing="' + esc(A || '') + '">' +
+      '<div class="ms-writing">' +
+        '<label class="ms-pick"><span>' + esc(tr('con.editing')) + '</span>' + langPicker('a', A) + '</label>' +
+        (on.length > 1 ? '<span class="lang-ref">' +
+          '<button type="button" class="lang-swap" data-lang-swap aria-label="' + esc(tr('con.swap')) + '" title="' + esc(tr('con.swap')) + '">&#8644;</button>' +
+          '<label class="ms-pick"><span>' + esc(tr('con.reference')) + '</span>' + langPicker('b', B, A) + '</label>' +
+          '<button type="button" class="ghost-btn sm lang-ai" data-lang-translate>' + esc(tr('ai.translate')) + '</button>' +
+        '</span>' : '') +
+      '</div>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' + ref(r.role_title) +
+        '<input type="text" data-pf="role_title" lang="' + esc(A || '') + '"' +
         ' value="' + esc(t.role_title || '') + '" maxlength="120"></label>' +
-      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' +
-        '<textarea data-pf="bio" data-col="' + which + '" rows="6"' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' + ref(r.bio) +
+        '<textarea data-pf="bio" lang="' + esc(A || '') + '" rows="6"' +
         ' maxlength="4000">' + esc(t.bio || '') + '</textarea></label>' +
     '</div>';
   }
@@ -522,6 +583,7 @@
   }
 
   function markProfileClean(userId) {
+    if (ui.pfDraft) delete ui.pfDraft[userId];   // back to what is saved
     var sect = document.querySelector('[data-profile="' + userId + '"]');
     if (sect) sect.classList.remove('is-dirty');
     var panel = sect && sect.closest('.adm-panel');
@@ -579,6 +641,162 @@
     }
   }
 
+  /* ---- a person's own changes, waiting (0058) ------------------------
+     Chase, 2026-10-13: "they can edit, but it has to be approved by an
+     Admin before it goes live. Just make sure that there is something that
+     shows the edits that were made." Every field that differs from what is
+     saved, word by word: struck through what goes, marked what comes.
+     Approve puts them in the fields and saves (live with the next Publish,
+     like any save); Decline drops them. */
+  function proposalFor(id) {
+    return (state.profile_proposals || []).filter(function (x) { return x.user_id === id; })[0] || null;
+  }
+  /* staff.js: the same word-by-word marking the person sees on their side */
+  function wordDiff(a, b) { return window.StaffWordDiff(a, b); }
+  /* The parts of a proposal that differ from what is saved, by key (the
+     same keys as workers/src/lib/bio.js partsOf): region, public_email,
+     photo, bio_photo, text.<lang>.role_title, text.<lang>.bio. */
+  function proposalParts(w, p, text) {
+    var out = [], n = function (v) { return String(v == null ? '' : v).trim(); };
+    var names = {};
+    (state.languages || []).forEach(function (l) { names[l.code] = l.native_name || l.name; });
+    ['region', 'public_email'].forEach(function (f) {
+      if (typeof w[f] === 'string' && n(w[f]) !== n(p && p[f])) out.push({ key: f, label: tr(f === 'region' ? 'adm.pf.region' : 'adm.pf.email'), was: (p && p[f]) || '', sent: w[f] });
+    });
+    Object.keys(w.text || {}).forEach(function (lang) {
+      ['role_title', 'bio'].forEach(function (f) {
+        var was = (text[lang] || {})[f] || '', sent = (w.text[lang] || {})[f] || '';
+        if (n(was) !== n(sent)) out.push({ key: 'text.' + lang + '.' + f, lang: lang, field: f,
+          label: tr(f === 'bio' ? 'adm.pf.bio' : 'adm.pf.roleTitle') + ' · ' + (names[lang] || lang), was: was, sent: sent });
+      });
+    });
+    ['photo', 'bio_photo'].forEach(function (k) {
+      if (typeof w[k] === 'string' && w[k] !== ((p && p[k]) || '')) out.push({ key: k, pic: true, label: tr('adm.pf.' + k), was: (p && p[k]) || '', sent: w[k] });
+    });
+    return out;
+  }
+  /* EACH CHANGE ANSWERED ON ITS OWN (Chase, 2026-10-13: "approve, edit, or
+     decline individual aspects of the staff bio edits, all communicating
+     back to the staff member"). Approve puts what they sent in the field,
+     Decline leaves what is saved, Edit puts theirs in and takes you to the
+     field to change it. Save sends the answer; the server reads each part's
+     outcome from what was saved, and tells them (lib/bio.js). */
+  function proposalBlock(u, p, text) {
+    var w = proposalFor(u.id);
+    if (!w) return '';
+    var parts = proposalParts(w, p, text);
+    var chosen = (ui.pfChoice && ui.pfChoice[u.id]) || {};
+    var rows = parts.map(function (c) {
+      var how = chosen[c.key] || 'approve';
+      var shown = c.pic
+        ? '<div class="pf-pics">' + (c.was ? '<img class="was" src="' + esc(c.was) + '" alt="">' : '') + '<span aria-hidden="true">→</span>' +
+            (c.sent ? '<img src="' + esc(c.sent) + '" alt="">' : '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>') + '</div>'
+        : '<div class="pf-diff">' + wordDiff(c.was, c.sent) + '</div>';
+      return '<div class="pf-chg is-' + how + '" data-chg="' + esc(c.key) + '"><span class="pf-chg-what">' + esc(c.label) + '</span>' + shown +
+        '<div class="pf-do" role="group" aria-label="' + esc(c.label) + '">' +
+          ['approve', 'edit', 'decline'].map(function (d) {
+            return '<button type="button" data-chg-do="' + d + '" data-user="' + esc(u.id) + '" aria-pressed="' + (how === d ? 'true' : 'false') + '">' + esc(tr('adm.pf.do.' + d)) + '</button>';
+          }).join('') + '</div></div>';
+    });
+    var first = String(u.name || u.email || '').trim().split(/\s+/)[0];
+    var answering = ui.pfEditing === u.id;
+    var allApproved = parts.every(function (c) { return (chosen[c.key] || 'approve') === 'approve'; });
+    return '<div class="pf-proposal" data-proposal="' + esc(u.id) + '">' +
+      '<span class="adm-label">' + esc(tr('adm.pf.waiting').replace('{name}', u.name || u.email)
+        .replace('{when}', new Date(w.submitted_at).toLocaleDateString())) + '</span>' +
+      (rows.length ? rows.join('') : '<p class="hint">' + esc(tr('adm.pf.waitingSame')) + '</p>') +
+      (answering ? '<p class="pf-infields">' + esc(fill('adm.pf.inFields', { name: first })) + '</p>' : '') +
+      '<label class="fld pf-note"><span>' + esc(fill('adm.pf.note', { name: first })) + '</span>' +
+        '<textarea data-proposal-note rows="2" maxlength="600"></textarea></label>' +
+      '<div class="pf-proposal-actions">' +
+        '<button type="button" class="ghost-btn" data-proposal-decline="' + esc(u.id) + '">' + esc(tr('adm.pf.declineAll')) + '</button>' +
+        '<button type="button" class="solid-btn" data-proposal-approve="' + esc(u.id) + '">' + esc(tr(allApproved ? 'adm.pf.approve' : 'adm.pf.saveAnswer')) + '</button>' +
+      '</div></div>';
+  }
+  /* One part into the fields: what they sent, or what is saved. */
+  function setPart(userId, c, sent) {
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    var w = proposalFor(userId), p = profileFor(userId);
+    var u = (state.users || []).filter(function (x) { return x.id === userId; })[0];
+    if (!sect || !w || !u) return;
+    var value = sent ? c.sent : c.was;
+    if (c.lang) {
+      pfStash(sect);
+      var draft = pfDraft(userId);
+      draft[c.lang] = draft[c.lang] || { role_title: '', bio: '' };
+      draft[c.lang][c.field] = value;
+      var box = sect.querySelector('.pf-langs');
+      if (box) box.outerHTML = profileLangsBlock(userId);
+    } else if (c.pic) {
+      var slot = sect.querySelector('[data-slot="' + c.key + '"]');
+      if (!slot) return;
+      slot.outerHTML = photoSlot(u, c.key, value);
+      if (sent) {
+        slot = sect.querySelector('[data-slot="' + c.key + '"]');
+        slot.querySelector('[data-pf-master="' + c.key + '"]').value = w[c.key + '_master'] || '';
+        slot.querySelector('[data-pf-aspect="' + c.key + '"]').value = c.key === 'bio_photo' && w.bio_photo_aspect ? w.bio_photo_aspect : '';
+      }
+    } else {
+      var el = sect.querySelector('.pf-grid [data-pf="' + c.key + '"]');
+      if (el) el.value = value;
+    }
+    markProfileDirty(sect.querySelector('.pf-grid') || sect);
+    refreshPreview(sect);
+  }
+  function redrawProposal(userId) {
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    var box = sect && sect.querySelector('.pf-proposal');
+    if (!box) return;
+    var note = box.querySelector('[data-proposal-note]').value, p = profileFor(userId);
+    box.outerHTML = proposalBlock((state.users || []).filter(function (x) { return x.id === userId; })[0], p, profileText(p));
+    sect.querySelector('[data-proposal-note]').value = note;
+  }
+  /* Answering starts with every part as sent (each row's starting choice),
+     so the fields and the rows agree from the first click. */
+  function startAnswer(userId) {
+    if (ui.pfEditing === userId) return;
+    var p = profileFor(userId);
+    proposalParts(proposalFor(userId), p, profileText(p)).forEach(function (c) { setPart(userId, c, true); });
+    ui.pfEditing = userId;
+  }
+  function chooseChange(userId, key, how) {
+    var p = profileFor(userId);
+    var c = proposalParts(proposalFor(userId), p, profileText(p)).filter(function (x) { return x.key === key; })[0];
+    if (!c) return;
+    startAnswer(userId);
+    ui.pfChoice = ui.pfChoice || {};
+    ui.pfChoice[userId] = ui.pfChoice[userId] || {};
+    ui.pfChoice[userId][key] = how;
+    if (how === 'edit' && c.lang) { ui.profileLangA = c.lang; if (ui.profileLangB === c.lang) ui.profileLangB = null; }
+    setPart(userId, c, how !== 'decline');
+    redrawProposal(userId);
+    if (how !== 'edit') return;
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    var field = c.lang ? sect.querySelector('.pf-langs [data-pf="' + c.field + '"]')
+      : c.pic ? sect.querySelector('[data-slot="' + c.key + '"]') : sect.querySelector('.pf-grid [data-pf="' + c.key + '"]');
+    if (field) { field.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (field.focus) field.focus({ preventScroll: true }); }
+  }
+  async function approveProposal(userId, btn) {
+    /* while answering, the fields ARE the answer; otherwise approve it all */
+    if (!proposalFor(userId)) return;
+    startAnswer(userId);
+    ui.pfApprove = userId;
+    try { await saveProfile(userId, btn); } finally { ui.pfApprove = null; }
+  }
+  async function declineProposal(userId, btn) {
+    var ok = await window.StaffConfirm({ title: tr('adm.pf.declineTitle'), confirm: tr('adm.pf.decline'), cancel: tr('ms.cancel'), danger: true });
+    if (!ok) return;
+    btn.disabled = true;
+    var note = (document.querySelector('[data-proposal="' + userId + '"] [data-proposal-note]') || {}).value || '';
+    try {
+      var res = await fetch('/api/admin/profile', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'decline-proposal', user_id: userId, note: note }) });
+      if (!res.ok) throw new Error((await res.json().catch(function () { return {}; })).error || tr('err.refused'));
+      if (ui.pfEditing === userId) { ui.pfEditing = null; markProfileClean(userId); }
+      await load();
+    } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
+  }
+
   function profileSection(u) {
     var p = profileFor(u.id);
     var on = !!(p && p.is_public);
@@ -590,6 +808,7 @@
        (board "a person: Team page"). */
     return '<div class="adm-section adm-profile pp-team" data-profile="' + esc(u.id) + '">' +
       '<div class="pp-team-fields">' +
+      proposalBlock(u, p, text) +
 
       '<button type="button" class="switch small" role="switch" data-pf-public="' + esc(u.id) + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
@@ -645,10 +864,7 @@
             ' placeholder="' + esc(slugHint(u.name)) + '"></label>' +
         '</div>' +
 
-        '<div class="pf-langs">' +
-          profileColumn(u, 'a', ui.profileLangA, text) +
-          profileColumn(u, 'b', ui.profileLangB, text) +
-        '</div>' +
+        profileLangsBlock(u.id) +
 
         '<div class="pf-photos">' +
           photoSlot(u, 'photo', (p && p.photo) || '') +
@@ -693,7 +909,7 @@
     var pv = sect && sect.querySelector('[data-pf-preview]');
     if (!pv) return;
     var field = function (sel) { var el = sect.querySelector(sel); return el ? el.value.trim() : ''; };
-    pv.querySelector('[data-pv="title"]').textContent = field('[data-pf="role_title"][data-col="a"]');
+    pv.querySelector('[data-pv="title"]').textContent = field('[data-pf="role_title"]');
     pv.querySelector('[data-pv="region"]').textContent = field('.pf-grid [data-pf="region"]');
     var slugEl = sect.querySelector('.pf-grid [data-pf="slug"]');
     var slug = field('.pf-grid [data-pf="slug"]') || (slugEl ? slugEl.placeholder : '');
@@ -729,7 +945,7 @@
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="switch-track"><span class="switch-state">' +
           tr(on ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
-        '<span class="switch-label">' + esc(ROLE_LABEL[r]) + '</span></button>';
+        '<span class="switch-label">' + esc(roleLabel(r)) + '</span></button>';
     }).join('');
 
     var partners = state.partners.map(function (p) {
@@ -747,7 +963,7 @@
        not a person and has no team page, so it has no tabs either. */
     var tab = system ? 'access' : (ui.personTab || 'access');
     var tabBtn = function (name, key) {
-      return '<button type="button" class="tab" role="tab" data-pp-tab="' + name + '"' +
+      return '<button type="button" class="tab' + (name === 'team' && proposalFor(u.id) ? ' has-dot' : '') + '" role="tab" data-pp-tab="' + name + '"' +
         ' aria-selected="' + (tab === name ? 'true' : 'false') + '">' + esc(tr(key)) + '</button>';
     };
 
@@ -1290,6 +1506,9 @@
       if (a.replies_for) {
         uses.push(tr('adm.mailReplies').replace('{lists}', a.replies_for.split(' | ').join(', ')));
       }
+      /* the contact form, which sends from these and may deliver to them */
+      if (a.form_sends) uses.push(tr('adm.mailFormSends'));
+      if (a.form_receives) uses.push(tr('adm.mailFormGets'));
       return '<div class="adm-sender" data-sender="' + esc(a.id) + '">' +
         '<code class="adm-sender-a">' + esc(a.address) + '</code>' +
         '<span class="adm-sender-used">' +
@@ -1458,19 +1677,13 @@
       return isFinite(v) && v > 0 ? v : null;
     };
 
-    /* Both columns, keyed by whichever language each is showing. Reading the
-       pickers rather than assuming a and b are the first two languages — they
-       are whatever the person editing chose. */
+    /* EVERY language, as held while switching (pfDraft) — not just the one
+       on screen: a language left out is a language the server drops. */
+    pfStash(sect);
     var text = {};
-    ['a', 'b'].forEach(function (which) {
-      var pick = sect.querySelector('[data-plang="' + which + '"]');
-      if (!pick || !pick.value) return;
-      var role = sect.querySelector('[data-pf="role_title"][data-col="' + which + '"]');
-      var bio = sect.querySelector('[data-pf="bio"][data-col="' + which + '"]');
-      text[pick.value] = {
-        role_title: role ? role.value.trim() : '',
-        bio: bio ? bio.value.trim() : ''
-      };
+    var held = pfDraft(userId);
+    Object.keys(held).forEach(function (code) {
+      text[code] = { role_title: String(held[code].role_title || '').trim(), bio: String(held[code].bio || '').trim() };
     });
 
     var payload = {
@@ -1488,6 +1701,12 @@
       photo_master: shotMaster('photo'),
       bio_photo_master: shotMaster('bio_photo'),
       text: text,
+      /* an answered proposal (0058) stops waiting once this is saved, and
+         the person is told — with the administrator's note, if any. While
+         answering, any Save sends the answer. */
+      clear_proposal: ui.pfApprove === userId || ui.pfEditing === userId || undefined,
+      proposal_note: (ui.pfApprove === userId || ui.pfEditing === userId)
+        ? ((sect.querySelector('[data-proposal-note]') || {}).value || '') : undefined,
       /* as this page loaded it, so a save from another site since is caught */
       updated_at: (profileFor(userId) || {}).updated_at
     };
@@ -1553,7 +1772,8 @@
      themselves because they change a hidden field, which fires nothing. */
   document.addEventListener('input', function (e) {
     var sect = e.target.closest && e.target.closest('[data-profile]');
-    if (sect) { markProfileDirty(e.target); refreshPreview(sect); }
+    /* choosing which language to look at is not a change to the person */
+    if (sect && !e.target.matches('[data-plang]')) { markProfileDirty(e.target); refreshPreview(sect); }
   });
 
   /* A person's two tabs. Remembered, so the panel re-rendered by a save or
@@ -1590,11 +1810,23 @@
       return;
     }
 
+    /* Another language: the words written so far are kept, and only the
+       language block is drawn again — the rest of the person's unsaved
+       changes stay where they are. */
     var pick = e.target.closest('[data-plang]');
     if (!pick) return;
-    if (pick.dataset.plang === 'a') ui.profileLangA = pick.value;
-    else ui.profileLangB = pick.value;
-    render();
+    var sect = pick.closest('[data-profile]');
+    pfStash(sect);
+    if (pick.dataset.plang === 'a') {
+      if (pick.value === ui.profileLangB) ui.profileLangB = ui.profileLangA;
+      ui.profileLangA = pick.value;
+    } else ui.profileLangB = pick.value;
+    document.querySelectorAll('[data-profile]').forEach(function (other) {
+      if (other !== sect) pfStash(other);
+      var box = other.querySelector('.pf-langs');
+      if (box) box.outerHTML = profileLangsBlock(other.getAttribute('data-profile'));
+    });
+    refreshPreview(sect);
   });
 
   document.addEventListener('click', function (e) {
@@ -1609,6 +1841,13 @@
 
     var pub = e.target.closest('[data-pf-public]');
     if (pub) return toggleProfilePublic(pub);
+
+    var appr = e.target.closest('[data-proposal-approve]');
+    if (appr) return approveProposal(appr.getAttribute('data-proposal-approve'), appr);
+    var chg = e.target.closest('[data-chg-do]');
+    if (chg) return chooseChange(chg.getAttribute('data-user'), chg.closest('[data-chg]').getAttribute('data-chg'), chg.getAttribute('data-chg-do'));
+    var decl = e.target.closest('[data-proposal-decline]');
+    if (decl) return declineProposal(decl.getAttribute('data-proposal-decline'), decl);
 
     var save = e.target.closest('[data-pf-save]');
     if (save) return saveProfile(save.dataset.pfSave, save);
@@ -1732,9 +1971,9 @@
     if (CONFIRM_ROLES[role]) {
       var ok = await window.StaffConfirm({
         title: (grant ? tr('adm.confirm.grant') : tr('adm.confirm.revoke')) +
-               ' ' + ROLE_LABEL[role],
+               ' ' + roleLabel(role),
         body: u.name + ' (' + u.email + ')',
-        note: tr('adm.confirm.' + role + tr(grant ? 'switch.on' : 'switch.off')),
+        note: tr('adm.confirm.' + role + (grant ? 'On' : 'Off')),
         confirm: grant ? tr('adm.confirm.doGrant') : tr('adm.confirm.doRevoke'),
         cancel: tr('ms.cancel'),
         danger: !grant || role === 'admin'
@@ -1968,6 +2207,7 @@
         lists: a.replies_for.split(' | ').join(', ')
       }));
     }
+    if (a.form_sends || a.form_receives) lines.push(tr('adm.mailRemoveForm'));
 
     var ok = await window.StaffConfirm({
       title: tr('adm.mailRemove'),
@@ -2106,7 +2346,10 @@
         $('admPartnerForm').hidden = true;
         $('admPartnerName').value = '';
         await load();
-        toast(tr('toast.saved'), 'ok');
+        /* its site address is held at once (admin.js makePartner) */
+        await loadSites();
+        var held = (state.sites || []).filter(function (x) { return x.partner_id === body.created; })[0];
+        toast(held ? tr('adm.siteHeld').replace('{address}', held.subdomain + '.thauma.one') : tr('toast.saved'), 'ok');
       } catch (err) { toast(err.message, 'err'); }
       finally { btn.disabled = false; }
     });

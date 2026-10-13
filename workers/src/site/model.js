@@ -87,7 +87,7 @@ export const SECTIONS = {
   timeline:  { variants: ["condensed", "full"], words: ["heading", "text"], align: true },
   goals:     { variants: ["cards"], words: ["heading", "text"], align: true },
   prayer:    { variants: ["list"], words: ["heading", "text"], align: true },
-  videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
+  videos:    { variants: ["stage"], words: ["heading", "text"], align: true , items: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
   newsletters: { variants: ["latest", "list", "combined"], words: ["heading", "text"], align: true },
   /* THE FORM AND GIVE STYLES (BACKLOG §3, 2026-10-04): Floating (a card of
@@ -104,7 +104,7 @@ export const SECTIONS = {
   /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
      line between their numbers, or Detached, side by side. */
   cards:     { variants: ["vertical", "horizontal", "open"], words: ["heading", "text"], items: "cards" },
-  links:     { variants: ["list", "cards", "buttons"], words: ["heading", "text"], items: true, align: true },
+  links:     { variants: ["cards", "tiles", "list", "buttons"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
    section: left, right, center, indent. Buttons must follow their section's
@@ -339,7 +339,7 @@ export function starter(kind, { name, langs, fallback, give }) {
     stay: [section("signup", "card", L, { thin: "signupThin", bold: "signupBold", text: "signupFill" })],
     contact: [section("contact", "form", L, { thin: "contactThin", bold: "contactBold", text: "contactFill" })],
     timeline: [section("timeline", "full", L, { thin: "timelineThin", bold: "timelineBold", text: "timelineFill" })],
-    resources: [links("list")],
+    resources: [links("cards")],
   };
 
   if (kind === "blank") {
@@ -484,7 +484,7 @@ export function safePhoto(u) {
 }
 
 const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, caption: 200, button: 40,
-  tagline: 120, small: 400, label: 80, mark: 40, verse: 900, verseRef: 120 };
+  tagline: 120, small: 400, label: 80, mark: 40, verse: 900, verseRef: 120, note: 900, by: 80 };
 
 /* ------------------------------------------------------ formatted words -- */
 
@@ -493,7 +493,9 @@ const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, c
    color on any run of words ("different sizes and colors WITHIN one text
    box"): <span data-sz data-c>, the same names the Mail composer stores
    (lib/tones.js). These fields keep them; every other word stays plain. */
-export const RICH = new Set(["heading", "text", "quote", "verse"]);
+/* "title" is a card's or a link's own title (2026-10-12: formatted like
+   every other box); no section word is called that. */
+export const RICH = new Set(["heading", "text", "quote", "verse", "title", "note"]);
 
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " };
 const decode = (t) => t.replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENT[e])
@@ -683,6 +685,25 @@ function cleanSection(raw, langs) {
     s.linkStyle = ["outline", "subtle"].includes(raw.linkStyle) ? raw.linkStyle : "buttons";
     s.titleFrom = raw.titleFrom === "latest" ? "latest" : "words";
   }
+  /* THE WAYS TO REACH YOU beside a contact form (Chase, 2026-10-12, after
+     chaseroush.com's Contact): the site's email and social links, each with
+     its symbol, and a link to give. */
+  if (raw.type === "contact") {
+    s.reachLinks = raw.reachLinks === true;
+    s.reachGive = raw.reachGive === true;
+    /* how they look (2026-10-13, Chase: "It may be wise to add a couple
+       different styles"): a column on a line, a tile each, or a row of
+       symbols */
+    s.reachStyle = ["tiles", "icons"].includes(raw.reachStyle) ? raw.reachStyle : "line";
+  }
+  /* WHAT A RESOURCE SHOWS (2026-10-13, Chase: "maybe having the ability to
+     toggle on and off the description and personal note options"): each
+     part can be switched off for the whole section; all on to start. */
+  if (raw.type === "links") {
+    s.showKind = raw.showKind !== false;
+    s.showDesc = raw.showDesc !== false;
+    s.showNote = raw.showNote !== false;
+  }
   if (spec.items === "cards") {
     /* Written words only. A blank card is kept (it was just added and is
        being typed into); the page simply does not draw it. */
@@ -704,7 +725,9 @@ function cleanSection(raw, langs) {
       /* "type" is the small colored label at the card's corner; tier is how
          big the card is (Chase, BACKLOG §3: "a link's card size shows its
          importance"). Standard, the section's own style, is the default. */
-      words: cleanWords(it && it.words, ["title", "text", "type"], langs),
+      /* by: who wrote or made it ("Book · Henry Cloud"); note: a word of the
+         owner's own about it, set apart (chaseroush.com Resources) */
+      words: cleanWords(it && it.words, ["title", "text", "type", "by", "note"], langs),
       tier: ["big", "small"].includes(it && it.tier) ? it.tier : "std",
       /* a button's color, in the Buttons layout */
       color: ["accent2", "outline"].includes(it && it.color) ? it.color
@@ -739,7 +762,9 @@ export function cleanTabs(raw, langs) {
   /* `at`: where the bar sits among the page's own sections (an index; the
      end when absent). Clamped to the page's sections where it is drawn. */
   const at = Number.isInteger(raw.at) && raw.at >= 0 ? { at: Math.min(raw.at, 30) } : {};
-  return { style: TAB_STYLES.includes(raw.style) ? raw.style : "joined", align: raw.align === "left" ? "left" : "center", ...at, items };
+  /* place: a band of its own (the default), or inside the tab's section */
+  const place = raw.place === "inside" ? { place: "inside" } : {};
+  return { style: TAB_STYLES.includes(raw.style) ? raw.style : "joined", align: raw.align === "left" ? "left" : "center", ...at, ...place, items };
 }
 /** Every section of a page, its tabs' too, in order. */
 export function allSections(page) {

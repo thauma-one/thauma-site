@@ -119,7 +119,7 @@ const HEX = HEX_COLOR;
    A subscriber without a name gets NOTHING there (Chase, 2026-10-03: "just
    remove the variable so it just says Hi"), and neither does the public
    archive. */
-const VARS = new Set(["first_name", "name"]);
+const VARS = new Set(["first_name", "name", "signature"]);
 
 /* Tags whose CONTENT goes too. Script and style carry no prose, and keeping
    the text inside a <style> would paste CSS into the middle of a sentence. */
@@ -129,7 +129,7 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
 const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig", "data-w", "data-al"],
-                span: ["data-sz", "data-c", "data-var"] };
+                span: ["data-sz", "data-c", "data-var", "data-sig", "data-sig-name"] };
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -243,6 +243,8 @@ export function sanitise(html) {
         if (HEX.test(value)) value = value.toLowerCase();
       }
       if (key === "data-var" && !VARS.has(value)) continue;
+      if (key === "data-sig" && !/^sig_[a-f0-9]{1,32}$/.test(value)) continue;
+      if (key === "data-sig-name") value = String(value).slice(0, 60);
       if (key === "href") {
         value = safeUrl(value);
         if (!value) continue;
@@ -365,6 +367,9 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
     /* a picture made smaller is centered at a fixed width (width= for
        Outlook, which ignores percentages), never wider than the column */
     if (name === "img") {
+      /* a signature's picture (signatureHtml): its own pixel width, left */
+      const sw = /data-sig-w="(\d+)"/.exec(rest);
+      if (sw) return `<${tag}${rest} width="${sw[1]}" style="width:${sw[1]}px;max-width:100%;height:auto;display:block;border:0;margin:8px 0">`;
       const w = /data-w="([^"]*)"/.exec(rest), al = /data-al="(left|right)"/.exec(rest);
       /* BESIDE THE WORDS (2026-10-07): floated, with align= for Outlook,
          which ignores float; never full width, which would not be beside
@@ -397,11 +402,45 @@ const unescapeHtml = (v) => String(v)
  * first word. With no name the span disappears, and so does ONE space before
  * it, so "Hi {first name}," reads "Hi," — never its editor label.
  */
-export function fillVariables(html, name) {
+/* THE SIGNATURE (0055, Chase 2026-10-12: "add another variable for adding an
+   email signature and the ability to create/edit the signature somewhere").
+   One per sender, written in Mail › Signature. It lands wherever the variable
+   sits, which is usually inside a paragraph — so it is kept INLINE: bold,
+   italic, underline, links, and line breaks where its paragraphs were. A <p>
+   inside a <p> is a broken email in half the clients. */
+/* A PICTURE TOO (0057, Chase 2026-10-13: "I'd add an ability to add a photo
+   as well"): a logo or a face, at the width it was dragged to in the
+   signature editor, set in pixels and to the left — never the full-width,
+   centered picture of the letter itself. */
+const sigPicture = (tag) => {
+  const src = /\ssrc="([^"]*)"/.exec(tag), alt = /\salt="([^"]*)"/.exec(tag);
+  if (!src) return "";
+  const pct = picWidth((/\sdata-w="([^"]*)"/.exec(tag) || [])[1]);
+  const px = Math.max(40, Math.min(528, pct ? Math.round(528 * pct / 100) : 160));
+  return `<img src="${src[1]}" alt="${alt ? alt[1] : ""}" data-sig-w="${px}">`;
+};
+export function signatureHtml(raw) {
+  return sanitise(String(raw || ""))
+    .replace(/<\/(p|div|h2|h3|li|blockquote)\s*>\s*<(p|div|h2|h3|li|blockquote)\b[^>]*>/gi, "<br>")
+    .replace(/<img\b[^>]*>/gi, sigPicture)
+    .replace(/<(?!\/?(?:b|strong|i|em|u|a|br|img)\b)[^>]+>/gi, "")
+    .replace(/(?:\s*<br\s*\/?>\s*)+$/i, "")
+    .replace(/\{\{\s*signature\s*\}\}/g, "")   // never itself
+    .trim();
+}
+
+/* `signatures` is the sender's list (0057), [{ id, html }]: a variable
+   naming one (data-sig) takes it, one naming none takes the first. A plain
+   string is one signature (as 0055 had it). */
+export function fillVariables(html, name, signatures) {
   const full = String(name || "").replace(/\s+/g, " ").trim();
-  const word = (v) => (!full ? "\u0000" : escapeHtml(v === "first_name" ? full.split(" ")[0] : full));
+  const list = typeof signatures === "string" ? [{ id: "", html: signatures }] : (signatures || []);
+  const sigOf = (id) => signatureHtml(((id && list.find((x) => x.id === id)) || list[0] || {}).html);
+  const word = (v, id) => (v === "signature" ? (sigOf(id) || "\u0000")
+    : !full ? "\u0000" : escapeHtml(v === "first_name" ? full.split(" ")[0] : full));
   return String(html || "").replace(
-    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g, (m, attrs, v) => word(v))
+    /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g, (m, attrs, v) => word(v, (/\bdata-sig="([^"]*)"/.exec(attrs) || [])[1]))
+    .replace(/\{\{\s*signature\s*\}\}/g, () => word("signature"))
     /* AND AS TYPED (2026-10-07): {{first_name}} or {{full_name}} written as
        plain text — the composer turns them into variables as they are
        typed, but a token that arrived some other way still works. */
@@ -416,6 +455,7 @@ export function fillVariables(html, name) {
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
  * @param opts.recipientName   the subscriber's name, for variables; null on
  *                             the archive and the size measure (fallbacks).
+ * @param opts.signatures      the sender's signatures (0057), for {{signature}}.
  * @param opts.layout          "card" (default: the letter on a card, on a soft
  *                             ground) or "integrated" (no card: the letter is
  *                             the page). Chase, 2026-10-05.
@@ -470,7 +510,7 @@ export function render(body, opts = {}) {
   /* Personal words first, so nothing below ever sees a variable: a send
      passes the recipient's name, everything else (the archive, the size
      measure) gets each variable's fallback. */
-  const styled = linkPictures(inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
+  const styled = linkPictures(inlineStyles(fillVariables(body, opts.recipientName, opts.signatures), accent, ink, dim, line, dark, accent2)
     .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`), opts.archiveUrl);
   const title = escapeHtml(opts.subject || "");
 

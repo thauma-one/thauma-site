@@ -108,6 +108,24 @@
         esc(langLabel(l)) + '</option>';
     }).join('');
 
+    renderBio();
+
+    /* Notifications (0056, the bell 0060): a row and a switch per notice
+       these roles receive, once for the bell and once for email; no
+       notices, no tab. */
+    var notices = (state.you && state.you.notices) || [];
+    $('setNotifyTab').hidden = !notices.length;
+    [['setNotifyBell', 'bell'], ['setNotify', 'on']].forEach(function (g) {
+      $(g[0]).innerHTML = notices.map(function (n) {
+        var on = !!n[g[1]];
+        return '<div class="set-r"><span class="set-lbl">' + esc(tr('set.notify.' + n.kind)) + '</span>' +
+          '<div class="set-ctl"><button type="button" class="switch small" role="switch" data-notice="' + esc(n.kind) + '"' +
+          ' aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(tr('set.notify.' + n.kind)) + '">' +
+          '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
+            '</span><span class="switch-knob"></span></span></button></div></div>';
+      }).join('');
+    });
+
     $('setLangList').innerHTML = state.languages.map(function (l) {
       var isDefault = l.code === state.partner.default_lang;
       return '<div class="lang-row">' +
@@ -274,6 +292,218 @@
     }
   }
 
+  /* ---- your bio (0058) ------------------------------------------------
+     The whole team page but its address, order and whether it is shown:
+     title and bio in each language, region, public email and both photos
+     (Chase, 2026-10-13: "their whole bio, including the photo and email
+     contact. Since it has to be approved"). One language at a time with the
+     reference above each field, as every other editor; what is typed is held
+     while switching languages and across a reload of the page's data, until
+     sent or withdrawn. A photo is cropped and uploaded as you choose it (as
+     yours, workers/src/media.js) and is only a proposal until approved. */
+  var bio = { draft: null, editing: null, ref: null };
+  var PICS = ['photo', 'bio_photo'];
+  function bioLangs() { return (state.languages || []).map(function (l) { return { code: l.code, name: l.native_name || l.name }; }); }
+  function bioStash() {
+    var f = $('setBioForm'), title = f.querySelector('[data-bio="role_title"]');
+    if (!bio.draft || !title) return;
+    /* the language the FIELDS are in, which is not bio.editing while the
+       picker is changing it */
+    bio.draft.text[title.getAttribute('lang')] = { role_title: title.value, bio: f.querySelector('[data-bio="bio"]').value };
+    bio.draft.region = f.querySelector('[data-bio="region"]').value;
+    bio.draft.public_email = f.querySelector('[data-bio="public_email"]').value;
+  }
+  function bioCopy(from) {
+    var d = JSON.parse(JSON.stringify(from || {}));
+    d.text = d.text || {};
+    delete d.decision; delete d.submitted_at; delete d.user_id;
+    return d;
+  }
+  /* The last answer, change by change (lib/bio.js outcomes): approved —
+     what changed; changed by the administrator — their changes to what you
+     sent, word by word; not approved — what you sent, faded. With their
+     note. */
+  function bioAnswer(ans) {
+    var box = $('setBioAnswer');
+    box.hidden = !ans;
+    if (!ans) { box.innerHTML = ''; return; }
+    var d = ans.decision, when = new Date(d.at).toLocaleDateString();
+    var key = d.status === 'declined' ? 'set.bioDeclined' : d.status === 'partly' ? 'set.bioPartly'
+      : d.edited ? 'set.bioApprovedEdited' : 'set.bioApproved';
+    var names = {};
+    bioLangs().forEach(function (l) { names[l.code] = l.name; });
+    var sentOf = function (k) {
+      var m = k.match(/^text\.([^.]+)\.(role_title|bio)$/);
+      return m ? (((ans.text || {})[m[1]] || {})[m[2]] || '') : (ans[k] || '');
+    };
+    var labelOf = function (k) {
+      var m = k.match(/^text\.([^.]+)\.(role_title|bio)$/);
+      if (m) return tr(m[2] === 'bio' ? 'adm.pf.bio' : 'adm.pf.roleTitle') + ' · ' + (names[m[1]] || m[1]);
+      return tr(k === 'region' ? 'adm.pf.region' : k === 'public_email' ? 'adm.pf.email' : 'adm.pf.' + k);
+    };
+    var pics = function (a, b) {
+      return '<div class="pf-pics">' + (a ? '<img class="was" src="' + esc(a) + '" alt="">' : '') + '<span aria-hidden="true">→</span>' +
+        (b ? '<img src="' + esc(b) + '" alt="">' : '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>') + '</div>';
+    };
+    var rows = Object.keys(d.parts || {}).map(function (k) {
+      var part = d.parts[k], sent = sentOf(k), pic = k === 'photo' || k === 'bio_photo';
+      /* edited: from what you sent to what was kept; otherwise what you
+         asked for, against what was there */
+      var a = part.result === 'edited' ? sent : part.was, b = part.result === 'edited' ? part.kept : sent;
+      return '<div class="pf-chg is-' + esc(part.result) + '"><span class="pf-chg-what">' + esc(labelOf(k)) +
+        '<b class="pf-outcome">' + esc(fill('set.bioOutcome.' + part.result, { by: d.by })) + '</b></span>' +
+        (pic ? pics(a, b) : '<div class="pf-diff">' + window.StaffWordDiff(a, b) + '</div>') + '</div>';
+    });
+    box.className = 'set-bio-answer is-' + esc(d.status);
+    box.innerHTML = '<p>' + esc(fill(key, { by: d.by, when: when })) + '</p>' +
+      (d.note ? '<q class="set-bio-note">' + esc(d.note) + '</q>' : '') +
+      rows.join('') +
+      '<button type="button" class="ghost-btn sm" id="setBioDismiss">' + esc(tr('set.bioDismiss')) + '</button>';
+  }
+  function bioPicture(kind, url) {
+    return '<div class="pf-photo" data-slot="' + kind + '">' +
+      '<span class="adm-label">' + esc(tr('adm.pf.' + kind)) + '</span>' +
+      '<div class="pf-shot">' + (url ? '<img src="' + esc(url) + '" alt="">' : '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>') + '</div>' +
+      '<input type="file" accept="image/*" hidden data-bio-file="' + kind + '" aria-label="' + esc(tr('adm.pf.' + kind)) + '">' +
+      '<div class="pf-photo-acts">' +
+        '<button type="button" class="ghost-btn" data-bio-pick="' + kind + '">' + esc(tr(url ? 'adm.pf.replace' : 'adm.pf.choose')) + '</button>' +
+        (url ? '<button type="button" class="del" data-bio-clear="' + kind + '">' + esc(tr('adm.pf.remove')) + '</button>' : '') +
+      '</div><span class="hint" data-bio-status="' + kind + '"></span></div>';
+  }
+  function renderBio() {
+    var b = state.you && state.you.bio;
+    $('setBioTab').hidden = !b;
+    if (!b) return;
+    bioStash();
+    if (!bio.draft) {
+      /* what is waiting; or, when it was declined, what you sent, to change
+         and send again; otherwise the page as it is */
+      var ans = b.answer && b.answer.decision && b.answer.decision.status === 'declined' ? b.answer : null;
+      bio.draft = bioCopy(b.proposal || ans || b.live);
+    }
+    bioAnswer(b.proposal ? null : b.answer);
+    var langs = bioLangs();
+    if (!bio.editing || !langs.some(function (l) { return l.code === bio.editing; })) bio.editing = (state.you.preferred_lang && langs.some(function (l) { return l.code === state.you.preferred_lang; })) ? state.you.preferred_lang : (langs[0] || {}).code;
+    if (!bio.ref || bio.ref === bio.editing) bio.ref = (langs.filter(function (l) { return l.code !== bio.editing; })[0] || {}).code || null;
+    var t = bio.draft.text[bio.editing] || { role_title: '', bio: '' };
+    var r = (bio.ref && bio.draft.text[bio.ref]) || { role_title: '', bio: '' };
+    var pick = function (attr, sel, except) {
+      return '<select class="lang-pick" ' + attr + '>' + langs.filter(function (l) { return l.code !== except; }).map(function (l) {
+        return '<option value="' + esc(l.code) + '"' + (l.code === sel ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('') + '</select>';
+    };
+    var ref = function (v) { return v ? '<small class="ms-ref" lang="' + esc(bio.ref) + '">' + esc(v) + '</small>' : ''; };
+    $('setBioState').textContent = b.proposal
+      ? tr('set.bioWaiting').replace('{when}', new Date(b.proposal.submitted_at).toLocaleDateString())
+      : tr('set.bioLive');
+    $('setBioState').classList.toggle('is-waiting', !!b.proposal);
+    $('setBioWithdraw').hidden = !b.proposal;
+    $('setBioForm').innerHTML =
+      '<div class="ms-writing">' +
+        '<label class="ms-pick"><span>' + esc(tr('con.editing')) + '</span>' + pick('data-bio-lang="edit" data-lang-edit', bio.editing) + '</label>' +
+        (langs.length > 1 ? '<span class="lang-ref">' +
+          '<button type="button" class="lang-swap" data-lang-swap aria-label="' + esc(tr('con.swap')) + '" title="' + esc(tr('con.swap')) + '">&#8644;</button>' +
+          '<label class="ms-pick"><span>' + esc(tr('con.reference')) + '</span>' + pick('data-bio-lang="ref" data-lang-ref', bio.ref, bio.editing) + '</label>' +
+          '<button type="button" class="ghost-btn sm lang-ai" data-lang-translate>' + esc(tr('ai.translate')) + '</button></span>' : '') +
+      '</div>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' + ref(r.role_title) +
+        '<input type="text" data-bio="role_title" lang="' + esc(bio.editing) + '" maxlength="120" value="' + esc(t.role_title || '') + '"></label>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' + ref(r.bio) +
+        '<textarea data-bio="bio" lang="' + esc(bio.editing) + '" rows="8" maxlength="4000">' + esc(t.bio || '') + '</textarea></label>' +
+      '<div class="set-bio-two">' +
+        '<label class="fld"><span>' + esc(tr('adm.pf.region')) + '</span>' +
+          '<input type="text" data-bio="region" maxlength="120" value="' + esc(bio.draft.region || '') + '"></label>' +
+        '<label class="fld"><span>' + esc(tr('adm.pf.email')) + '</span>' +
+          '<input type="email" data-bio="public_email" maxlength="200" value="' + esc(bio.draft.public_email || '') + '"></label>' +
+      '</div>' +
+      '<div class="pf-photos">' + PICS.map(function (k) { return bioPicture(k, bio.draft[k]); }).join('') + '</div>' +
+      (b.is_public ? '<a class="set-link" href="/' + esc(bio.editing) + '/team/' + esc(b.slug) + '/" target="_blank" rel="noopener">' + esc(tr('set.bioSee')) + ' →</a>' : '');
+  }
+  $('setBioForm').addEventListener('change', function (e) {
+    var file = e.target.getAttribute('data-bio-file');
+    if (file && e.target.files && e.target.files[0]) { bioUpload(file, e.target.files[0]); e.target.value = ''; return; }
+    var which = e.target.getAttribute('data-bio-lang');
+    if (!which) return;
+    bioStash();
+    if (which === 'edit') { if (e.target.value === bio.ref) bio.ref = bio.editing; bio.editing = e.target.value; }
+    else bio.ref = e.target.value;
+    renderBio();
+  });
+  $('setBioForm').addEventListener('click', function (e) {
+    var p = e.target.closest('[data-bio-pick]');
+    if (p) { $('setBioForm').querySelector('[data-bio-file="' + p.getAttribute('data-bio-pick') + '"]').click(); return; }
+    var c = e.target.closest('[data-bio-clear]');
+    if (c) {
+      var k = c.getAttribute('data-bio-clear');
+      bio.draft[k] = ''; bio.draft[k + '_master'] = '';
+      if (k === 'bio_photo') bio.draft.bio_photo_aspect = null;
+      renderBio();
+    }
+  });
+  $('setBioAnswer').addEventListener('click', function (e) {
+    if (e.target.id === 'setBioDismiss') bioSend({ bio_dismiss: true }, e.target, 'toast.saved');
+  });
+
+  /* Shrunk in the browser before it is sent (the Worker cannot decode). */
+  async function bioShrink(file, maxPx) {
+    var bm = await createImageBitmap(file);
+    var k = Math.min(1, maxPx / Math.max(bm.width, bm.height));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bm.width * k)); c.height = Math.max(1, Math.round(bm.height * k));
+    c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+    var blob = await new Promise(function (res) { c.toBlob(res, 'image/webp', 0.85); });
+    if (!blob || blob.type !== 'image/webp') blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.85); });
+    return blob;
+  }
+  async function bioPut(kind, blob) {
+    var res = await fetch('/api/admin/media?kind=' + encodeURIComponent(kind), { method: 'PUT', credentials: 'same-origin',
+      headers: { 'Content-Type': blob.type }, body: blob });
+    var body = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(body.error || tr('err.refused'));
+    return body.url;
+  }
+  async function bioUpload(kind, file) {
+    var say = function (text) { var el = $('setBioForm').querySelector('[data-bio-status="' + kind + '"]'); if (el) el.textContent = text; };
+    try {
+      bioStash();
+      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, kind) : null;
+      if (window.PhotoCrop && !shot) { say(tr('adm.pf.cropCancelled')); return; }
+      say(tr('adm.pf.uploading'));
+      /* the uncropped original too, so an administrator can re-crop it
+         wider; not worth failing the photo over */
+      var master = '';
+      if (shot) { try { master = await bioPut(kind + '_master', await bioShrink(file, 2400)); } catch (e) { master = ''; } }
+      var url = await bioPut(kind, shot ? shot.blob : await bioShrink(file, 1600));
+      bio.draft[kind] = url;
+      bio.draft[kind + '_master'] = master;
+      if (kind === 'bio_photo') bio.draft.bio_photo_aspect = shot ? +shot.aspect.toFixed(4) : null;
+      renderBio();
+      say(tr('set.bioPhotoReady'));
+    } catch (e) { say(tr('adm.pf.shotFailed') + ' ' + e.message); }
+  }
+
+  async function bioSend(payload, btn, message) {
+    btn.disabled = true;
+    try {
+      var res = await fetch(API, { method: 'PATCH', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+      state.you.bio = body.bio;
+      bio.draft = null;
+      $('setBioForm').innerHTML = '';
+      renderBio();
+      toastKey(message, 'ok');
+    } catch (e) { setStatus(e.message, 'err'); }
+    btn.disabled = false;
+  }
+  $('setBioSend').addEventListener('click', function () {
+    bioStash();
+    bioSend({ bio_proposal: bio.draft }, this, 'set.bioSent');
+  });
+  $('setBioWithdraw').addEventListener('click', function () {
+    bioSend({ bio_withdraw: true }, this, 'set.bioWithdrawn');
+  });
+
   /* ---- wiring --------------------------------------------------------- */
 
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
@@ -299,6 +529,15 @@
     // already in the new language.
     if (window.StaffI18n) window.StaffI18n.setLang(code);
     change({ preferred_lang: code }, e.target, 'toast.langChanged');
+  });
+
+  ['setNotify', 'setNotifyBell'].forEach(function (id) {
+    $(id).addEventListener('click', function (e) {
+      var sw = e.target.closest('[data-notice]');
+      if (!sw || sw.disabled) return;
+      change({ notify: { kind: sw.dataset.notice, channel: this.getAttribute('data-channel'),
+                         on: sw.getAttribute('aria-checked') !== 'true' } }, sw);
+    });
   });
 
   $('setLangList').addEventListener('click', function (e) {
@@ -383,6 +622,11 @@
   });
 
   showTab((location.hash || '#account').slice(1));
+  /* the bell's notices open a tab here (#bio) while this page is open too */
+  window.addEventListener('hashchange', function () {
+    var t = (location.hash || '').slice(1);
+    if (document.querySelector('.tab[data-tab="' + t + '"]:not([hidden])')) showTab(t);
+  });
   load();
 })();
 

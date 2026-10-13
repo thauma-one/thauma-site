@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf, allSections, titleCase } from "./model.js";
+import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 import { ICON, SOCIAL_NAME } from "../lib/social-icons.js";
@@ -207,6 +207,7 @@ html.menu-open .nav{display:flex;position:absolute;left:0;right:0;top:100%;flex-
 .langmenu summary{list-style:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font:600 13px var(--body);letter-spacing:.06em;
   color:var(--fg);padding:7px 12px;border:1px solid var(--line);border-radius:999px}
 .langmenu summary::-webkit-details-marker{display:none}
+.langmenu summary .lc{display:inline-block;min-width:2.4em;text-align:center}
 .langmenu summary svg{width:10px;height:6px;transition:transform .2s ease}.langmenu[open] summary svg{transform:rotate(180deg)}
 .langmenu summary:hover,.langmenu[open] summary{border-color:var(--acc)}
 .langmenu ul{position:absolute;right:0;top:calc(100% + 8px);z-index:50;list-style:none;margin:0;padding:6px;min-width:170px;
@@ -364,9 +365,10 @@ main section.raised + section{border-top-color:transparent}
    2026-10-03: the button stayed left under centered words). */
 .text-center .btns{justify-content:center}
 .pt{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
-/* A photo beside LONG words starts at their top and stays in view while they
-   scroll past, rather than floating in the middle of a tall gap. */
-.pt:has(.pic img){align-items:start}.pt .pic:has(img){position:sticky;top:96px}
+/* A photo beside the words stays where it is, centered on them (Chase,
+   2026-10-12: "they move as the page scrolls and they aren't centered in
+   the section or with the text. We should have it be static and centered").
+   It used to stick to the screen while long words scrolled past. */
 .pt-right .pt .pic{order:2}.pt-above .pt{grid-template-columns:1fr}
 .pic{border-radius:16px;overflow:hidden;position:relative;background:var(--panel)}.pt .pic{aspect-ratio:4/3}
 .pic img{width:100%;height:100%;object-fit:cover}
@@ -431,7 +433,10 @@ main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112p
 .phead.al-center :is(.ph-label,.ph-sub,.h){text-align:center;margin-left:auto;margin-right:auto}
 .phead.al-right :is(.ph-label,.ph-sub,.h){text-align:right;margin-left:auto}
 .ph-label{font:600 13px var(--body);letter-spacing:.18em;color:var(--ink);margin:0 0 14px}
-.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;color:var(--dim);margin:0;max-width:60ch}
+/* the whole width of the page: it breaks where the owner breaks it
+   (Chase, 2026-10-12: "the smaller text below wraps around and I don't
+   want that unless I define it") */
+.ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;color:var(--dim);margin:0;max-width:none}
 .phead:not(:has(.rule)) .ph-sub{margin-top:18px}
 .ph-top::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--acc)}
 .ph-mark{position:absolute;left:max(24px,calc((100% - 1120px) / 2));margin-left:-.055em;top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
@@ -490,6 +495,8 @@ main section:is(.raised,.band) .lpic{background:var(--panel)}
 /* A PAGE'S TABS (2026-10-06): joined (chaseroush.com's Give | Pray), pills,
    or an underline; the chosen one in the accent. */
 main section.ptabs-bar{padding:28px 0 0}
+main section.ptabs-bar.ptabs-inside{padding:64px 0 0}
+main section.after-tabs{padding-top:40px}
 .ptabs{display:flex;flex-wrap:wrap;gap:0}
 .ptabs-bar.al-center .ptabs{justify-content:center}
 .ptabs button{font:600 13px/1 var(--body);letter-spacing:.12em;padding:12px 30px;background:transparent;color:var(--dim);border:1px solid var(--line);cursor:pointer;transition:color .2s,border-color .2s,background .2s}
@@ -559,6 +566,66 @@ main section.cards-open .ccards li{background:none;border:0;border-radius:0;box-
 .lt-big a{padding:24px 26px}.lt-big .lpic{height:160px;margin:-24px -26px 20px}.lt-big b{font-size:20px}
 .linklist.lt-small{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:20px}
 .lt-small a{padding:14px 16px}.lt-small b{font-size:15px}.lt-small span{font-size:13px}
+.vbtns{margin-top:24px}.al-center .vbtns{justify-content:center}.al-right .vbtns{justify-content:flex-end}
+/* The ways to reach you, beside a contact form (chaseroush.com Contact). */
+.reach{list-style:none;margin:28px 0 0;padding:4px 0 4px 18px;border-left:2px solid var(--acc);display:flex;flex-direction:column;gap:12px;text-align:left}
+.reach a{display:inline-flex;align-items:center;gap:14px;color:var(--dim);text-decoration:none;font-size:15px;transition:color .2s}
+.reach a:hover{color:var(--fg)}
+.reach i{width:32px;height:32px;border-radius:50%;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.reach svg{width:15px;height:15px;fill:currentColor}
+.al-center .reach{width:fit-content;margin-left:auto;margin-right:auto}.al-right .reach{width:fit-content;margin-left:auto}
+.reach + .rule{margin-top:36px}
+/* Tiles: a card each, the symbol above the address. Icons: a row of round
+   symbols only, the address their label. */
+.reach.r-tiles{border:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.reach.r-tiles a{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;height:100%;box-sizing:border-box;transition:border-color .2s,color .2s}
+.reach.r-tiles a:hover{border-color:var(--acc)}
+.reach.r-tiles i{background:var(--bg);color:var(--acc)}
+.reach.r-tiles span{overflow-wrap:anywhere}
+.reach.r-icons{border:0;padding:0;flex-direction:row;flex-wrap:wrap;gap:12px}
+.reach.r-icons i{width:46px;height:46px;transition:border-color .2s,color .2s}
+.reach.r-icons a:hover i{border-color:var(--acc);color:var(--acc)}
+.reach.r-icons svg{width:19px;height:19px}
+.reach.r-icons span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.al-center .reach.r-icons{justify-content:center}.al-right .reach.r-icons{justify-content:flex-end}
+.al-center .reach.r-tiles,.al-right .reach.r-tiles{width:auto}
+/* RESOURCE CARDS (links, Cards; chaseroush.com Resources): Large, Wide, Small. */
+.rcards{list-style:none;margin:0 0 28px;padding:0;display:grid;gap:18px;text-align:left}
+.rcards:last-child{margin-bottom:0}
+.rc-g-big,.rc-g-small{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rc-g-small{gap:12px}
+.rc a{position:relative;display:flex;flex-direction:column;height:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--fg);text-decoration:none;overflow:hidden;transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease}
+.rc a:hover,.rc a:focus-visible{transform:translateY(-4px);border-color:var(--acc);box-shadow:0 10px 30px color-mix(in srgb,var(--acc) 16%,transparent);outline:none}
+.rc-pic{display:flex;align-items:center;justify-content:center;background:var(--bg);border-bottom:1px solid var(--line);height:160px;flex:none}
+.rc-pic img{width:100%;height:100%;object-fit:contain;padding:20px;box-sizing:border-box;display:block}
+.rc-body{display:flex;flex-direction:column;gap:6px;padding:20px 22px 24px;min-width:0;overflow-wrap:anywhere}
+.rc-title{font:600 19px/1.3 var(--display);color:var(--fg)}
+.rc-type{font:600 11px/1.4 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--acc)}
+.rc-desc{color:var(--dim);font-size:15px;line-height:1.7;margin-top:4px}
+.rc-note{color:var(--dim);font-size:14.5px;line-height:1.7;font-style:italic;padding-left:12px;border-left:2px solid var(--acc);margin-top:6px}
+.rc-go{position:absolute;right:14px;bottom:12px;width:15px;height:15px;color:var(--dim);transition:color .2s}
+.rc-go svg{width:100%;height:100%;display:block}
+.rc a:hover .rc-go{color:var(--fg)}
+.rc-std a{flex-direction:row;min-height:110px}
+.rc-std .rc-pic{width:110px;height:auto;border-bottom:0;border-right:1px solid var(--line)}
+.rc-std .rc-pic img{padding:12px}
+.rc-std .rc-body{flex:1;padding:18px 48px 18px 22px;justify-content:center}
+.rc-small a{flex-direction:row;align-items:stretch;min-height:76px;border-radius:9px}
+.rc-small .rc-pic{width:72px;height:auto;border-bottom:0;border-right:1px solid var(--line)}
+.rc-small .rc-pic img{padding:8px}
+.rc-small .rc-body{flex:1;padding:12px 40px 12px 14px;gap:2px;justify-content:center}
+.rc-small .rc-title{font-size:15px}.rc-small .rc-type{font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
+.rc-small .rc-note{border:0;padding:0;margin-top:2px;font-size:13px}
+.rc-small .rc-go{top:50%;bottom:auto;transform:translateY(-50%)}
+.rc-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rc-tile .rc-pic{height:auto;aspect-ratio:4/3}
+.rc-tile .rc-pic img{padding:0;object-fit:cover}
+.rc-tile .rc-body{padding-bottom:34px}
+.rc-tile .rc-title{font-size:17px}
+main section:is(.raised,.band) .rc a{background:var(--bg)}main section:is(.raised,.band) .rc-pic{background:var(--panel)}
+@media (max-width:820px){.rc-g-big,.rc-g-small{grid-template-columns:1fr}.rc-std .rc-pic{width:84px}.rc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.rc-tiles{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.rc a{transition:none}.rc a:hover,.rc a:focus-visible{transform:none}}
 .data .lede{margin-bottom:28px}
 .wanted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;
   border:1.5px dashed var(--line);border-radius:inherit;color:var(--dim);font-size:14px;background:color-mix(in srgb,var(--fg) 4%,transparent)}
@@ -606,9 +673,11 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-indent .signcard{margin-left:0}
 /* INDENTED, on any line-up: the words move in from the side they line up on
    — both sides when centered. */
-.indented.al-left>.wrap,.indented.al-left>figure>figcaption,.indented.al-center>.wrap,.indented.al-center>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
+/* A section left at its own default lines up left: Indented applies to it
+   too (2026-10-12 — a section with no alignment class was never indented). */
+.indented:not(.al-right)>.wrap,.indented:not(.al-right)>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
 .indented.al-right>.wrap,.indented.al-right>figure>figcaption,.indented.al-center>.wrap,.indented.al-center>figure>figcaption{padding-right:clamp(20px,9vw,140px)}
-.indented.al-left .signcard{margin-left:0}
+.indented:not(.al-right,.al-center) .signcard{margin-left:0}
 .latest{display:block;max-width:720px;padding:28px 30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--fg);text-decoration:none}
 .latest:hover{border-color:var(--acc)}.latest small{color:var(--dim);font-size:13px}
 .latest b{display:block;font:var(--boldw) clamp(20px,2vw,26px)/1.25 var(--display);margin:6px 0 8px}.latest span{color:var(--dim)}
@@ -677,7 +746,12 @@ html[data-entrance="fade"] .m:not(.in){opacity:0}
 html[data-entrance="rise"] .m:not(.in){opacity:0;transform:translateY(36px)}
 html[data-entrance="slide"] .m:not(.in){opacity:0;transform:translateX(-40px)}
 html[data-entrance="zoom"] .m:not(.in){opacity:0;transform:scale(.94)}
-html[data-photos="zoom"] .kb img{animation:kb 18s ease-in-out infinite alternate}
+/* A frame's own motion, whatever the site's Photos setting says (2026-10-12:
+   a full-width photo set to Slow zoom or Drift did nothing unless the whole
+   site was set the same way). The site's setting decides the frames that
+   have none of their own: the opening and photo-and-words. */
+.kb img{animation:kb 18s ease-in-out infinite alternate}
+.pic[data-drift] img{scale:1.12}
 @keyframes kb{from{transform:scale(1)}to{transform:scale(1.12)}}
 .h .ch{display:inline-block;opacity:0;transform:translateY(.4em);transition:opacity .5s ease,transform .5s cubic-bezier(.16,1,.3,1)}
 .h.in .ch{opacity:1;transform:none}
@@ -841,6 +915,13 @@ function renderSection(sec, ctx) {
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
     `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!(sec.raised || sec.tint))}${extra}></div>`;
 
+  /* A button of the owner's own, each its own color — the Links section's
+     Buttons and a Videos section's (2026-10-07, 2026-10-12). */
+  const ownButton = (it, title) => {
+    const c = it.color || "accent", own = /^#[0-9a-f]{6}$/i.test(c);
+    const style = own ? ` style="background:${c};border-color:${c};color:${onColor(c)}"` : "";
+    return `<a class="btn${c === "outline" ? "" : " solid"} lb-${own ? "own" : c}" href="${esc(it.href)}"${rel(it.href)}${style}>${title}</a>`;
+  };
   switch (sec.type) {
     case "hero": {
       const builtIn = (sec.buttons || []).map((b, i) => {
@@ -881,7 +962,7 @@ function renderSection(sec, ctx) {
       const words = `${w("kicker") ? `<p class="kicker m">${esc(w("kicker"))}</p>` : ""}${heading(w("heading"), "h1")}${line}` +
         `${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${btns ? `<div class="btns m">${btns}</div>` : ""}`;
       if (sec.variant === "beside") {
-        return `<section class="hero hero-beside al-${sec.align || "left"}${ground}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}">${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
+        return `<section class="hero hero-beside al-${sec.align || "left"}${ground}"><div class="wrap"><div>${words}</div>${sec.photo ? `<div class="pic m ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div>` : ctx.draft ? `<div class="pic m">${wanted()}</div>` : ""}</div>${cue}</section>`;
       }
       if (sec.variant === "words") return `<section class="hero hero-words al-${sec.align || "center"}${ground}"><div class="wrap">${words}</div>${cue}</section>`;
       return `<section class="hero hero-behind al-${sec.align || "left"}${ground}${sec.photo ? " has-photo" : ""}"><div class="hero-media ${photoMotion === "zoom" ? "kb" : ""}"${photoMotion === "drift" ? " data-drift" : ""}>${edited(sec.photo, sec.photoEdit)}</div><div class="wrap">${words}</div>${cue}</section>`;
@@ -911,7 +992,7 @@ function renderSection(sec, ctx) {
     case "photoText": {
       if (!sec.photo && !w("text") && !ctx.draft) return "";
       const pic = sec.photo ? edited(sec.photo, sec.photoEdit, plainOf(raw("heading"))) : wanted();
-      const frame = sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}">${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : "";
+      const frame = sec.photo || ctx.draft ? `<div class="pic m ${photoMotion === "zoom" && sec.photo ? "kb" : ""}"${photoMotion === "drift" && sec.photo ? " data-drift" : ""}>${sec.photo && sec.photoLink ? pictured(pic, btnWords) : pic}</div>` : "";
       /* WRAPPED (chaseroush.com's About): the photo floats and the words
          flow around it; on a phone it sits above them, full width. */
       /* The title WITH the words (beside the photo, chaseroush.com's About)
@@ -956,7 +1037,15 @@ function renderSection(sec, ctx) {
            in UTC here, then re-read in the browser's time zone. */
         head = `${when ? `<p class="kicker m"><time datetime="${esc(v.published_at)}" data-local>${esc(when)}</time></p>` : ""}<h2 class="h m">${esc(v.title)}</h2>`;
       }
-      return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", extra)}</div></section>`;
+      /* ITS OWN BUTTONS (2026-10-12, Chase: "how can we make formatting the
+         buttons and appearance easier?"): set in the Site Creator, in every
+         language, each its own color, drawn by the site like every other
+         button — in place of the rail set on Updates › Videos, which shows
+         only when the section has none. */
+      const vt = (it) => (it.words[lang] && it.words[lang].title) || (it.words[fallback] && it.words[fallback].title) || "";
+      const own = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href && vt(it));
+      const ownRow = own.length ? `<div class="btns linkbtns vbtns m">${own.map((it) => ownButton(it, inline(rich(vt(it)).replace(/<\/?a\b[^>]*>/g, "")))).join("")}</div>` : "";
+      return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", own.length ? ' data-links="none"' : extra)}${ownRow}</div></section>`;
     }
     case "newsletters": {
       const count = sec.count >= 3 && sec.count <= 12 ? sec.count : 5;
@@ -998,19 +1087,37 @@ function renderSection(sec, ctx) {
         return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox openform"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(true, !!(sec.raised || sec.tint), true)}></div></div></div></section>`;
       }
       return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card signcard">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="m${sec.variant === "card" ? " signform" : ""}" style="flex:1 1 360px;max-width:${sec.variant === "card" ? "100%" : "460px"}"><div data-thauma-form data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "card", !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
-    case "contact":
+    case "contact": {
       ctx.needs.contact = true;
+      /* THE WAYS TO REACH YOU (2026-10-12, chaseroush.com's Contact): a
+         column of the site's email and social links, each a round symbol
+         and the address or handle, on a line of the site's color, and a way
+         to give. Chosen per section (reachLinks, reachGive). */
+      const handle = (k) => {
+        if (k.kind === "email") return k.url.replace(/^mailto:/, "");
+        const seg = (() => { try { return new URL(k.url).pathname.split("/").filter(Boolean).pop() || ""; } catch { return ""; } })();
+        if (/^@/.test(seg)) return seg;
+        return ["instagram", "x", "tiktok"].includes(k.kind) && seg ? "@" + seg : SOCIAL_NAME[k.kind] || k.kind;
+      };
+      const HEART = '<path d="M12 20.3S3.6 15.3 3.6 9.6a4.3 4.3 0 0 1 8.4-1.3 4.3 4.3 0 0 1 8.4 1.3c0 5.7-8.4 10.7-8.4 10.7z"/>';
+      const reachItems = [
+        ...(sec.reachLinks ? ctx.links.filter((k) => k.kind !== "custom" && ICON[k.kind]).map((k) =>
+          `<li><a href="${esc(ctx.socialHref(k))}"${k.kind === "email" ? "" : ' target="_blank" rel="noopener"'}><i><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></i><span>${esc(handle(k))}</span></a></li>`) : []),
+        ...(sec.reachGive && ctx.giveUrl ? [`<li><a href="${esc(ctx.giveUrl)}"><i><svg viewBox="0 0 24 24" aria-hidden="true">${HEART}</svg></i><span>${esc(word(lang, "supportMission"))}</span></a></li>`] : []),
+      ];
+      const reach = reachItems.length ? `<ul class="reach r-${esc(sec.reachStyle || "line")} m">${reachItems.join("")}</ul>` : "";
       /* "The card is really skinny on a desktop" (Chase, 2026-10-03): Side
          by side gives the form most of the width, as chaseroush.com does;
          Wide widens the card; Open drops the card. Form stays the original. */
       if (sec.variant === "split") {
-        return `<section${cls("fsplit csplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}<span class="rule m" aria-hidden="true"></span></div>` +
+        return `<section${cls("fsplit csplit")}><div class="wrap"><div class="split"><div>${heading(w("heading"))}${sub}${reach}<span class="rule m" aria-hidden="true"></span></div>` +
           `<div class="m"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></div></section>`;
       }
       if (sec.variant === "wide" || sec.variant === "open") {
-        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!(sec.raised || sec.tint), sec.variant === "open")}></div></div></div></section>`;
+        return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}${reach}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!(sec.raised || sec.tint), sec.variant === "open")}></div></div></div></section>`;
       }
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${reach}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></section>`;
+    }
     case "give": {
       if (!ctx.giveUrl) return "";
       const giveBtn = (big) => `<a class="btn solid${big ? " big" : ""}" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a>`;
@@ -1040,27 +1147,54 @@ function renderSection(sec, ctx) {
       const dir = sec.variant === "open" ? "open" : sec.variant === "detached" || sec.variant === "horizontal" ? "horizontal" : "vertical";
       const lines = typeof sec.lines === "boolean" ? sec.lines : dir === "vertical";
       return `<section${cls("cards-" + dir, lines ? "cards-lines" : "")}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
-        `<li>${num ? `<span class="cnum" aria-hidden="true">${i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${esc(t(it, "title"))}</h3>` : ""}${t(it, "text") ? `<p>${inline(esc(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
+        `<li>${num ? `<span class="cnum" aria-hidden="true">${i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${inline(rich(t(it, "title")))}</h3>` : ""}${t(it, "text") ? `<p>${inline(rich(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
     }
     case "links": {
       const items = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href);
       if (!items.length) return "";
       const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
+      /* A link's words are inside the link: formatted, but no link of their own. */
+      const lw = (it, f) => inline(rich(t(it, f)).replace(/<\/?a\b[^>]*>/g, ""));
       /* Large first, then the section's own style, then Small; each keeps
          the owner's order. Small cards carry no picture. */
-      const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
-        `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${esc(t(it, "title") || it.href)}</b>${t(it, "text") ? `<span>${esc(t(it, "text"))}</span>` : ""}</a></li>`;
+      const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${sec.showKind !== false && t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
+        `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>${sec.showDesc !== false && t(it, "text") ? `<span>${lw(it, "text")}</span>` : ""}</a></li>`;
       /* BUTTONS (2026-10-07, Chase: "The list section should also include a
          buttons layout with different coloring options for each individual
          button"): a row of the site's buttons, each its own color — the
          accent, the second color, an outline, or any color picked. */
       if (sec.variant === "buttons") {
-        const b = (it) => {
-          const c = it.color || "accent", own = /^#[0-9a-f]{6}$/i.test(c);
-          const style = own ? ` style="background:${c};border-color:${c};color:${onColor(c)}"` : "";
-          return `<a class="btn${c === "outline" ? "" : " solid"} lb-${own ? "own" : c}" href="${esc(it.href)}"${rel(it.href)}${style}>${esc(t(it, "title") || it.href)}</a>`;
-        };
+        const b = (it) => ownButton(it, t(it, "title") ? lw(it, "title") : esc(it.href));
         return `<section${cls("links-buttons")}><div class="wrap">${heading(w("heading"))}${sub}<div class="btns linkbtns m">${items.map(b).join("")}</div></div></section>`;
+      }
+      /* RESOURCE CARDS (2026-10-12, Chase: "work like CR site's Resources
+         page"): Large two to a row with the picture above; Wide across the
+         page with the picture beside; Small two to a row with a little one.
+         Each: the title, a colored label (what it is · who made it), a few
+         words, the owner's own note set apart, and an arrow out. The whole
+         card is the link. A card with no picture has no empty frame. */
+      if (sec.variant === "cards" || sec.variant === "tiles") {
+        const OUT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 3H3v10h10V9M9.5 3H13v3.5M13 3 7.5 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        const rc = (it, tier) => {
+          const kind = sec.showKind === false ? "" : [t(it, "type"), t(it, "by")].filter(Boolean).map(esc).join(" · ");
+          return `<li class="rc rc-${tier}"><a href="${esc(it.href)}"${rel(it.href)}>` +
+            (it.photo ? `<span class="rc-pic">${img(it.photo)}</span>` : "") +
+            `<span class="rc-body"><b class="rc-title">${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>` +
+            (kind ? `<span class="rc-type">${kind}</span>` : "") +
+            (sec.showDesc !== false && tier !== "small" && t(it, "text") ? `<span class="rc-desc">${lw(it, "text")}</span>` : "") +
+            (sec.showNote !== false && t(it, "note") ? `<span class="rc-note">${lw(it, "note")}</span>` : "") +
+            `</span><span class="rc-go">${OUT}</span></a></li>`;
+        };
+        const set = (tier) => {
+          const g = items.filter((it) => (it.tier || "std") === tier);
+          return g.length ? `<ul class="rcards rc-g-${tier} m">${g.map((it) => rc(it, tier)).join("")}</ul>` : "";
+        };
+        /* TILES (2026-10-13): every resource the same size, the picture
+           above, three to a row — a shelf rather than a list. */
+        if (sec.variant === "tiles") {
+          return `<section${cls("links-tiles")}><div class="wrap">${heading(w("heading"))}${sub}<ul class="rcards rc-tiles m">${items.map((it) => rc(it, "tile")).join("")}</ul></div></section>`;
+        }
+        return `<section${cls("links-cards")}><div class="wrap">${heading(w("heading"))}${sub}${set("big")}${set("std")}${set("small")}</div></section>`;
       }
       const group = (tier, cls2, pic) => {
         const g = items.filter((it) => (it.tier || "std") === tier);
@@ -1101,8 +1235,25 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   };
   /* A preview stays a preview as it is clicked through. */
   const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
+  /* CLEAN LINKS (Chase, 2026-10-12: "make sure all links on the site creator
+     are clean links … the Give section button isn't clean"): the giving link
+     is written as <site>/Give, a channel as <site>/YouTube, an own link as
+     <site>/<its name> — the short addresses serve.js already redirects
+     (cleanLinkTarget). Only when that address really leads to the same
+     place, so a clean link can never be a broken one; otherwise the address
+     itself. Email stays a mailto, which a redirect would not open. */
+  const outgoing = new Set();     // clean links that leave the site: a new tab, as their addresses would
+  const cleanHref = (target, name) => {
+    if (!target || !name || /^mailto:/.test(target)) return target;
+    const slug = String(name).trim().replace(/\s+/g, "-");
+    const got = cleanLinkTarget(doc, [slug], { base, q: draft ? "?draft" : "", giving: doc.give || site.giving_url || "" });
+    if (got !== target) return target;
+    const clean = `${base}/${encodeURI(slug)}${draft ? "?draft" : ""}`;
+    if (/^https?:/.test(target)) outgoing.add(clean);
+    return clean;
+  };
   const ctx = {
-    lang, fallback, design, slug: site.slug, payload, needs: {}, draft, pageId,
+    lang, fallback, design, slug: site.slug, payload, needs: {}, draft, pageId, links: doc.links || [],
     /* This page's own say over the opening's scroll indicator. */
     cueOn: !page || page.cue !== false,
     /* Widgets follow the page: light, dark, or — a Custom site that follows
@@ -1147,7 +1298,8 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
           ` data-look="${esc(JSON.stringify(both))}"`;
       };
     })(),
-    giveUrl: doc.give || site.giving_url || "",
+    giveUrl: cleanHref(doc.give || site.giving_url || "", "Give"),
+    socialHref: (k) => cleanHref(k.url, SOCIAL_NAME[k.kind]),
     pageOn: (id) => pages.some((p) => p.id === id),
     href, label, name: site.display_name || "",
     linkHref: (link) => {
@@ -1179,7 +1331,11 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       while (k > 0 && list[k].join) k--;
       const top = list[k];
       const hb = top.type === "header" && top.bg === "accent";
-      s = { ...s0, raised: !hb && !!top.raised, tint: !hb && !!top.tint };
+      /* the background of the section it is merged with, and its indent
+         (2026-10-12, Chase: "the indention option [doesn't] always populate
+         down to the merged section") */
+      s = { ...s0, raised: !hb && !!top.raised, tint: !hb && !!top.tint,
+            indent: !!(s0.indent || top.indent || top.align === "indent") };
     }
     let html = renderSection(s, ctx);
     /* the title's words held together between its side bars */
@@ -1198,11 +1354,18 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const tabName = (t, i) => (t.label && (t.label[lang] || t.label[fallback])) || word(lang, "tabFill") + " " + (i + 1);
   const tabsAt = tabs && Number.isInteger(tabs.at) ? Math.min(tabs.at, page.sections.length) : page.sections.length;
   const after = tabs && tabsAt < page.sections.length ? "\n" + drawn(page.sections.slice(tabsAt)) : "";
+  /* INSIDE THE SECTION (tabs.place, 2026-10-12, chaseroush.com's Give): the
+     bar wears the tab's first section's background, with room above it, and
+     that section starts close under it — one section with tabs in it rather
+     than a band on its own. */
+  const inside = tabs && tabs.place === "inside";
+  const ground = (x) => (x ? [x.raised ? "raised" : "", x.tint ? "band" : ""].filter(Boolean).join(" ") : "");
+  const afterTabs = (html) => inside ? html.replace(/<section(?: class="([^"]*)")?/, (m0, c) => `<section class="${c ? c + " " : ""}after-tabs"`) : html;
   const body = drawn(page.sections.slice(0, tabsAt)) + (!tabs ? "" : tabs.items.length === 1 ? "\n" + drawn(tabs.items[0].sections) :
-    `\n<section class="ptabs-bar ptabs-${esc(tabs.style)} al-${tabs.align === "left" ? "left" : "center"}"><div class="wrap"><div class="ptabs" role="tablist">` +
+    `\n<section class="ptabs-bar ptabs-${esc(tabs.style)} al-${tabs.align === "left" ? "left" : "center"}${inside ? " ptabs-inside " + ground(tabs.items[0].sections[0]) : ""}"><div class="wrap"><div class="ptabs" role="tablist">` +
     tabs.items.map((t, i) => `<button type="button" role="tab" id="tb-${esc(t.id)}" aria-controls="t-${esc(t.id)}" aria-selected="${i === 0}" data-tab="${esc(t.id)}">${esc(tabName(t, i))}</button>`).join("") +
     `</div></div></section>\n` +
-    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${drawn(t.sections)}</div>`).join("\n")) + after;
+    tabs.items.map((t, i) => `<div class="ptab" id="t-${esc(t.id)}" role="tabpanel" aria-labelledby="tb-${esc(t.id)}"${i ? " hidden" : ""}>${afterTabs(drawn(t.sections))}</div>`).join("\n")) + after;
   const name = String(site.display_name || "").trim();
   const parts = name.split(/\s+/);
   const brand = design.brand === "logo" && design.logo
@@ -1216,17 +1379,18 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const giveOut = design.giveTo === "link" && doc.give;
   const nav = pages.filter((p) => !(giveOut && p.id === "give")).map((p) =>
     `<a href="${esc(href(p.id))}"${p.id === pageId ? ' aria-current="page"' : ""}>${esc(label(p.id))}</a>`).join("");
-  const give = giveOut ? `<a class="givebtn" href="${esc(doc.give)}" target="_blank" rel="noopener">${esc(label("give"))}</a>` : "";
+  const give = giveOut ? `<a class="givebtn" href="${esc(ctx.giveUrl)}" target="_blank" rel="noopener">${esc(label("give"))}</a>` : "";
   /* THE LANGUAGE MENU IS ALWAYS A DROPDOWN (Chase, 2026-09-29: "Language
      selection should maintain the dropdown menu regardless"): the current
-     language's code, opening to every language by its own name — and, open,
-     the button says the name too; closed again, the code rolls back in
-     (MOTION_JS; Chase, 2026-10-08). Outside the
+     language's code — one width whatever the code, so the bar never moves —
+     opening to every language by its own name. Choosing one keeps the place
+     on the page and rolls the old code out and the new one in (MOTION_JS;
+     Chase, 2026-10-12). Outside the
      page menu, so it stays on screen on a phone. <details>, so it opens
      without a script; the script only closes it on a click elsewhere. */
   const langMenu = (up) => doc.languages.length > 1
     ? `<details class="langmenu${up ? " up" : ""}"><summary aria-label="${esc(word(lang, "lang"))}">` +
-      `<span data-name="${esc(langNames[lang] || lang.toUpperCase())}">${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
+      `<span class="lc">${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
       `<ul>${doc.languages.map((l) =>
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
@@ -1238,12 +1402,13 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
   const socialIcons = doc.links.filter((k) => k.kind !== "custom").map((k) =>
-    `<a href="${esc(k.url)}" aria-label="${esc(SOCIAL_NAME[k.kind])}" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></a>`).join("");
+    `<a href="${esc(ctx.socialHref(k))}" aria-label="${esc(SOCIAL_NAME[k.kind])}" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></a>`).join("");
   /* The owner's own links may point at a page of the site, as a section's can. */
   /* SMART ORDER: a page of the site first, then the web; a web address shown
      as its site's icon joins the social icons. The icon comes through
      Thauma (embed/v1/icon), so a visitor never calls a third party. */
-  const own = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k, href: ctx.linkHref(k.url) })).filter((k) => k.href);
+  const own = doc.links.filter((k) => k.kind === "custom").map((k) => ({ ...k,
+    href: /^https?:/.test(k.url) ? cleanHref(k.url, (k.label && (k.label[lang] || k.label[fallback])) || "") : ctx.linkHref(k.url) })).filter((k) => k.href);
   const nameOf = (k) => k.label[lang] || k.label[fallback] || (k.url.startsWith("page:") ? label(k.url.slice(5)) : k.href);
   const ordered = [...own.filter((k) => k.url.startsWith("page:")), ...own.filter((k) => !k.url.startsWith("page:"))];
   /* AS ICONS, in the social icons' own style (2026-10-07, Chase: "read the
@@ -1259,7 +1424,8 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     return ((ws.length > 1 ? ws[0][0] + ws[1][0] : (ws[0] || "?").slice(0, 2)) || "?").toUpperCase();
   };
   const iconOf = (k) => {
-    let host = ""; try { if (/^https?:/.test(k.href)) host = new URL(k.href).hostname; } catch { /* not a web address */ }
+    /* the icon of where it really goes, not of its clean address */
+    let host = ""; try { if (/^https?:/.test(k.url)) host = new URL(k.url).hostname; } catch { /* not a web address */ }
     const lt = `<span class="lt" aria-hidden="true">${esc(initials(nameOf(k)))}</span>`;
     /* the owner's own picture first, then the site's icon, then initials */
     const src = k.iconImg ? k.iconImg : host ? `${origin}/embed/v1/icon?d=${encodeURIComponent(host)}` : "";
@@ -1274,7 +1440,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const socials = socialIcons + (asWordsF ? "" : inl.map(iconOf).join(""));
   const custom = (asWordsF ? inl.map(wordOf).join("") : "") + apart.filter((k) => k.show !== "icon").map(wordOf).join("");
   const ownIcons = apart.filter((k) => k.show === "icon").map(iconOf).join("");
-  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons });
+  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons, socialHref: ctx.socialHref });
 
   const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const seo = thePage.seo || {};
@@ -1377,10 +1543,10 @@ ${foot}`}
 ${widgets ? `<script>window.__thaumaPreview=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script><script src="${esc(origin)}/embed/v1/widget.js" async></script>` : ""}
 ${ctx.needs.signup ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/form.js" defer></script>` : ""}
 ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/contact.js" defer></script>` : ""}
-<script>${MOTION_JS}</script>
+<script>${MOTION_JS}</script>${draft || !site.subdomain ? "" : `<script>(${HIT_JS})(${JSON.stringify(String(site.subdomain))})</script>`}
 </body>
 </html>`;
-  return newTabs(out);
+  return newTabs(out, outgoing);
 }
 
 /* EVERY LINK THAT LEAVES THE SITE OPENS A NEW TAB (Chase, 2026-10-01:
@@ -1389,16 +1555,18 @@ ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/co
    words. The site's own pages are relative ("/en/about/") and stay in the
    tab; mailto opens the mail program. Done once over the finished page, so
    a link added to any section later is covered without remembering to. */
-export function newTabs(html) {
-  return html.replace(/<a href="(https?:\/\/[^"]*)"(?![^>]*\btarget=)([^>]*)>/g, (m, href, rest) =>
-    `<a href="${href}" target="_blank"${/\brel=/.test(rest) ? "" : ' rel="noopener"'}${rest}>`);
+export function newTabs(html, outgoing = new Set()) {
+  return html.replace(/<a\b([^>]*?)\shref="([^"]*)"([^>]*)>/g, (m, pre, href, rest) => {
+    if (/\btarget=/.test(pre + rest) || !(/^https?:\/\//.test(href) || outgoing.has(href))) return m;
+    return `<a${pre} href="${href}" target="_blank"${/\brel=/.test(pre + rest) ? "" : ' rel="noopener"'}${rest}>`;
+  });
 }
 
 /**
  * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
  * credit line is in every one of them.
  */
-function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "" }) {
+function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "", socialHref = (k) => k.url }) {
   const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
   const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
   const tagline = fw("tagline") ? `<p class="tagline tagline-${esc(F.tagline || "plain")}">${esc(fw("tagline"))}</p>` : "";
@@ -1408,7 +1576,7 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
   /* Socials as names ("YouTube") sit in one line with the owner's own links,
      as chaseroush.com's do; as icons they are a row of their own. */
   const socialWords = doc.links.filter((k) => k.kind !== "custom").map((k) =>
-    `<a href="${esc(k.url)}" rel="noopener">${esc(SOCIAL_NAME[k.kind])}</a>`).join("");
+    `<a href="${esc(socialHref(k))}" rel="noopener">${esc(SOCIAL_NAME[k.kind])}</a>`).join("");
   const asWords = F.socials === "words";
   const linkRow = (asWords ? socialWords : "") + custom;
   const words = (linkRow ? `<span class="words">${linkRow}</span>` : "") + (ownIcons ? `<span class="socials owns">${ownIcons}</span>` : "");
@@ -1435,12 +1603,18 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
 
 /* The motion script: menu, entrances, headings, drift, progress. Small, no
    dependencies, and it does nothing at all for reduced motion. */
+/* A VISIT, COUNTED WITHOUT KNOWING WHO (0059, analytics.js): the page
+   says it was seen, once it has loaded, unless the browser asked not to be
+   tracked. A random id per tab, forgotten when the tab closes; no cookie.
+   Never in the Site Creator's preview. */
+const HIT_JS = `function(x){try{var n=navigator;if(n.doNotTrack==="1"||window.doNotTrack==="1"||n.globalPrivacyControl||n.webdriver)return;var s;try{s=sessionStorage.getItem("th-v")}catch(e){}if(!s){s=Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(12)),function(b){return("0"+b.toString(16)).slice(-2)}).join("");try{sessionStorage.setItem("th-v",s)}catch(e){}}var go=function(){var b=JSON.stringify({p:location.pathname,r:document.referrer,l:(document.documentElement.lang||"").slice(0,2),s:s,w:window.innerWidth,x:x});if(n.sendBeacon)n.sendBeacon("/api/hit",b);else fetch("/api/hit",{method:"POST",body:b,keepalive:true})};if(document.readyState==="complete")setTimeout(go,0);else addEventListener("load",function(){setTimeout(go,0)})}catch(e){}}`;
+
 const MOTION_JS = `(function(){
 var d=document.documentElement,b=document.querySelector('.menubtn');
 [].forEach.call(document.querySelectorAll('time[data-local]'),function(t){try{var x=new Date(t.dateTime);if(!isNaN(x))t.textContent=x.toLocaleDateString(d.lang,{day:'numeric',month:'long',year:'numeric'})}catch(e){}});
 if(b)b.addEventListener('click',function(){var o=d.classList.toggle('menu-open');b.setAttribute('aria-expanded',o)});
 var settled=/[?&]settled(&|$)/.test(location.search);if(settled)d.classList.add('settled');
-var still=settled||window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches,still=settled||calm;
 var hs=d.getAttribute('data-headings');
 if(!still&&hs!=='plain'){[].forEach.call(document.querySelectorAll('.h'),function(h){
  var n=0;[].forEach.call(h.childNodes,function(c){var el=c.nodeType===3?null:c;var t=c.textContent;var parts=hs==='words'?t.split(/(\\s+)/):t.split('');
@@ -1450,22 +1624,27 @@ if(!still&&hs!=='plain'){[].forEach.call(document.querySelectorAll('.h'),functio
  h.classList.remove('m')})}
 var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'}):null;
 [].forEach.call(document.querySelectorAll('.m,.h'),function(el){if(io)io.observe(el);else el.classList.add('in')});
-var drift=!still&&d.getAttribute('data-photos')==='drift'?[].slice.call(document.querySelectorAll('[data-drift] img')):[];
+var drift=!calm?[].slice.call(document.querySelectorAll('[data-drift] img')):[];
 var bar=document.querySelector('.progress'),tick=false;
 var near=window.matchMedia&&matchMedia('(hover: none)').matches?[].slice.call(document.querySelectorAll('.ccards li')):[];
 function frame(){tick=false;var vh=innerHeight;
  drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
- if(bar&&!still){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}
+ if(bar&&!calm){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}
  if(near.length){var best=null,bd=1e9;near.forEach(function(c){var r=c.getBoundingClientRect();if(r.top<0||r.bottom>vh)return;var dd=Math.abs(r.top+r.height/2-vh/2);if(dd<bd){bd=dd;best=c}});near.forEach(function(c){c.classList.toggle('is-near',c===best)})}}
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
-[].forEach.call(document.querySelectorAll('details.langmenu'),function(m){var s=m.querySelector('summary span[data-name]');if(!s)return;var code=s.textContent,name=s.getAttribute('data-name');
- m.addEventListener('toggle',function(){if(m.open){s.textContent=name;return}if(still){s.textContent=code;return}
-  var h=s.getBoundingClientRect().height||16,ins=[];s.textContent='';
-  for(var i=0;i<code.length;i++){var b=document.createElement('span'),n=document.createElement('span');b.style.cssText='display:inline-block;overflow:hidden;vertical-align:top;height:'+h+'px';n.style.cssText='display:block;height:'+h+'px;line-height:'+h+'px;transform:translateY(-'+h+'px)';n.textContent=code[i];b.appendChild(n);s.appendChild(b);ins.push(n)}
-  s.getBoundingClientRect();requestAnimationFrame(function(){ins.forEach(function(n,i){n.style.transition='transform .7s cubic-bezier(.55,.05,.45,.95) '+(i*40)+'ms';n.style.transform='none'})});
-  setTimeout(function(){if(!m.open)s.textContent=code},760+code.length*40)})});
+var LS='site.langSwitch',secs=function(){return [].slice.call(document.querySelectorAll('main > section, main section'))};
+[].forEach.call(document.querySelectorAll('.langmenu a[hreflang],.navlang a[hreflang]'),function(a){a.addEventListener('click',function(){var all=secs(),at=-1,off=0;for(var i=0;i<all.length;i++){var r=all[i].getBoundingClientRect();if(r.bottom>80){at=i;off=Math.round(-r.top);break}}
+ try{sessionStorage.setItem(LS,JSON.stringify({from:(d.lang||'').toUpperCase(),to:a.pathname,idx:scrollY>0?at:-1,off:off,t:Date.now()}))}catch(e){}})});
+(function(){var raw=null;try{raw=sessionStorage.getItem(LS);sessionStorage.removeItem(LS)}catch(e){}if(!raw)return;var s;try{s=JSON.parse(raw)}catch(e){return}if(!s||Date.now()-s.t>20000||s.to!==location.pathname)return;
+ var el=s.idx>=0&&secs()[s.idx];if(el){var was=d.style.scrollBehavior;d.style.scrollBehavior='auto';scrollTo(0,Math.max(0,el.getBoundingClientRect().top+scrollY+s.off));d.style.scrollBehavior=was}
+ var lc=document.querySelector('details.langmenu summary .lc');if(!lc||still||!s.from||s.from===lc.textContent)return;
+ var code=lc.textContent,h=lc.getBoundingClientRect().height||16,ins=[];lc.textContent='';
+ for(var i=0;i<code.length;i++){var b=document.createElement('span'),n=document.createElement('span');b.style.cssText='display:inline-block;overflow:hidden;vertical-align:top;height:'+h+'px';n.style.cssText='display:block;transform:translateY(-'+h+'px)';
+  [code[i],s.from[i]||' '].forEach(function(c){var l=document.createElement('span');l.style.cssText='display:block;height:'+h+'px;line-height:'+h+'px';l.textContent=c;n.appendChild(l)});b.appendChild(n);lc.appendChild(b);ins.push(n)}
+ setTimeout(function(){ins.forEach(function(n,i){n.style.transition='transform .7s cubic-bezier(.55,.05,.45,.95) '+(i*40)+'ms';n.style.transform='none'})},350);
+ setTimeout(function(){lc.textContent=code},1160+code.length*40)})();
 [].forEach.call(document.querySelectorAll('.ptabs'),function(bar){var bs=[].slice.call(bar.querySelectorAll('[data-tab]'));
  function show(id,keep){bs.forEach(function(b){var on=b.getAttribute('data-tab')===id;b.setAttribute('aria-selected',on);var p=document.getElementById('t-'+b.getAttribute('data-tab'));if(p)p.hidden=!on});
   if(!keep)try{history.replaceState(null,'','#'+id)}catch(e){}frame()}

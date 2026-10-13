@@ -476,5 +476,30 @@ check("variables typed as {{first_name}} and {{full_name}} are filled like the e
   eq(NL.fillVariables('<p>Hi <span data-var="first_name">{{first_name}}</span>!</p>', "Ana"), "<p>Hi Ana!</p>", "the editor's own");
 });
 
+check("{{signature}}: the sender's signature, inline, wherever it sits (0055)", () => {
+  const sig = '<p><strong>Ana</strong> Marić</p><p><a href="https://x.org">x.org</a></p><h2>big</h2><img src="https://x/a.jpg">';
+  eq(NL.signatureHtml(sig), '<strong>Ana</strong> Marić<br><a href="https://x.org">x.org</a><br>big<img src="https://x/a.jpg" alt="" data-sig-w="160">',
+    "paragraphs become line breaks, headings go, a picture stays small (0057)");
+  const kept = sanitise('<p>Love,<br><span data-var="signature">{{signature}}</span></p>');
+  assert(kept.includes('data-var="signature"'), "the sanitiser kept the variable: " + kept);
+  eq(NL.fillVariables(kept, "Ivo", "<p>Ana</p>"), "<p>Love,<br>Ana</p>", "the editor's variable");
+  eq(NL.fillVariables("<p>Bye {{signature}}</p>", null, "<em>Ana</em>"), "<p>Bye <em>Ana</em></p>", "as typed");
+  eq(NL.fillVariables("<p>Bye {{signature}}</p>", null, ""), "<p>Bye</p>", "no signature: gone, with its space");
+  eq(NL.fillVariables("<p>{{signature}}</p>", "Ivo Ivić", "{{signature}} for {{first_name}}"), "<p>for Ivo</p>",
+    "never itself; its own variables filled");
+  assert(render(kept, { subject: "x", signatures: "<em>Ana</em>" }).includes(">Ana</em>"), "render passes it");
+});
+
+check("several signatures: the variable names which, none takes the first; a picture is small and to the left (0057)", () => {
+  const sigs = [{ id: "sig_aaaaaaaaaaaaaaaa", html: "<p>Thauma</p>" },
+                { id: "sig_bbbbbbbbbbbbbbbb", html: '<p>Chase</p><p><img src="/media/newsletter/thauma/s.webp" data-w="25"></p>' }];
+  const kept = sanitise('<p><span data-var="signature" data-sig="sig_bbbbbbbbbbbbbbbb" data-sig-name="Chase">x</span></p><p><span data-var="signature" data-sig="evil">y</span></p>');
+  assert(kept.includes('data-sig="sig_bbbbbbbbbbbbbbbb"') && !kept.includes('data-sig="evil"'), "data-sig is checked: " + kept);
+  const out = NL.fillVariables(kept, null, sigs);
+  assert(/<p>Chase<br><img src="\/media\/newsletter\/thauma\/s\.webp" alt="" data-sig-w="132"><\/p><p>Thauma<\/p>/.test(out), "chosen, then the first: " + out);
+  const html = render(kept, { subject: "x", signatures: sigs });
+  assert(/<img src="[^"]*s\.webp"[^>]*width="132" style="width:132px;[^"]*display:block[^"]*margin:8px 0"/.test(html), "a small picture, left: " + (html.match(/<img[^>]*s\.webp[^>]*>/) || [""])[0]);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

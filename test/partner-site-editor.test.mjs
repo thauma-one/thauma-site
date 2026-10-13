@@ -432,14 +432,16 @@ await check("a Links section: plain rows, one opened at a time", async () => {
   const before = d.querySelectorAll(".ws-linkrow").length;
   assert(before === 2, "two sample links to begin with");
   click(d.querySelector("[data-item-add]"));
-  const title = d.querySelector('[data-item$=":title"]');
+  /* its name is a formatted box, like every other (2026-10-12) */
+  const title = d.querySelector('[data-rt^="item:"][data-rt$=":title"]');
   assert(title, "the new link opens, ready for its name");
-  title.value = "The book";
+  title.innerHTML = "The <b>book</b>";
   title.dispatchEvent(new w.Event("input", { bubbles: true }));
+  assert(d.querySelector('[data-rt^="item:"][data-rt$=":note"]') && d.querySelector('[data-item$=":by"]'), "a resource card has no note or maker");
   click(d.querySelector('[data-chip="linkkind:item:0:2"][data-value="page"]'));
   await settle(900);
   const it = sent.filter((x) => x.action === "save").pop().draft.pages.find((p) => p.id === "resources").sections[0].items[2];
-  eq([it.words.en.title, it.url.startsWith("page:")], ["The book", true], "saved, pointing at a page");
+  eq([it.words.en.title, it.url.startsWith("page:")], ["The <b>book</b>", true], "saved, formatted, pointing at a page");
 });
 
 await check("a change marks its tab, its page and its section, and the tab keeps its dot on another tab", async () => {

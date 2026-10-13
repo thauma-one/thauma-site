@@ -22,7 +22,8 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, withActing } from "./lib/actas.js";
 import { json, readJson } from "./lib/store.js";
-import { sanitise, render, toText, plainLine, tooBig, sizeOf, fillVariables } from "./lib/newsletter.js";
+import { sanitise, render, toText, plainLine, tooBig, sizeOf, fillVariables, signatureHtml } from "./lib/newsletter.js";
+import { signaturesOf, ownerOf } from "./lib/mail-signature.js";
 import { unsubscribeUrl } from "./lib/unsub.js";
 import { sendMail, listConfirmEmail, testInboxEmail } from "./lib/mail.js";
 import { linkParams } from "./lib/signed-link.js";
@@ -266,8 +267,10 @@ async function buildMailing(db, env, { mailing, list, origin }) {
   const brand = await brandForMail(db, mailing.partner_id || list.partner_id || null);
   const layout = await layoutOf(db, mailing.id, mailing.partner_id || null);
   const mode = await modeOf(db, mailing.id, mailing.partner_id || null);
+  /* the sender's signatures (0057), for {{signature}}; measured with the rest */
+  const signatures = await signaturesOf(db, mailing.partner_id || list.partner_id || null);
   const sample = render(html, {
-    ...brandOpts(brand), layout, mode,
+    ...brandOpts(brand), layout, mode, signatures,
     subject, preheader, fromName: list.from_name, listName: list.name,
     unsubscribeUrl: `${origin}/unsubscribe?s=x&t=` + "0".repeat(32),
     archiveUrl: list.archive_public ? `${origin}/archive/x/y/z` : null,
@@ -275,7 +278,7 @@ async function buildMailing(db, env, { mailing, list, origin }) {
   const big = tooBig(sample);
   if (big) return { error: big };
 
-  return { value: { subject, html, preheader, brand, layout, mode,
+  return { value: { subject, html, preheader, brand, layout, mode, signatures,
                     text: mailing.body_text || toText(html),
                     bytes: sizeOf(sample) } };
 }
@@ -328,11 +331,12 @@ async function messageFor(env, { built, list, sub, origin, links, theme, archive
     test: !!test,
     archiveUrl,
     recipientName: sub.name || null,
+    signatures: built.signatures,
   });
   /* The plain part personalized the same way: the stored body_text holds the
      editor's label where a variable sits, which nobody may read. */
-  const text = /data-var="/.test(built.html)
-    ? toText(fillVariables(built.html, sub.name || null)) : (built.text || "");
+  const text = /data-var="|\{\{\s*signature/.test(built.html)
+    ? toText(fillVariables(built.html, sub.name || null, built.signatures)) : (built.text || "");
   return {
     to: sub.email,
     subject: built.subject,
@@ -512,6 +516,7 @@ const api = {
             listName: list ? list.name : "",
             accent: look && look.embed_accent,
             mode: await modeOf(db, m.id, partnerId),
+            signatures: await signaturesOf(db, partnerId),
             /* Included because it costs bytes, and bytes are the point of
                this call. Measuring a message without its footer would report a
                size the real one never has. */
@@ -627,6 +632,8 @@ const api = {
            console can show the controls read-only rather than offer a Save
            that answers 403. */
         may_theme: myRoles.includes("admin"),
+        /* Mail › Signatures (0057): this sender's, for {{signature}}. */
+        signatures: await signaturesOf(db, partnerId),
       }, actor));
     }
 
@@ -658,6 +665,32 @@ const api = {
         });
         return json({ ok: true, id, name,
                       tags: await db.query("mailing_tags_for_partner", { partner_id: partnerId }) });
+      }
+
+      /* Mail › Signatures (0057). Anyone who may send this sender's mail
+         may write them; each is kept inline (lib/newsletter.js
+         signatureHtml), and only ever under this sender (the upsert will not
+         take over an id that is another sender's). */
+      if (body.action === "signature" || body.action === "signature-delete") {
+        const owner = ownerOf(partnerId);
+        try {
+          if (body.action === "signature-delete") {
+            await db.query("mail_sig_delete", { id: clean(body.id, 60) || "", owner });
+          } else {
+            const have = await db.query("mail_sigs_for", { owner });
+            const id = /^sig_[a-f0-9]{16}$/.test(String(body.id || "")) ? body.id
+              : "sig_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+            const name = clean(body.name, 60) || "Signature";
+            await db.query("mail_sig_upsert", { id, owner, name,
+              html: signatureHtml(String(body.html || "").slice(0, 6000)),
+              sort_order: have.findIndex((x) => x.id === id) < 0 ? have.length : have.findIndex((x) => x.id === id),
+              now, user_id: (actor.me && actor.me.user_id) || null });
+            return json({ ok: true, id, signatures: await signaturesOf(db, partnerId) });
+          }
+        } catch {
+          return json({ error: "Signatures cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);
+        }
+        return json({ ok: true, signatures: await signaturesOf(db, partnerId) });
       }
 
       if (body.action === "tag-delete") {

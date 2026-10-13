@@ -22,7 +22,7 @@
  * the one that would have saved an evening.
  */
 import { QUERIES, toPositional } from "../src/lib/db.js";
-import staffData from "../src/staff-data.js";
+import staffData, { findPeople } from "../src/staff-data.js";
 import staffMilestones from "../src/staff-milestones.js";
 import staffGoals from "../src/staff-goals.js";
 import staffPrayer from "../src/staff-prayer.js";
@@ -746,6 +746,20 @@ await check("people are found only after two letters", async () => {
   const db2 = makeDb();
   await staffData.fetch(get("/api/staff-data?people=an"), env(db2));
   assert(db2.calls.some((c) => c.name === "people_find"), "two letters did not search");
+});
+
+await check("someone just invited is found, accents don't matter, and no address leaves", () => {
+  const rows = [
+    { user_id: "u_a", name: "Ana Marić", email: "ana@x.org", status: "invited", ministries: null },
+    { user_id: "u_b", name: "Ivo Đurić", email: "ivo@x.org", status: "active", ministries: "Ivo" },
+  ];
+  eq(findPeople(rows, "maric").map((p) => p.user_id), ["u_a"], "Maric finds Marić");
+  eq(findPeople(rows, "duric").map((p) => p.user_id), ["u_b"], "Duric finds Đurić");
+  eq(findPeople(rows, "ivo@").map((p) => p.user_id), ["u_b"], "the start of an address");
+  eq(findPeople(rows, "x.org"), [], "not the middle of an address");
+  const hit = findPeople(rows, "ana")[0];
+  eq([hit.invited, "email" in hit], [true, false], "marked invited, no address");
+  assert(/status IN \('active', 'invited'\)/.test(QUERIES.people_find), "invited people are not candidates");
 });
 
 /* Machine translation drafts (Workers AI, 2026-09-28). */

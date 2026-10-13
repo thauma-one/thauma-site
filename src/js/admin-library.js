@@ -30,6 +30,7 @@
      itself when it has no entry — a sensible last resort for a title
      attribute, and useless as a fallback test, because `||` never fires and
      the screen shows "lib.empty" where a sentence belongs. */
+  var fill = function (k, vars) { return window.StaffI18n ? window.StaffI18n.fill(k, vars) : k; };
   var tr = function (k, fallback) {
     var got = window.StaffI18n && window.StaffI18n.t && window.StaffI18n.t(k);
     return (got && got !== k) ? got : fallback;
@@ -274,6 +275,7 @@
               '</div>' +
               '<div class="adm-tags lib-tags">' + badges(collection, item) + '</div>' +
               '<div class="adm-access lib-langs">' + langChips(item) + '</div>' +
+              star(collection, item) +
             '</div>' +
             (open ? editor(collection, item) : '') +
           '</div>';
@@ -298,15 +300,6 @@
       /* No status tag: the group heading above already says Coming up,
          Canceled or Already happened, and saying it twice was a third of the
          row's tags. */
-      /* HIGHLIGHTED AT THE TOP (2026-10-08, Chase: "a toggle … for a
-         highlighted event … controls for highlighting multiple"): a star on
-         every coming event, pressed in the list without opening it. */
-      if ((item.status || 'upcoming') === 'upcoming') {
-        out.push('<button type="button" class="lib-star" data-lib-feature="' + esc(item.slug) + '" aria-pressed="' + (item.featured === true) + '"' +
-          ' title="' + esc(tr('lib.featured', 'Highlighted at the top')) + '">' +
-          '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.2l-3.9 2.2.9-4.3-3.3-3 4.4-.5z"/></svg>' +
-          '<span>' + esc(tr(item.featured === true ? 'lib.featuredOn' : 'lib.featureIt', item.featured === true ? 'Highlighted' : 'Highlight')) + '</span></button>');
-      }
       if (item.type) out.push('<span class="role-tag partner">' + esc(label(item.type)) + '</span>');
       var when = whenText(item.date, item.end_date);
       if (when) out.push('<span class="role-tag">' + esc(when) + '</span>');
@@ -328,6 +321,21 @@
     } catch (e) {
       return from + (b ? ' – ' + to : '');
     }
+  }
+
+  /* HIGHLIGHTED AT THE TOP (2026-10-08, Chase: "a toggle … for a
+     highlighted event … controls for highlighting multiple"): a star on
+     every coming event, pressed in the list without opening it. Its own
+     column at the row's far end, the same width on every row, so the stars
+     line up down the list ("aligned with each other"). */
+  function star(collection, item) {
+    if (collection !== 'gatherings') return '';
+    if ((item.status || 'upcoming') !== 'upcoming') return '<span class="lib-star-col"></span>';
+    var on = item.featured === true;
+    return '<span class="lib-star-col"><button type="button" class="lib-star" data-lib-feature="' + esc(item.slug) + '" aria-pressed="' + on + '"' +
+      ' title="' + esc(tr('lib.featured', 'Highlighted at the top')) + '">' +
+      '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.2l-3.9 2.2.9-4.3-3.3-3 4.4-.5z"/></svg>' +
+      '<span>' + esc(tr(on ? 'lib.featuredOn' : 'lib.featureIt', on ? 'Highlighted' : 'Highlight')) + '</span></button></span>';
   }
 
   /* One field, drawn from its description. */
@@ -395,6 +403,9 @@
         /* its shape, width ÷ height, so the page's frame matches it */
         '<input type="hidden" data-lib-field="' + esc(spec.name) + '_ar" value="' +
           esc(item[spec.name + '_ar'] || '') + '">' +
+        /* where on the original it was cut, so Edit starts there again */
+        '<input type="hidden" data-lib-field="' + esc(spec.name) + '_crop" value="' +
+          esc(item[spec.name + '_crop'] || '') + '">' +
         '<input type="file" accept="image/*" hidden data-lib-file>' +
         '<div class="pf-photo-acts">' +
           '<button type="button" class="ghost-btn" data-lib-pick>' +
@@ -540,7 +551,29 @@
     c.height = Math.max(1, Math.round(bitmap.height * scale));
     c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
     if (bitmap.close) bitmap.close();
-    return await new Promise(function (r) { c.toBlob(r, 'image/webp', 0.85); });
+    /* WebP, else JPEG: a browser that cannot make WebP hands back a PNG
+       without saying so, several megabytes of photograph that the media
+       endpoint refuses (4MB) — which is how an original went missing without
+       a word. Smaller again if it is still too big. */
+    var enc = function (type, q) { return new Promise(function (r) { c.toBlob(r, type, q); }); };
+    var blob = await enc('image/webp', 0.85);
+    if (!blob || blob.type !== 'image/webp') blob = await enc('image/jpeg', 0.86);
+    if (blob && blob.size > 3.8 * 1048576) blob = await enc(blob.type, 0.7);
+    return blob;
+  }
+  /* Which of photo-crop.js's frames a collection's picture is edited in: an
+     event's beside a picture of its invitation. */
+  function frameOf(slot) {
+    var item = slot.closest('[data-lib-item]');
+    return item && item.dataset.libItem.indexOf('gatherings/') === 0 ? 'event' : 'library';
+  }
+  function cropText(c) {
+    return c ? [c.x, c.y, c.w, c.h].map(function (n) { return Math.round(n * 10000) / 10000; }).join(',') : '';
+  }
+  function cropOf(text) {
+    var n = String(text || '').split(',').map(Number);
+    if (n.length !== 4 || n.some(function (x) { return !(x >= 0 && x <= 1); }) || !n[2] || !n[3]) return null;
+    return { x: n[0], y: n[1], w: n[2], h: n[3] };
   }
 
   /* Header-safe: accents dropped (č → c), anything else non-ASCII removed. */
@@ -550,19 +583,25 @@
     var status = slot.querySelector('[data-lib-shot-status]');
     var say = function (k, f) { if (status) status.textContent = tr(k, f); };
     try {
-      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, 'library') : null;
+      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, frameOf(slot)) : null;
       if (window.PhotoCrop && !shot) return say('lib.cropCancelled', 'Nothing changed.');
 
       say('lib.keepingOriginal', 'Keeping the original…');
-      var masterUrl = '';
+      var masterUrl = '', masterErr = '';
       try {
         var full = await shrink(file, 2400);
         if (full) masterUrl = (await putMedia(full, baseName(file.name) + '-original')).url;
-      } catch (e) { masterUrl = ''; }
+      } catch (e) { masterUrl = ''; masterErr = e.message; }
 
       say('lib.uploading', 'Uploading…');
       var body = await putMedia(shot ? shot.blob : await shrink(file, 1600), baseName(file.name));
-      setPhoto(slot, body.url, masterUrl, shot ? shot.aspect : null);
+      setPhoto(slot, body.url, masterUrl, shot ? shot.aspect : null, shot ? shot.crop : null);
+      /* NOT SILENT when the original could not be kept: without it, Edit can
+         only cut further in, and that should be known now, not discovered. */
+      if (!masterUrl) {
+        if (status) status.textContent = fill('lib.noOriginal', { why: masterErr || '?' });
+        return;
+      }
       say('lib.photoReady', 'Picture added — press Save to keep it.');
     } catch (e) {
       if (status) status.textContent = e.message;
@@ -577,6 +616,10 @@
     var fields = slot.querySelectorAll('[data-lib-field]');
     var current = fields[0].value, master = fields[1].value;
     var from = master || current;
+    /* From the original, where it was cut last time; the cropped copy has
+       no "last time" — it is all of what was kept. */
+    var was = master ? cropOf(fields[3] && fields[3].value) : null;
+    if (was && fields[2] && Number(fields[2].value)) was.ar = Number(fields[2].value);
     if (!from || !window.PhotoCrop) return;
     try {
       if (status) status.textContent = tr(master ? 'lib.loading' : 'lib.loadingCropped',
@@ -585,23 +628,25 @@
       if (!res.ok) throw new Error(tr('lib.gone', 'That picture could not be loaded'));
       var blob = await res.blob();
       var shot = await window.PhotoCrop.open(
-        new File([blob], 'photo', { type: blob.type || 'image/webp' }), 'library');
+        new File([blob], 'photo', { type: blob.type || 'image/webp' }), frameOf(slot), was);
       if (!shot) { if (status) status.textContent = ''; return; }
       var body = await putMedia(shot.blob, baseName(from.split('/').pop()).replace(/-?[0-9a-f]{16}$/, '').replace(/-original$/, ''));
       /* The master is NOT replaced — writing the new crop over it would make
          the next edit one-way again. */
-      setPhoto(slot, body.url, master, shot.aspect);
+      /* a crop of the cropped copy is not a place on any original */
+      setPhoto(slot, body.url, master, shot.aspect, master ? shot.crop : null);
       if (status) status.textContent = tr('lib.photoReady', 'Picture updated — press Save to keep it.');
     } catch (e) {
       if (status) status.textContent = e.message;
     }
   }
 
-  function setPhoto(slot, url, master, ar) {
+  function setPhoto(slot, url, master, ar, crop) {
     var fields = slot.querySelectorAll('[data-lib-field]');
     fields[0].value = url || '';
     if (master !== undefined) fields[1].value = master || '';
     if (ar !== undefined && fields[2]) fields[2].value = url && ar ? String(Math.round(ar * 1000) / 1000) : '';
+    if (fields[3]) fields[3].value = url && crop ? cropText(crop) : '';
     slot.querySelector('.lib-shot').innerHTML = url
       ? '<img src="' + esc(url) + '" alt="">'
       : '<span class="pf-empty">' + esc(tr('lib.noPhoto', 'No picture yet')) + '</span>';
@@ -636,7 +681,7 @@
       if (spec.kind === 'flag') { out[spec.name] = el.checked; return; }
       /* a picture carries its original and its shape beside it */
       if (spec.kind === 'photo') {
-        ['_master', '_ar'].forEach(function (x) {
+        ['_master', '_ar', '_crop'].forEach(function (x) {
           var h = node.querySelector('[data-lib-field="' + spec.name + x + '"]');
           if (h) out[spec.name + x] = h.value.trim();
         });

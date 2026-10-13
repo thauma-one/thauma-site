@@ -153,6 +153,20 @@ async function sharesOf(db, rid, partner, isAdmin) {
   };
 }
 
+/* The share dialog's matching (people_find): any part of the name, or the
+   start of the address, ignoring case and accents; eight at most. The
+   address is matched here and never sent. */
+const plain = (v) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/[đĐ]/g, "d").toLowerCase();
+export function findPeople(rows, q) {
+  const k = plain(q).trim();
+  if (k.length < 2) return [];
+  return rows.filter((p) => plain(p.name).includes(k) || plain(p.email).startsWith(k))
+    .slice(0, 8)
+    .map((p) => ({ user_id: p.user_id, name: p.name, ministries: p.ministries || null,
+                   invited: p.status === "invited" }));
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, partner, isAdmin, levels, actor, denied } = await context(request, env);
@@ -175,7 +189,7 @@ export default {
     if (request.method === "GET" && url.searchParams.has("people")) {
       const q = str(url.searchParams.get("people"), 60);
       if (q.length < 2) return json({ people: [] });
-      return json({ people: await db.query("people_find", { q, user_id }) });
+      return json({ people: findPeople(await db.query("people_find", { user_id }), q) });
     }
     /* WHO HAS ONE RESOURCE, for its share dialog. The owner's to see. */
     if (request.method === "GET" && url.searchParams.has("shares")) {

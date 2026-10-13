@@ -20,6 +20,10 @@ staffHeading: Your <b>account</b>
 <div class="tabs" role="tablist">
   <button type="button" class="tab" role="tab" data-tab="account"
           aria-selected="true" data-i18n="set.account">Account</button>
+  <button type="button" class="tab" role="tab" data-tab="notifications" id="setNotifyTab" hidden
+          aria-selected="false" data-i18n="set.notifications">Notifications</button>
+  <button type="button" class="tab" role="tab" data-tab="bio" id="setBioTab" hidden
+          aria-selected="false" data-i18n="set.bio">Your bio</button>
   <button type="button" class="tab" role="tab" data-tab="languages"
           aria-selected="false" data-i18n="set.languages">Languages</button>
   <button type="button" class="tab" role="tab" data-tab="keys"
@@ -62,6 +66,40 @@ staffHeading: Your <b>account</b>
   <div class="set-r">
     <span class="set-lbl" data-i18n="nav.signout">Sign out</span>
     <div class="set-ctl"><a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a></div>
+  </div>
+</section>
+
+<!-- ======================================================= NOTIFICATIONS -->
+{#- ITS OWN TAB (2026-10-13, Chase: "I wanted a separate notifications tab,
+    not for it to be built into account"). One row per notice this person's
+    roles receive (workers/src/lib/notify.js), under how it arrives — the
+    console's bell (0060) and email, each switched on its own; the phone
+    ("the app") will be a third group here. The tab is hidden for anyone
+    who receives none. -#}
+<section class="tab-panel set-you" data-panel="notifications" role="tabpanel" hidden>
+  <h3 class="set-group" data-i18n="set.notify.bell">In the console</h3>
+  <div id="setNotifyBell" data-channel="bell"></div>
+  <h3 class="set-group" data-i18n="set.notify.email">By email</h3>
+  <div id="setNotify" data-channel="email"></div>
+</section>
+
+<!-- ============================================================ YOUR BIO -->
+{#- YOUR OWN TEAM PAGE (2026-10-13, Chase: "they can edit, but it has to be
+    approved by an Admin before it goes live. Just make sure that there is
+    something that shows the edits that were made"). The words as they are
+    now, or as sent and waiting; Send for approval tells the administrators,
+    who see every change on the People page. Only for somebody who has a
+    team page. -#}
+<section class="tab-panel set-bio" data-panel="bio" role="tabpanel" hidden>
+  {#- The last answer to what you sent: approved (and what the administrator
+      changed first, word by word) or not, with their note. Until you send
+      again or put it away. -#}
+  <div class="set-bio-answer" id="setBioAnswer" hidden></div>
+  <p class="set-bio-state" id="setBioState"></p>
+  <div id="setBioForm"></div>
+  <div class="set-bio-actions">
+    <button type="button" class="ghost-btn" id="setBioWithdraw" data-i18n="set.bioWithdraw" hidden>Withdraw what I sent</button>
+    <button type="button" class="solid-btn" id="setBioSend" data-i18n="set.bioSend">Send for approval</button>
   </div>
 </section>
 

@@ -325,6 +325,13 @@ await check("every real query converts with its documented params", async () => 
     // body_md is the SOURCE now; body_html is derived from it and stored.
     subject: "June update", preheader: null, body_md: "# x",
     body_html: "<p>x</p>", body_text: "x",
+    owner: "p_chase", html: "<strong>x</strong>", // a mail signature (0055)
+    is_on: 1, // a notice switch (0056)
+    payload: "{}", // a bio proposal (0058)
+    vars: "{}", // the bell (0060)
+    by_name: "Chase", entries: "[]", content: "[]", // a release (0062)
+    site: "thauma", live: 1, path: "/", referrer: null, device: "phone", session: "abcdef0123456789", // a visit (0059)
+    dim: "country", since: "2026-01-01",
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
     // resources: ownership and sharing
     resource_id: "rs_1", shared_by: "u_1", owner_user_id: null, is_admin: 0,
@@ -369,7 +376,7 @@ await check("every real query converts with its documented params", async () => 
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners", "partner_site_all", "partner_site_needing_dns",
                              // What still names a stored file is asked of
                              // everything (media-cleanup.js): keys are unique.
-                             "media_refs_sites", "media_refs_mailings", "media_refs_attachments", "media_refs_resources",
+                             "media_refs_sites", "media_refs_mailings", "media_refs_attachments", "media_refs_resources", "media_refs_signatures", "profile_proposals_all", "notify_everyone", "releases_recent", "releases_entry_ids",
                              // Translation notes are organization-wide and
                              // never about a person or a partner: the whole
                              // set is the answer. The endpoint checks roles.

@@ -136,13 +136,13 @@ const menu = (w) => visible(w, ".console-me-menu a").map((a) => a.textContent.tr
 
 await check("Settings and Activity are under your name, not in the row", async () => {
   const w = boot(STAFF_PAGE, { roles: ["staff"] });
-  eq(menu(w), ["Activity", "Settings", "Sign out"], "the name menu");
+  eq(menu(w), ["Activity", "Settings", "What's new", "Sign out"], "the name menu");
   for (const p of ["Settings", "Activity"]) assert(!links(w, "staff").includes(p), `${p} still in the row`);
 });
 
-await check("an administrator only has Sign out there — their Activity is in their row", async () => {
+await check("an administrator has What's new and Sign out there — their Activity is in their row", async () => {
   const w = boot(STAFF_PAGE, { roles: ["admin"] });
-  eq(menu(w), ["Sign out"], "the name menu");
+  eq(menu(w), ["What's new", "Sign out"], "the name menu");
   assert(links(w, "admin").includes("Activity"), "admin Activity left the row");
 });
 
@@ -305,6 +305,71 @@ await check("no style reaches for the role classes on <html>", async () => {
      .role-… is the collision. */
   const hit = css.match(/(?<!html)\.role-(admin|partner|staff|board|communications)(?![\w-])/g);
   assert(!hit, `rules named after a role class: ${hit}`);
+});
+
+await check("the bell: a number since you last opened it, one line each that opens where it happened, Clear moves to Past (0060, 0061)", async () => {
+  /* Chase, 2026-10-13: "Add the in app notifications bell." Then: "a way
+     for bell notifications to be cleared from the dropdown, but … they can
+     still find past notifications … And I want to make sure the bell icon
+     shows a number for how many notifications there has been since they
+     last opened the bell icon and isn't just a dot." */
+  const calls = [];
+  const items = [
+    { id: "n_1", kind: "profile_proposed", summary: "<b>Ana &lt;A&gt;</b> sent bio changes to approve",
+      link: "/admin/users/#u_ana/team", at: new Date().toISOString(), read: false },
+    { id: "n_2", kind: "site_published", summary: "<b>Chase</b> published the site — see what's new",
+      link: "/staff/changes/#r_1", at: new Date().toISOString(), read: false },
+    { id: "n_3", kind: "invite_accepted", summary: "<b>Mia</b> accepted their invitation",
+      link: null, at: "2026-10-01T10:00:00Z", read: true },
+  ];
+  const pastItems = [{ id: "n_0", kind: "invite_accepted", summary: "Older", link: null, at: "2026-09-01T10:00:00Z", read: true }];
+  const dom = new JSDOM(readFileSync(STAFF_PAGE, "utf8"), {
+    runScripts: "dangerously", pretendToBeVisual: true, url: "https://dev.thauma.one/staff/",
+    beforeParse(w) {
+      Object.defineProperty(w, "sessionStorage", { value: { getItem: () => null, setItem: () => {} } });
+      w.fetch = async (u, o) => {
+        const body = o && o.body ? JSON.parse(o.body) : null;
+        calls.push([String(u), (o && o.method) || "GET", body]);
+        const out = String(u).startsWith("/api/notices?count") ? { unread: 12 }
+          : String(u) === "/api/notices?past" ? { unread: 0, items: pastItems }
+          : String(u) === "/api/notices" && o && o.method === "POST" ? { unread: 0 }
+          : String(u) === "/api/notices" ? { unread: 2, items } : {};
+        return { ok: true, status: 200, json: async () => out };
+      };
+    },
+  });
+  const w = dom.window, d = w.document;
+  const wait = () => new Promise((r) => setTimeout(r, 60));
+  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  w.eval(readFileSync("src/js/staff.js", "utf8"));
+  await wait();
+  const n = d.getElementById("consoleBellN");
+  eq([n.hidden, n.textContent], [false, "12"], "a number, not a dot");
+  d.getElementById("consoleBellBtn").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await wait();
+  const lis = () => [...d.querySelectorAll("#consoleBellItems > li")];
+  eq(lis().map((li) => li.className), ["is-new", "is-new", ""], "the unread ones are marked while the list is open");
+  eq(lis()[0].querySelector(".console-bell-s").innerHTML, "<b>Ana &lt;A&gt;</b> sent bio changes to approve", "one line, as the server built it");
+  eq([lis()[0].querySelector("a").getAttribute("href"), lis()[1].querySelector("a").getAttribute("href"), !!lis()[2].querySelector("a")],
+     ["/admin/users/#u_ana/team", "/staff/changes/#r_1", false], "each opens where it happened");
+  assert(calls.some(([u, m, b]) => u === "/api/notices" && m === "POST" && b.read === "all"), "opening it did not mark it read");
+  assert(n.hidden, "the number stayed after opening");
+
+  lis()[0].querySelector("[data-bell-clear]").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await wait();
+  eq(calls.at(-1)[2], { clear: "n_1" }, "Clear one");
+  eq(lis().length, 2, "cleared from the list");
+  d.getElementById("consoleBellClearAll").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await wait();
+  eq([calls.at(-1)[2], lis().length, lis()[0].className], [{ clear: "all" }, 1, "console-bell-empty"], "Clear all");
+  d.getElementById("consoleBellPast").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await wait();
+  eq([d.getElementById("consoleBellTitle").textContent, lis().map((li) => li.querySelector(".console-bell-s").textContent),
+      !!d.querySelector("[data-bell-clear]"), d.getElementById("consoleBellBack").hidden],
+     ["Past notifications", ["Older"], false, false], "Past: still there to find");
+  d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  eq(d.getElementById("consoleBellBtn").getAttribute("aria-expanded"), "false", "Escape closes it");
+  w.close();
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -39,6 +39,9 @@ import staffHome from "./staff-home.js";
 import translate from "./translate.js";
 import staffSite, { siteAddress, ensureSiteNames } from "./staff-site.js";
 import { serveSite, closedSite } from "./site/serve.js";
+import { hit, adminAnalytics } from "./analytics.js";
+import notices from "./notices.js";
+import changesPage from "./changes.js";
 import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
@@ -295,6 +298,9 @@ export function movedTo(url) {
 /** Exact-path routes. Checked before static assets. */
 const ROUTES = {
   "/api/contact": contactForm,
+  /* visits, counted without knowing who (0059, analytics.js) */
+  "/api/hit": hit,
+  "/api/admin/analytics": adminAnalytics,
   "/api/game-scores": gameScores,
   "/api/staff-data": staffData,
   "/api/staff-snapshot": { fetch: staffSnapshot },
@@ -310,6 +316,10 @@ const ROUTES = {
   "/api/staff-site": staffSite,
   "/api/admin/site-address": siteAddress,
   "/api/staff-settings": staffSettings,
+  /* the console's bell (0060, notices.js) */
+  "/api/notices": notices,
+  /* What's new: what each Publish put live, by page (0062, changes.js) */
+  "/api/changes": changesPage,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
   // check is done once at the top of the handler and fails closed.
@@ -466,7 +476,7 @@ export default {
        behind a tunnel, next is staging) is passed on untouched. Any other
        name with no open site gets Thauma's closed page: through the
        wildcard it has no origin of its own to pass on to. */
-    const own = /^\/(embed|media|archive|confirm|unsubscribe)\//.test(url.pathname) || url.pathname === "/confirm";
+    const own = /^\/(embed|media|archive|confirm|unsubscribe)\//.test(url.pathname) || url.pathname === "/confirm" || url.pathname === "/api/hit";
     const siteHost = env.SITE_WILDCARD === "1"
       ? url.hostname.match(new RegExp("^([a-z0-9-]{1,63})\\." + (env.SITE_DOMAIN || "thauma.one").replace(/\./g, "\\.") + "$"))
       : null;
@@ -592,6 +602,18 @@ export default {
        nobody manages storage by hand. Last, so it can never delay the two
        jobs above. */
     if (isCleanupHour(event.scheduledTime)) {
+      /* visits older than 400 days (0059); nothing to keep them for */
+      try {
+        await db.query("hits_prune", { before: new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10) });
+      } catch (err) {
+        console.error("hits prune:", err.message);
+      }
+      /* the bell (0060): a year old; until then it is under Past (0061) */
+      try {
+        await db.query("notices_prune", { before: new Date(Date.now() - 365 * 864e5).toISOString() });
+      } catch (err) {
+        console.error("notices prune:", err.message);
+      }
       try {
         const clean = await cleanUnusedMedia(env);
         if (!clean.skipped) console.log("media cleanup:", JSON.stringify(clean.report));

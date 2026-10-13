@@ -712,9 +712,14 @@
     if (q.length < 2) { $('shareFound').innerHTML = ''; return; }
     share.findTimer = setTimeout(async function () {
       var seq = ++share.findSeq;
-      var res = await fetch(STAFF_API + '?people=' + encodeURIComponent(q), { credentials: 'same-origin' });
-      var body = await res.json().catch(function () { return {}; });
+      var res = await fetch(STAFF_API + '?people=' + encodeURIComponent(q), { credentials: 'same-origin' }).catch(function () { return null; });
+      var body = res ? await res.json().catch(function () { return {}; }) : {};
       if (seq !== share.findSeq) return;
+      /* A search that failed says so — "nobody by that name" would be a lie. */
+      if (!res || !res.ok) {
+        $('shareFound').innerHTML = '<p class="hint">' + esc(body.error || tr('err.unreachable')) + '</p>';
+        return;
+      }
       var have = {};
       ((share.data && share.data.people) || []).forEach(function (p) { have[p.user_id] = true; });
       var found = (body.people || []).filter(function (p) { return !have[p.user_id]; });
@@ -725,7 +730,7 @@
         ? found.map(function (p) {
             return '<button type="button" class="share-hit" data-share-add="' + esc(p.user_id) + '">' +
               '<span class="share-name">' + esc(p.name) + '</span>' +
-              (p.ministries ? '<span class="share-sub">' + esc(p.ministries) + '</span>' : '') +
+              (p.ministries || p.invited ? '<span class="share-sub">' + esc([p.ministries, p.invited ? tr('res.invited') : ''].filter(Boolean).join(' · ')) + '</span>' : '') +
             '</button>';
           }).join('')
         : '<p class="hint">' + esc(tr('res.noMatch')) + '</p>';
@@ -1167,11 +1172,28 @@
       meBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
       header.classList.toggle('me-open', open);
     }
+    /* THE LIST ENDS WHERE THE SCREEN DOES (Chase, 2026-10-13: "On mobile,
+       I can't see the options for settings because it's below the search
+       bar"). It was sized as 100vh less the header, as if the header sat at
+       the top — but on dev the environment band is above it, and on an
+       iPhone 100vh reaches behind Safari's bottom bar. So the last rows
+       (Settings, What's new, Sign out) were below the screen and could not
+       be scrolled to. Measured from where the list actually starts, against
+       the height actually visible. */
+    var menuList = $('consoleMenu');
+    function fitMenu() {
+      if (!menuList || !header.classList.contains('menu-open')) return;
+      var seen = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      menuList.style.maxHeight = Math.max(160, Math.floor(seen - menuList.getBoundingClientRect().top)) + 'px';
+    }
     function setMenu(open) {
       menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
       header.classList.toggle('menu-open', open);
       document.documentElement.classList.toggle('console-menu-open', open);
+      if (open) fitMenu(); else if (menuList) menuList.style.maxHeight = '';
     }
+    window.addEventListener('resize', fitMenu);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', fitMenu);
 
     meBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -1198,6 +1220,151 @@
       if (wide.addEventListener) wide.addEventListener('change', onWide);
     }
   })();
+
+  /* =====================================================================
+     THE BELL (0060; Chase 2026-10-13: "Add the in app notifications bell")
+     =====================================================================
+     The notices email also sends — an invitation accepted, a bio waiting, an
+     answer to yours, the site published — kept in the
+     console (workers/src/notices.js). THE NUMBER is how many arrived since
+     you last opened it: asked for on every page and every few minutes while
+     the page is in front. OPENING IT IS READING IT: what was new keeps its
+     mark while the list is open, and the number goes.
+
+     CLEARED, NOT GONE (0061): Clear takes one off the list, Clear all every
+     one; six hours after reading, a notice leaves the list by itself. Either
+     way it is under Past notifications for a year.
+
+     The line comes from the server already in your console language, as
+     HTML it built with every value escaped (only <b>). */
+  (function bell() {
+    var box = $('consoleBell'), btn = $('consoleBellBtn'), n = $('consoleBellN'), list = $('consoleBellItems');
+    var clearAll = $('consoleBellClearAll'), pastBtn = $('consoleBellPast'), back = $('consoleBellBack'), title = $('consoleBellTitle');
+    if (!box || !btn || !n || !list || !window.fetch) return;
+    var API = '/api/notices', past = false;
+
+    function show(count) {
+      n.hidden = !count;
+      n.textContent = count > 99 ? '99+' : String(count || '');
+      btn.setAttribute('aria-label', count ? tr('bell.title') + ' · ' + fill('bell.unread', { n: count }) : tr('bell.title'));
+    }
+    function count() {
+      if (document.visibilityState === 'hidden') return;
+      fetch(API + '?count', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (b) { if (b) show(b.unread); })
+        .catch(function () {});
+    }
+    function post(body) {
+      return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (b) { if (!r.ok) throw new Error(b.error || r.status); return b; }); });
+    }
+    function ago(iso) {
+      var s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (!(s >= 60)) return tr('bell.now');
+      var lang = (window.StaffI18n && window.StaffI18n.lang) || 'en';
+      try {
+        var f = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+        if (s < 3600) return f.format(-Math.round(s / 60), 'minute');
+        if (s < 86400) return f.format(-Math.round(s / 3600), 'hour');
+        if (s < 7 * 86400) return f.format(-Math.round(s / 86400), 'day');
+      } catch (e) {}
+      return new Date(iso).toLocaleDateString(lang);
+    }
+    function empty() {
+      list.innerHTML = '<li class="console-bell-empty">' + esc(tr(past ? 'bell.pastEmpty' : 'bell.empty')) + '</li>';
+      clearAll.hidden = true;
+    }
+    function render(items) {
+      if (!items.length) return empty();
+      clearAll.hidden = past;
+      /* ONE LINE EACH, and the line is the way there (Chase: "summaries of
+         what happened, not all info … When you press the notification, it
+         opens the notification to where it needs to") */
+      list.innerHTML = items.map(function (i) {
+        var inner = '<span class="console-bell-s">' + i.summary + '</span>' +
+          '<time datetime="' + esc(i.at) + '">' + esc(ago(i.at)) + '</time>';
+        return '<li class="' + (i.read ? '' : 'is-new') + '" data-notice-id="' + esc(i.id) + '">' +
+          (i.link ? '<a href="' + esc(i.link) + '">' + inner + '</a>' : '<div>' + inner + '</div>') +
+          (past ? '' : '<button type="button" class="console-bell-x" data-bell-clear="' + esc(i.id) + '"' +
+            ' aria-label="' + esc(tr('bell.clear')) + '" title="' + esc(tr('bell.clear')) + '">&times;</button>') + '</li>';
+      }).join('');
+    }
+    function fetchList() {
+      list.innerHTML = '<li class="console-bell-empty">…</li>';
+      return fetch(API + (past ? '?past' : ''), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function (b) {
+          render(b.items || []);
+          if (!past && b.unread) post({ read: 'all' }).then(function () { show(0); }).catch(function () {});
+        })
+        .catch(function () { render([]); });
+    }
+    function setPast(on) {
+      past = on;
+      back.hidden = !on; pastBtn.hidden = on;
+      title.textContent = tr(on ? 'bell.past' : 'bell.title');
+      fetchList();
+    }
+    function setOpen(open) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      box.classList.toggle('bell-open', open);
+      if (open) setPast(false);
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(btn.getAttribute('aria-expanded') !== 'true');
+    });
+    pastBtn.addEventListener('click', function () { setPast(true); });
+    back.addEventListener('click', function () { setPast(false); });
+    clearAll.addEventListener('click', function () {
+      post({ clear: 'all' }).then(function () { empty(); }).catch(function (e) { if (window.StaffToast) window.StaffToast(e.message, 'err'); });
+    });
+    list.addEventListener('click', function (e) {
+      if (e.target.closest('a')) { setOpen(false); return; }
+      var x = e.target.closest('[data-bell-clear]');
+      if (!x) return;
+      var li = x.closest('li');
+      post({ clear: x.getAttribute('data-bell-clear') }).then(function () {
+        li.remove();
+        if (!list.querySelector('[data-notice-id]')) empty();
+      }).catch(function (err) { if (window.StaffToast) window.StaffToast(err.message, 'err'); });
+    });
+    document.addEventListener('click', function (e) {
+      if (box.classList.contains('bell-open') && !e.target.closest('.console-bell')) setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && box.classList.contains('bell-open')) { setOpen(false); btn.focus(); }
+    });
+    document.addEventListener('visibilitychange', count);
+    count();
+    setInterval(count, 3 * 60 * 1000);
+  })();
+
+  /* WORDS THAT STAYED, WENT AND CAME, by the longest run they share: struck
+     through what goes (<del>), marked what comes (<ins>). One copy for both
+     sides of a bio sent for approval — the administrator deciding (admin.js)
+     and the person reading the answer (staff-settings.js). */
+  window.StaffWordDiff = function (a, b) {
+    var A = String(a || '').split(/(\s+)/).filter(Boolean), B = String(b || '').split(/(\s+)/).filter(Boolean);
+    if (A.length * B.length > 600000) return '<del>' + esc(a) + '</del> <ins>' + esc(b) + '</ins>';
+    var n = A.length, m = B.length, L = [];
+    for (var i = 0; i <= n; i++) { L.push(new Array(m + 1).fill(0)); }
+    for (i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    var out = '', del = '', ins = '';
+    var flush = function () { if (del) out += '<del>' + esc(del) + '</del>'; if (ins) out += '<ins>' + esc(ins) + '</ins>'; del = ins = ''; };
+    i = 0; j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) { flush(); out += esc(A[i]); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) del += A[i++];
+      else ins += B[j++];
+    }
+    while (i < n) del += A[i++];
+    while (j < m) ins += B[j++];
+    flush();
+    return out;
+  };
 
   /* Called by any page whose data included an identity block. */
   function rememberIdentity(who, partner) {

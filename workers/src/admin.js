@@ -24,6 +24,8 @@
  * audit_log with their name on it. "I can fix anything" stays true; "I have
  * standing access to everyone's supporters" does not.
  */
+import { readProposal, isWaiting } from "./lib/bio.js";
+import { siteRow } from "./staff-site.js";
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
@@ -34,7 +36,7 @@ import { requestedTarget } from "./lib/actas.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isReservedSlug } from "./lib/org.js";
 
-const ROLES = new Set(["admin", "partner", "staff", "board"]);
+const ROLES = new Set(["admin", "partner", "staff", "board", "communications"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
 const PARTNER_ROLES = new Set(["owner", "assist", "view"]);
 
@@ -199,6 +201,30 @@ async function wouldStrandOrg(db, { userId, removingRole, removingUser }) {
   return targetRoles.includes("admin") && target.status === "active";
 }
 
+/* THE PARTNER ROLE FOLLOWS OWNERSHIP (2026-10-12, Chase: "When I added
+   someone to People and then created a partner level for them, it didn't turn
+   on the Partner Role for them"). Owning a ministry IS being a partner, so
+   making somebody a ministry's owner — from its card or by creating it for
+   them — switches the role on. Losing the last ministry they own switches it
+   off; a role the console shows as on with no ministry behind it would be the
+   same mismatch the other way round — but only when THIS change took the
+   ownership away: older rows say 'view' for people who own their ministry
+   outright, and touching one must not strip a role nobody asked to change.
+   Assist and View are helpers, not partners. Revoking never deletes a
+   ministry. */
+async function ownsAny(db, userId, partnerId) {
+  return (await db.query("admin_partner_members", {}))
+    .some((m) => m.user_id === userId && m.role === "owner" && (!partnerId || m.partner_id === partnerId));
+}
+export async function syncPartnerRole(db, userId, grantedBy, now, wasOwner = false) {
+  if (!userId) return;
+  if (await ownsAny(db, userId)) {
+    await db.query("admin_role_grant", { user_id: userId, role: "partner", granted_by: grantedBy, now });
+  } else if (wasOwner) {
+    await db.query("admin_role_revoke", { user_id: userId, role: "partner" });
+  }
+}
+
 /**
  * Create a partner and, optionally, hand it to somebody.
  *
@@ -247,7 +273,15 @@ async function makePartner(db, { displayName, forUser, grantedBy, now, user }) {
     await db.query("admin_partner_grant", {
       partner_id: pid, user_id: forUser, role: "owner", granted_by: grantedBy, now,
     });
+    await syncPartnerRole(db, forUser, grantedBy, now);
   }
+  /* ITS ADDRESS, AT ONCE (2026-10-12, Chase: "is there a way to automate the
+     creation of the partner's subdomain? … the default format is
+     firstnamelastname.thauma.one"). The site row holds the name (from the
+     owner's name, else the ministry's); the site stays closed until its owner
+     switches it on. Never a reason for the ministry not to exist. */
+  try { await siteRow(db, { id: pid, display_name: name, slug }, now); }
+  catch (e) { console.error("site address for " + pid, e); }
   if (user) {
     await audit(db, { user, action: "create", entity: "partner", entity_id: pid,
                       partner_id: pid, detail: { display_name: name } });
@@ -343,6 +377,10 @@ export default {
         // by region and role title, and a sort cannot wait on 40 requests.
         db.query("staff_profiles_all", {}),
       ]);
+      /* A person's own changes to their bio, waiting for approval (0058).
+         Tolerant: before the migration there are none. */
+      const proposals = (await db.query("profile_proposals_all", {}).catch(() => []))
+        .map(readProposal).filter(isWaiting);
       // Every sender in the system. Org-wide by design, like the partner list
       // itself — maintaining them IS the administrative act.
       const senders = await db.query("admin_sender_addresses", {});
@@ -366,6 +404,7 @@ export default {
            the moment this landed: it flashed on every admin page they opened.
            Same expression as staff-data.js, so both consoles agree about who
            somebody is. */
+        profile_proposals: proposals,
         you: { id: me.user_id, email: user.email, name: me.user_name || null,
                roles: String(me.roles || "").split(",").filter(Boolean) },
 
@@ -735,10 +774,12 @@ export default {
         if (!userId) return json({ error: "user_id is required" }, 400);
         const partnerRole = PARTNER_ROLES.has(body.partner_role) ? body.partner_role : "view";
 
+        const wasOwner = await ownsAny(db, userId, body.partner_id);
         await db.query(body.grant ? "admin_partner_grant" : "admin_partner_revoke", {
           partner_id: body.partner_id, user_id: userId,
           role: partnerRole, granted_by: me.user_id, now,
         });
+        await syncPartnerRole(db, userId, me.user_id, now, wasOwner);
         // Recorded against the PARTNER as well as the org, so it appears on
         // that partner's own Activity page. Somebody being given access to
         // their supporters is their business.

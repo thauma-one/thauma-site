@@ -266,6 +266,8 @@
     if (pinned) return showMarks(box);
     fmtWords = said;
     fmtRow(null);
+    /* no link inside something that is already a link (a link card's words) */
+    fmt.querySelector('[data-fmt="link"]').hidden = box.hasAttribute('data-rt-nolink');
     var r = window.getSelection().getRangeAt(0).getBoundingClientRect();
     fmt.hidden = false;
     fmtAt = { top: window.scrollY + r.top, bottom: window.scrollY + r.bottom };
@@ -298,16 +300,26 @@
     if (!anyAt) return;
     anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-c', this.value.toLowerCase());
   });
-  /* A typed size: applied as it is typed, the words kept selected. */
-  fmt.querySelector('[data-fmt-szval]').addEventListener('input', function () {
-    var n = Math.round(+this.value * 2) / 2;
-    if (!anyAt || !(n >= 4 && n <= 200)) return;
+  /* A typed size: applied as it is typed, the words kept selected. The box
+     holds the size the words are now, so it is SELECTED when entered —
+     typing replaces it. It used to put the caret after it, so "30" typed
+     over 23 became 2302, out of range and silently ignored (Chase,
+     2026-10-12: "I can't type in a manual size and have it take"). */
+  var szBox = fmt.querySelector('[data-fmt-szval]');
+  szBox.addEventListener('focus', function () { var me = this; setTimeout(function () { me.select(); }, 0); });
+  szBox.addEventListener('mouseup', function (e) { e.preventDefault(); });
+  function typedSize(force) {
+    var n = Math.round(+szBox.value * 2) / 2;
+    if (!anyAt || !n) return;
+    if (!(n >= 4 && n <= 200)) { if (!force) return; n = Math.max(4, Math.min(200, n)); szBox.value = n; }
     anyAt.range = markSelection(anyAt.box, anyAt.range, 'data-sz', n + 'px');
     sizeOnScreen(anyAt.box);
-  });
-  fmt.querySelector('[data-fmt-szval]').addEventListener('keydown', function (e) {
+  }
+  szBox.addEventListener('input', function () { typedSize(false); });
+  szBox.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' || !anyAt) return;
     e.preventDefault();
+    typedSize(true);
     anyAt.box.focus();
     var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(anyAt.range);
     anyAt = null;

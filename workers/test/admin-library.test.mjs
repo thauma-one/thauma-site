@@ -244,6 +244,13 @@ await check("the uncropped original is kept, so a crop can be widened", async ()
   assert(/shrink\(file, 2400\)/.test(ui), "no master is uploaded");
   const src = readFileSync(new URL("../src/admin-library.js", import.meta.url), "utf8");
   assert(/photo_master/.test(src), "the master URL is never stored");
+  /* Chase, 2026-10-08: "it cropped it and deleted the original, so I can't
+     convert it to a different size again". Where on the original it was
+     cut is kept too, so Edit reopens there; and an original that could not
+     be kept says so instead of failing in silence. */
+  assert(/"photo_crop"/.test(src), "where the picture was cut is never stored");
+  assert(/lib\.noOriginal/.test(ui) && !/catch \(e\) \{ masterUrl = ''; \}/.test(ui), "a lost original is still silent");
+  assert(/image\/jpeg/.test(ui), "an original that cannot be WebP becomes a PNG too big to keep");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

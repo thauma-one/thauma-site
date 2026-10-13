@@ -233,8 +233,8 @@ await check("a gathering with no photograph draws no frame for one; a picture ke
   assert(!d.querySelector(".record-noshot"), "an empty photo slot is still drawn");
   const bare = [...d.querySelectorAll(".record-band")].filter((b) => !b.querySelector("img"));
   assert(bare.length && bare.every((b) => b.classList.contains("no-photo") && !b.querySelector(".record-photo")), "a record with no picture still has a picture frame");
-  const next = d.querySelector(".invite.is-next");
-  if (next && !next.querySelector(".invite-photo")) assert(next.classList.contains("is-new"), "an upcoming gathering with no picture does not shimmer");
+  /* 2026-10-08: every invitation shimmers, with a picture or without. */
+  assert([...d.querySelectorAll(".invite")].every((i) => i.classList.contains("is-new")), "an invitation does not shimmer");
   [...d.querySelectorAll(".invite-photo, .record-photo")].forEach((f) => assert(/aspect-ratio:\s*[\d.]+/.test(f.getAttribute("style") || ""), "a picture frame without its picture's shape"));
 });
 

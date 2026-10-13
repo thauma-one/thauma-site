@@ -68,6 +68,10 @@ const staff = [
     roles: ["staff", "partner"], menu: true },
   { slug: "settings", url: "/staff/settings/", label: "Settings",
     roles: ["staff", "partner"], menu: true },
+  /* What each Publish changed, by page (2026-10-13; workers/src/changes.js).
+     Everyone: each sees only the pages they have. */
+  { slug: "changes", url: "/staff/changes/", label: "What's new",
+    roles: ["staff", "partner", "admin", "board", "communications"], menu: true },
 ];
 
 /** The organization's console. */

@@ -27,6 +27,8 @@ import { requireAccess } from "./lib/access.js";
 import { createDb } from "./lib/db.js";
 import { getFile, putFile, deleteFile } from "./lib/github.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
+import { answerProposal, liveBio } from "./lib/bio.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const json = (body, status = 200, headers = {}) =>
   new Response(JSON.stringify(body), {
@@ -199,6 +201,22 @@ export default {
     const person = await db.queryOne("user_by_id_any_status", { id: userId });
     if (!person) return json({ error: "No such person" }, 404);
 
+    /* A PERSON'S OWN CHANGES, DECLINED (0058): nothing on the page changes;
+       the answer (and the administrator's note, if any) is kept for them to
+       read on Settings › Your bio, and they are told (lib/bio.js). */
+    if (request.method === "POST" && body.action === "decline-proposal") {
+      const row = (await db.query("staff_profiles_all", {})).find((r) => r.user_id === userId);
+      const was = row ? liveBio(row) : {};
+      await answerProposal(env, db, { userId, by: me.user_name || user.email, note: body.note,
+                                      was, kept: was, origin: siteOrigin(env, request) }).catch(() => {});
+      await db.query("audit_write", {
+        id: "a_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20), now,
+        user_id: user.email, partner_id: null, action: "update", entity: "staff_profile",
+        entity_id: userId, detail: JSON.stringify({ proposal: "declined" }),
+      }).catch(() => {});
+      return json({ ok: true, user_id: userId });
+    }
+
     /* ------------------------------------------------------------ DELETE */
     if (request.method === "DELETE") {
       const rows = await db.query("staff_profiles_all", {});
@@ -309,6 +327,19 @@ export default {
       entity_id: userId,
       detail: JSON.stringify({ slug, file: file && file.ok ? "written" : file }),
     });
+
+    /* ANSWERED (0058): the person's own changes were this save — each part
+       as sent, as the administrator changed it, or left as it was. They are
+       no longer waiting; the person is told, and Settings › Your bio shows
+       them each part's outcome (lib/bio.js outcomes). */
+    if (body.clear_proposal) {
+      const kept = { region: profile.region || "", public_email: profile.public_email || "",
+                     photo: profile.photo || "", bio_photo: profile.bio_photo || "",
+                     text: Object.fromEntries(Object.entries(translations).map(([l, t]) =>
+                       [l, { role_title: t.role_title || "", bio: t.bio || "" }])) };
+      await answerProposal(env, db, { userId, by: me.user_name || user.email, note: body.proposal_note,
+                                      was: current ? liveBio(current) : {}, kept, origin: siteOrigin(env, request) }).catch(() => {});
+    }
 
     return json({
       ok: true,

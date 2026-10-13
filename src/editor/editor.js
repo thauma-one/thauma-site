@@ -101,15 +101,17 @@ const Tone = Mark.create({
    typed or pasted, {{first_name}} becomes the variable (input and paste
    rules below), and the legend's buttons insert the same thing. Stored as
    data-var ("name" for the full name, as before) so every saved draft and
-   sent mailing still reads. */
-export const VARIABLES = ["first_name", "name"];
-export const VAR_TOKENS = { first_name: "{{first_name}}", name: "{{full_name}}" };
-const VAR_FROM = { first_name: "first_name", full_name: "name", name: "name" };
+   sent mailing still reads.
+   {{signature}} (2026-10-12): the sender's signature, written in Mail ›
+   Signature and filled in when the mail goes (0055). */
+export const VARIABLES = ["first_name", "name", "signature"];
+export const VAR_TOKENS = { first_name: "{{first_name}}", name: "{{full_name}}", signature: "{{signature}}" };
+const VAR_FROM = { first_name: "first_name", full_name: "name", name: "name", signature: "signature" };
 const tokenVar = (t) => VAR_FROM[/[a-z_]+/.exec(t)[0]];
 /* A token already in saved words (written before, or arrived as text) shown
    as the variable it is. Only in text, never inside a tag's attributes. */
 export function tokensToVariables(html) {
-  return String(html || "").replace(/(<[^>]*>)|\{\{\s*(first_name|full_name|name)\s*\}\}/g,
+  return String(html || "").replace(/(<[^>]*>)|\{\{\s*(first_name|full_name|name|signature)\s*\}\}/g,
     (m, tag, v) => (tag ? tag : `<span data-var="${VAR_FROM[v]}"></span>`));
 }
 /* a picture's width: 10–99 (% of the column), or an old name; else full */
@@ -129,28 +131,35 @@ const Variable = Node.create({
     return {
       v: { default: "first_name", parseHTML: (el) => el.getAttribute("data-var"),
            renderHTML: (a) => ({ "data-var": a.v }) },
+      /* WHICH SIGNATURE (0057): its id, and its name to show while writing */
+      sig: { default: null, parseHTML: (el) => el.getAttribute("data-sig"),
+             renderHTML: (a) => (a.sig ? { "data-sig": a.sig } : {}) },
+      sigName: { default: null, parseHTML: (el) => el.getAttribute("data-sig-name"),
+                 renderHTML: (a) => (a.sigName ? { "data-sig-name": a.sigName } : {}) },
     };
   },
   parseHTML() {
     return [{ tag: "span[data-var]", getAttrs: (el) => (VARIABLES.includes(el.getAttribute("data-var")) ? null : false) }];
   },
   renderHTML({ node, HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }), VAR_TOKENS[node.attrs.v] || node.attrs.v];
+    const token = node.attrs.v === "signature" && node.attrs.sigName
+      ? "{{signature: " + node.attrs.sigName + "}}" : VAR_TOKENS[node.attrs.v] || node.attrs.v;
+    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }), token];
   },
   renderText({ node }) { return VAR_TOKENS[node.attrs.v] || node.attrs.v; },
   addInputRules() {
     /* the whole token is the group: a rule with a group replaces only it */
-    return [nodeInputRule({ find: /(\{\{\s*(?:first_name|full_name|name)\s*\}\})$/, type: this.type,
+    return [nodeInputRule({ find: /(\{\{\s*(?:first_name|full_name|name|signature)\s*\}\})$/, type: this.type,
       getAttributes: (m) => ({ v: tokenVar(m[1]) }) })];
   },
   addPasteRules() {
-    return [nodePasteRule({ find: /(\{\{\s*(?:first_name|full_name|name)\s*\}\})/g, type: this.type,
+    return [nodePasteRule({ find: /(\{\{\s*(?:first_name|full_name|name|signature)\s*\}\})/g, type: this.type,
       getAttributes: (m) => ({ v: tokenVar(m[1]) }) })];
   },
   addCommands() {
     return {
-      insertVariable: (v) => ({ commands }) =>
-        commands.insertContent({ type: this.name, attrs: { v } }),
+      insertVariable: (v, extra) => ({ commands }) =>
+        commands.insertContent({ type: this.name, attrs: Object.assign({ v }, extra || {}) }),
     };
   },
 });

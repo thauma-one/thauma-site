@@ -55,8 +55,10 @@ async function references(db) {
   const mails = await db.query("media_refs_mailings", {});
   const res = await db.query("media_refs_resources", {});
   const atts = new Set((await db.query("media_refs_attachments", {})).map((r) => r.object_key));
+  /* tolerant: before 0057 there are no signatures to protect */
+  const sigs = await db.query("media_refs_signatures", {}).catch(() => []);
   const text = [...sites.flatMap((r) => [r.draft, r.published]), ...mails.flatMap((m) => [m.body_html, m.body_md]),
-                ...res.map((r) => r.photo)].filter(Boolean).join("\n");
+                ...res.map((r) => r.photo), ...sigs.map((r) => r.html)].filter(Boolean).join("\n");
   return { used: (key) => atts.has(key) || text.includes(key) };
 }
 

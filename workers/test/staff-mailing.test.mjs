@@ -898,5 +898,45 @@ await check("deleting a draft takes its pictures and attachments with it, unless
   eq(deleted.sort(), ["attachments/p_chase/flyer-cccc.pdf", "newsletter/chase-roush/only-here-aaaa.jpg"], "deleted");
 });
 
+/* ------------------------------ the signature ----------------------------- */
+
+await check("signatures are kept per sender, by name, inline; the organization's under its own key (0057)", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("POST", { body: { action: "signature", name: "Chase",
+    html: "<p><strong>Ana</strong></p><p>x</p><script>bad()</script>", owner: "p_mira" } }), env);
+  eq(res.status, 200, "kept");
+  const body = await res.json();
+  assert(/^sig_[a-f0-9]{16}$/.test(body.id), "an id was made: " + body.id);
+  const write = env.calls.find((c) => /INSERT INTO mail_sigs/.test(c.sql));
+  assert(write && write.params.includes("p_chase") && !write.params.includes("p_mira"),
+    "kept under the caller's ministry, never the request's: " + JSON.stringify(write && write.params));
+  assert(write.params.includes("Chase") && write.params.includes("<strong>Ana</strong><br>x"), "named, inline, cleaned: " + JSON.stringify(write.params));
+  assert(/WHERE mail_sigs\.owner = excluded\.owner/.test(write.sql), "another sender's signature could be taken over");
+
+  const org = envWith("admin");
+  await handler.fetch(req("POST", { query: "?scope=organization", body: { action: "signature", html: "<p>T</p>" } }), org);
+  const w2 = org.calls.find((c) => /INSERT INTO mail_sigs/.test(c.sql));
+  assert(w2 && w2.params.includes("~organisation"), "the organization's own: " + JSON.stringify(w2 && w2.params));
+
+  const del = envWith("staff");
+  await handler.fetch(req("POST", { body: { action: "signature-delete", id: "sig_1" } }), del);
+  const d = del.calls.find((c) => /DELETE FROM mail_sigs/.test(c.sql));
+  assert(d && d.params.includes("p_chase"), "a delete is the caller's own only");
+});
+
+await check("no signatures table yet: Mail still opens, and keeping one says why it cannot", async () => {
+  const env = envWith("staff");
+  const prep = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (/mail_sigs/.test(sql)) throw new Error("no such table: mail_sigs");
+    return prep(sql);
+  };
+  const get = await handler.fetch(req("GET"), env);
+  eq(get.status, 200, "the page loads");
+  eq((await get.json()).signatures, [], "no signatures");
+  const post = await handler.fetch(req("POST", { body: { action: "signature", html: "x" } }), env);
+  eq(post.status, 409, "refused, with a reason");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

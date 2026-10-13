@@ -433,10 +433,54 @@
           <span class="cp-legend-label" data-i18n="ml.cpVarLegend">Variables</span>
           <button type="button" class="cp-varchip" data-var="first_name"><code>{% raw %}{{first_name}}{% endraw %}</code><span data-i18n="ml.cpVarFirst">First name</span></button>
           <button type="button" class="cp-varchip" data-var="name"><code>{% raw %}{{full_name}}{% endraw %}</code><span data-i18n="ml.cpVarFull">Full name</span></button>
+          <button type="button" class="cp-varchip" data-var="signature"><code>{% raw %}{{signature}}{% endraw %}</code><span data-i18n="ml.cpVarSig">Signature</span></button>
+          <button type="button" class="link-btn cp-sigedit" id="cpSigEdit" data-i18n="ml.sigEdit">Edit signature</button>
         </div>
 
         <div id="cpBody" class="cp-body"></div>
       </div>
+
+      {#- THE SIGNATURE (2026-10-12, Chase: "add another variable for adding an
+          email signature and the ability to create/edit the signature
+          somewhere"). One per sender — this ministry, or Thauma's own mail —
+          kept with the mail (0055) and put in wherever {{signature}} sits.
+          Inline only: bold, italic, underline, links, line breaks. -#}
+      <div class="dlg-back" id="cpSigBack" hidden>
+        <div class="form dlg cp-sigdlg" role="dialog" aria-labelledby="cpSigTitle">
+          <h3 id="cpSigTitle" data-i18n="ml.sigTitle">Signatures</h3>
+          {#- SEVERAL, BY NAME (0057, Chase 2026-10-13: "sometimes a Thauma
+              email may come from me and from Thauma, but both are made on
+              my account"): pick one to edit, or start another. -#}
+          <div class="cp-sigpick">
+            <select id="cpSigWhich" class="lang-pick" data-i18n-attr="aria-label:ml.sigWhich" aria-label="Signature"></select>
+            <button type="button" class="ghost-btn sm" id="cpSigNew" data-i18n="ml.sigNew">+ Another</button>
+          </div>
+          <label class="fld"><span data-i18n="ml.sigName">Its name</span>
+            <input type="text" id="cpSigName" maxlength="60" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
+          <div class="cp-tools" id="cpSigTools" role="toolbar" aria-label="Formatting">
+            <button type="button" data-tool="bold" aria-pressed="false" title="Bold"><b>B</b></button>
+            <button type="button" data-tool="italic" aria-pressed="false" title="Italic"><i>I</i></button>
+            <button type="button" data-tool="underline" aria-pressed="false" title="Underline"><u>U</u></button>
+            <span class="cp-tools-sep"></span>
+            <button type="button" id="cpSigLinkBtn" data-cmd="link" aria-pressed="false" data-i18n-attr="title:ml.cpLinkAddr" title="Link">&#128279;</button>
+            <button type="button" id="cpSigPic" class="cp-tool-word" data-i18n-attr="title:ml.cpPicture" title="Picture"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><circle cx="5.5" cy="6" r="1.3"/><path d="M2 12l4-4 3 3 2-2 3 3"/></svg><span data-i18n="ml.cpPicture">Picture</span></button>
+          </div>
+          <div class="cp-row" id="cpSigLinkRow" hidden>
+            <input type="url" id="cpSigLinkUrl" inputmode="url" autocomplete="url" placeholder="https://"
+                   data-i18n-attr="aria-label:ml.cpLinkAddr" aria-label="Link address">
+            <button type="button" class="ghost-btn" id="cpSigLinkApply" data-i18n="ml.cpLinkApply">Link</button>
+          </div>
+          <div id="cpSigBody" class="cp-body cp-sigbody"></div>
+          <div class="dlg-actions">
+            <button class="ghost-btn danger" type="button" id="cpSigDelete" data-i18n="common.delete">Delete</button>
+            <span class="dlg-gap"></span>
+            <button class="ghost-btn" type="button" id="cpSigCancel" data-i18n="ml.sigClose">Close</button>
+            <button class="solid-btn" type="button" id="cpSigSave" data-i18n="ml.sigSave">Keep signature</button>
+          </div>
+        </div>
+      </div>
+      {#- which signature, when there is more than one -#}
+      <div class="cp-sigmenu" id="cpSigMenu" role="menu" hidden></div>
 
       {#- A DIFFERENT MECHANISM FROM AN INLINE PICTURE, and conflating the two
          is the usual mistake. A picture is fetched by the reader's mail client

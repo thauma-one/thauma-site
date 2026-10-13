@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "54588d4e9635f439";
+export const SOURCE_DIGEST = "fd57a5ad4ee22722";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -87,7 +87,13 @@ VALUES (:id, :partner_id, :address, :label, :can_receive, :now);`,
        (SELECT COALESCE(SUM((SELECT COUNT(*) FROM subscribers s
                               WHERE s.list_id = l.id AND s.status = 'subscribed')), 0)
           FROM mailing_lists l
-         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers,
+       (SELECT COUNT(*) FROM contact_forms f
+         WHERE lower(f.from_address) = lower(sa.address)) AS form_sends,
+       (SELECT COUNT(*) FROM contact_forms f
+         WHERE lower(f.deliver_to) = lower(sa.address))
+     + (SELECT COUNT(*) FROM contact_topics t
+         WHERE lower(t.deliver_to) = lower(sa.address)) AS form_receives
 FROM sender_addresses sa
 LEFT JOIN partners p ON p.id = sa.partner_id
 ORDER BY p.display_name COLLATE NOCASE, sa.address COLLATE NOCASE;`,
@@ -344,6 +350,19 @@ WHERE goals.partner_id = :partner_id;`,
 FROM goal_progress
 WHERE partner_id = :partner_id
 ORDER BY kind, label;`,
+  hit_add: `INSERT INTO page_hits (at, day, site, live, path, lang, country, referrer, device, session)
+VALUES (:now, :day, :site, :live, :path, :lang, :country, :referrer, :device, :session);`,
+  hits_breakdown: `SELECT CASE :dim WHEN 'country' THEN country WHEN 'path' THEN path WHEN 'referrer' THEN referrer
+                 WHEN 'device' THEN device WHEN 'lang' THEN lang WHEN 'site' THEN site END AS k,
+       COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY k ORDER BY visits DESC, views DESC LIMIT :limit;`,
+  hits_by_day: `SELECT day, COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY day ORDER BY day;`,
+  hits_prune: `DELETE FROM page_hits WHERE day < :before;`,
   interaction_add: `INSERT INTO interactions (
   id, contact_id, partner_id, type, is_personal, channel,
   occurred_on, note, logged_by, source, created_at
@@ -402,6 +421,13 @@ ORDER BY (e.occurred_on IS NULL) DESC, e.occurred_on DESC, e.created_at DESC;`,
   JOIN mailing_lists l ON l.id = m.list_id
  WHERE l.partner_id = :partner_id AND r.status = 'bounced'
    AND r.updated_at > COALESCE((SELECT mail_bounces_seen_at FROM partners WHERE id = :partner_id), '');`,
+  mail_sig_delete: `DELETE FROM mail_sigs WHERE id = :id AND owner = :owner;`,
+  mail_sig_upsert: `INSERT INTO mail_sigs (id, owner, name, html, sort_order, updated_at, updated_by)
+VALUES (:id, :owner, :name, :html, :sort_order, :now, :user_id)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, html = excluded.html,
+  updated_at = excluded.updated_at, updated_by = excluded.updated_by
+WHERE mail_sigs.owner = excluded.owner;`,
+  mail_sigs_for: `SELECT id, name, html FROM mail_sigs WHERE owner = :owner ORDER BY sort_order, name COLLATE NOCASE;`,
   mailing_attachment_add: `INSERT INTO mailing_attachments
   (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
 VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);`,
@@ -600,6 +626,7 @@ ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
   media_refs_attachments: `SELECT object_key FROM mailing_attachments;`,
   media_refs_mailings: `SELECT body_html, body_md FROM mailings;`,
   media_refs_resources: `SELECT photo FROM resources WHERE photo IS NOT NULL;`,
+  media_refs_signatures: `SELECT html FROM mail_sigs;`,
   media_refs_sites: `SELECT draft, published FROM partner_sites;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now
@@ -638,6 +665,42 @@ WHERE milestones.partner_id = :partner_id;`,
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
+  notice_add: `INSERT INTO notices (id, user_id, kind, vars, link, created_at)
+VALUES (:id, :user_id, :kind, :vars, :link, :now);`,
+  notice_clear: `UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE id = :id AND user_id = :user_id;`,
+  notices_clear_all: `UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE user_id = :user_id AND cleared_at IS NULL;`,
+  notices_current: `SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND cleared_at IS NULL AND (read_at IS NULL OR read_at > :since)
+ ORDER BY created_at DESC LIMIT 50;`,
+  notices_for_user: `SELECT id, kind, vars, link, created_at, read_at
+  FROM notices WHERE user_id = :user_id
+ ORDER BY created_at DESC LIMIT 40;`,
+  notices_past: `SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND (cleared_at IS NOT NULL OR read_at <= :since)
+ ORDER BY created_at DESC LIMIT 100;`,
+  notices_prune: `DELETE FROM notices WHERE created_at < :before;`,
+  notices_read_all: `UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;`,
+  notices_unread_count: `SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;`,
+  notify_everyone: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;`,
+  notify_person: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.id = :user_id AND u.status = 'active';`,
+  notify_pref_set: `INSERT INTO notify_prefs (user_id, kind, is_on, updated_at)
+VALUES (:user_id, :kind, :is_on, :now)
+ON CONFLICT(user_id, kind) DO UPDATE SET is_on = excluded.is_on, updated_at = excluded.updated_at;`,
+  notify_prefs_for_user: `SELECT kind, is_on FROM notify_prefs WHERE user_id = :user_id;`,
+  notify_role_holders: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+  JOIN user_roles r ON r.user_id = u.id AND r.role = :role
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;`,
   partner_colors_set: `UPDATE partners
    SET embed_accent = :embed_accent, embed_accent2 = :embed_accent2, embed_turn = :embed_turn, updated_at = :now
  WHERE id = :partner_id;`,
@@ -765,17 +828,15 @@ JOIN partners p ON p.id = pu.partner_id
 WHERE u.email = :email
   AND u.status = 'active'
 ORDER BY p.display_name;`,
-  people_find: `SELECT u.id AS user_id, u.name,
+  people_find: `SELECT u.id AS user_id, u.name, u.email, u.status,
        (SELECT GROUP_CONCAT(p.display_name, ', ')
           FROM partner_users pu JOIN partners p ON p.id = pu.partner_id
          WHERE pu.user_id = u.id) AS ministries
   FROM users u
- WHERE u.status = 'active'
+ WHERE u.status IN ('active', 'invited')
    AND u.id <> :user_id
    AND COALESCE(u.protected, 0) = 0
-   AND (u.name LIKE '%' || :q || '%' OR u.email LIKE :q || '%')
- ORDER BY u.name COLLATE NOCASE
- LIMIT 8;`,
+ ORDER BY u.name COLLATE NOCASE;`,
   prayer_delete: `DELETE FROM prayer WHERE id = :id AND partner_id = :partner_id;`,
   prayer_for_staff: `SELECT p.id, p.is_public, p.is_answered, p.answered_on, p.sort_order,
        p.created_at, p.updated_at
@@ -807,6 +868,12 @@ ON CONFLICT(id) DO UPDATE SET
   is_public = :is_public, is_answered = :is_answered,
   answered_on = :answered_on, sort_order = :sort_order, updated_at = :now
 WHERE prayer.partner_id = :partner_id;`,
+  profile_proposal_delete: `DELETE FROM staff_profile_proposals WHERE user_id = :user_id;`,
+  profile_proposal_get: `SELECT user_id, payload, submitted_at FROM staff_profile_proposals WHERE user_id = :user_id;`,
+  profile_proposal_set: `INSERT INTO staff_profile_proposals (user_id, payload, submitted_at)
+VALUES (:user_id, :payload, :now)
+ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = excluded.submitted_at;`,
+  profile_proposals_all: `SELECT user_id, payload, submitted_at FROM staff_profile_proposals ORDER BY submitted_at;`,
   public_archive_for_list: `SELECT m.slug, m.subject, m.preheader, m.finished_at
 FROM mailings m
 JOIN mailing_lists l ON l.id = m.list_id
@@ -948,6 +1015,9 @@ WHERE provider_id = :provider_id;`,
 WHERE provider_id = :provider_id;`,
   recipient_opened: `UPDATE mailing_recipients SET opened_at = COALESCE(opened_at, :now)
 WHERE provider_id = :provider_id;`,
+  release_add: `INSERT INTO releases (id, at, by_name, entries, content) VALUES (:id, :now, :by_name, :entries, :content);`,
+  releases_entry_ids: `SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;`,
+  releases_recent: `SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60;`,
   resource_can_edit_shared: `SELECT 1 AS ok FROM resource_shares
  WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
 UNION ALL

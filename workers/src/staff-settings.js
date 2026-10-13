@@ -23,6 +23,10 @@
  * Every write is written to audit_log. The log is append-only by trigger, so
  * this endpoint can add to the record of who changed what and cannot edit it.
  */
+import { notify } from "./lib/notify.js";
+import { siteOrigin } from "./lib/origin.js";
+import { noticesFor, prefKind } from "./lib/notify.js";
+import { cleanBio, liveBio, readProposal, isWaiting } from "./lib/bio.js";
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { resolveActor, auditActingWrite, withActing } from "./lib/actas.js";
@@ -148,6 +152,23 @@ function embedCore(e) {
     shared: { roadmap: !!sh.roadmap, goal: !!sh.goal, prayer: !!sh.prayer, videos: !!sh.videos } };
 }
 
+/* YOUR BIO (0058, Chase 2026-10-13: "they can edit, but it has to be
+   approved by an Admin before it goes live"; later "their whole bio,
+   including the photo and email contact"). The team page as it is now, what
+   you have sent that is waiting, and the last answer to it (lib/bio.js).
+   Only for somebody who HAS a team page; who is on it, its address and its
+   order stay an administrator's decision. */
+async function bioOf(db, userId) {
+  const row = (await db.query("staff_profiles_all", {})).find((r) => r.user_id === userId);
+  if (!row || !row.slug) return null;
+  const stored = readProposal(await db.queryOne("profile_proposal_get", { user_id: userId }).catch(() => null));
+  return { is_public: !!row.is_public, slug: row.slug, live: liveBio(row),
+           proposal: isWaiting(stored) ? stored : null,
+           /* the answer, with what you sent, until you send again or put it away */
+           answer: stored && stored.decision ? stored : null };
+}
+export { cleanBio };
+
 export default {
   async fetch(request, env) {
     const { db, user, me, partner, roles, isAdmin, actor, denied } = await context(request, env);
@@ -164,6 +185,7 @@ export default {
 
     /* ---------------------------------------------------------------- GET */
     if (request.method === "GET") {
+      const bio = await bioOf(db, me.user_id);
       const [languages, settings, keys, looks] = await Promise.all([
         db.query("partner_languages_for_partner", { partner_id }),
         db.queryOne("partner_settings", { partner_id }),
@@ -182,6 +204,12 @@ export default {
           // What this account may do, decided here rather than in the browser.
           // The UI hides what it cannot do; the endpoint refuses it.
           can: { set_default_lang: isAdmin },
+          /* Settings › Your bio (0058); null when you have no team page */
+          bio,
+          /* "Email me when" (0056) and the bell (0060): the notices this
+             person may receive, each with their own choices (lib/notify.js);
+             the answers to your own bio only if you have one. */
+          notices: await noticesFor(db, me.user_id, roles, { self: !!bio }),
         },
         partner: {
           id: partner.id,
@@ -231,6 +259,47 @@ export default {
         await audit(db, { user, partner, action: "update", entity: "user.preferred_lang",
                           entity_id: user.email, detail: { lang } });
         return json({ preferred_lang: lang });
+      }
+
+      // --- personal: a notice by email, on or off (0056, lib/notify.js) ---
+      if (body.notify !== undefined) {
+        const kind = String((body.notify && body.notify.kind) || "");
+        /* "email" (the default) or "bell" (0060) */
+        const channel = body.notify && body.notify.channel === "bell" ? "bell" : "email";
+        const self = !!(await bioOf(db, me.user_id));
+        const mine = await noticesFor(db, me.user_id, roles, { self });
+        if (!mine.some((n) => n.kind === kind)) return json({ error: "Not a notice you receive." }, 400);
+        const on = !!(body.notify && body.notify.on);
+        try {
+          await db.query("notify_pref_set", { user_id: me.user_id, kind: prefKind(kind, channel), is_on: on ? 1 : 0, now: new Date().toISOString() });
+        } catch {
+          return json({ error: "This cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);
+        }
+        return json({ notices: await noticesFor(db, me.user_id, roles, { self }) });
+      }
+
+      // --- personal: your own bio, sent for approval (0058) ---
+      if (body.bio_proposal !== undefined || body.bio_withdraw || body.bio_dismiss) {
+        const have = await bioOf(db, me.user_id);
+        if (!have) return json({ error: "You do not have a team page yet. An administrator adds you to it." }, 404);
+        try {
+          if (body.bio_withdraw || body.bio_dismiss) {
+            /* withdraw: what is waiting; put away: the answer, once read */
+            if (body.bio_withdraw ? have.proposal : have.answer) await db.query("profile_proposal_delete", { user_id: me.user_id });
+          } else {
+            const proposal = cleanBio(body.bio_proposal, codes, have.live);
+            await db.query("profile_proposal_set", { user_id: me.user_id, payload: JSON.stringify(proposal), now });
+            await audit(db, { user, partner, action: "update", entity: "staff_profile.proposal",
+                              entity_id: me.user_id, detail: { languages: Object.keys(proposal.text),
+                                                                pictures: !!(proposal.photo !== have.live.photo || proposal.bio_photo !== have.live.bio_photo) } });
+            /* administrators who asked to be told (Settings › Notifications) */
+            await notify(env, db, "profile_proposed", { name: me.user_name || user.email },
+              { origin: siteOrigin(env, request), link: "/admin/users/#" + me.user_id + "/team" }).catch(() => {});
+          }
+        } catch {
+          return json({ error: "This cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);
+        }
+        return json({ bio: await bioOf(db, me.user_id) });
       }
 
       // --- partner: which languages this site publishes ---
