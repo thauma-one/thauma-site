@@ -640,13 +640,13 @@ await check("Publish: a release of what changed, by page, each person seeing the
   const bells = [], sent = [];
   const ndb = { query: async (name, p) => {
     if (name === "notify_everyone") return people;
-    if (name === "notify_prefs_for_user") return p.user_id === "u_s" ? [{ kind: "site_published", is_on: 1 }] : [];
+    if (name === "notify_prefs_for_user") return p.user_id === "u_s" ? [{ kind: "site_published", is_on: 0 }] : [];
     if (name === "notice_add") { bells.push(p); return []; }
     throw new Error("unexpected " + name);
   } };
   await notify({}, ndb, "site_published", { by: "Chase" }, { link: "/staff/changes/#r_1", send: async (env, m) => { sent.push(m); return { ok: true }; } });
-  eq([bells.map((b) => b.user_id), bells[0].link, sent.map((m) => m.to)], [["u_a", "u_s"], "/staff/changes/#r_1", ["s@x.org"]],
-     "everyone's bell, opening the release; email only for whoever switched it on");
+  eq([bells.map((b) => b.user_id), bells[0].link, sent.map((m) => m.to)], [["u_a", "u_s"], "/staff/changes/#r_1", ["a@x.org"]],
+     "everyone's bell, opening the release; email for everyone but whoever switched it off");
   const w = noticeWords("site_published", "en", { by: "<C>" });
   eq(w.summary, "<b>&lt;C&gt;</b> published the site — see what's new", "one line in the bell, escaped");
   for (const k of ["invite_accepted", "profile_proposed", "profile_approved", "profile_declined", "site_published"]) {
@@ -700,10 +700,26 @@ await check("a visit is counted without knowing who: thin, real sites told apart
   assert(/doNotTrack[\s\S]{0,120}globalPrivacyControl/.test(page) && /sendBeacon\('\/api\/hit'/.test(page), "thauma.one does not count, or does not respect Do Not Track");
 });
 
+await check("every notice starts on, by email and in the bell, and only a switch turned off stays off (Chase, 2026-10-13)", async () => {
+  /* "All notifications should be on by default. Even for current users …
+     If they turn them off, they are remembered, but, if we add new
+     notification settings, they are on by default." */
+  const none = { query: async () => [] };
+  for (const n of await noticesFor(none, "u_1", ["admin", "staff", "partner", "board", "communications"], { self: true })) {
+    eq([n.kind, n.on, n.bell], [n.kind, true, true], "starts off");
+  }
+  const src = fs.readFileSync(new URL("../src/lib/notify.js", import.meta.url), "utf8");
+  const list = src.slice(src.indexOf("export const NOTICES"), src.indexOf("];", src.indexOf("export const NOTICES")));
+  assert(!/\bon:\s*false|\bbell:\s*false/.test(list), "a notice in the list starts off");
+  const offEmail = { query: async () => [{ kind: "site_published", is_on: 0 }] };
+  eq((await noticesFor(offEmail, "u_1", ["staff"])).find((n) => n.kind === "site_published"), { kind: "site_published", on: false, bell: true },
+     "turned off by email: remembered, and the bell is still on");
+});
+
 await check("Settings offers a notice only to the roles that receive it", async () => {
   const db = { query: async () => [{ kind: "invite_accepted", is_on: 0 }] };
   eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false, bell: true }, { kind: "profile_proposed", on: true, bell: true },
-     { kind: "site_published", on: false, bell: true }], "an administrator: one switched off by email, the bell at its start; the site's publishing in the bell only");
+     { kind: "site_published", on: true, bell: true }], "an administrator: the one switched off by email stays off; everything else on, by email and in the bell");
   eq((await noticesFor(db, "u_1", ["staff"])).map((n) => n.kind), ["site_published"], "staff do not get administrators' notices, but hear the site was published");
   eq((await noticesFor(db, "u_1", ["staff"], { self: true })).map((n) => n.kind), ["profile_approved", "profile_declined", "site_published"], "the answers to your own bio, when you have one");
   const words = noticeEmail("invite_accepted", { lang: "sr", name: "N", email: "e" });

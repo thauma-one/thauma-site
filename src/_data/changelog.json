@@ -170,6 +170,26 @@
         "hr": "Događaji: fotografija se uređuje pokraj slike pozivnice, a Uredi ponovno otvara cijelu izvornu fotografiju.",
         "sr": "Догађаји: фотографија се уређује покрај слике позивнице, а Уреди поновно отвара цијелу изворну фотографију."
       }
+    },
+    {
+      "id": "2026-10-13-noticeson",
+      "date": "2026-10-13",
+      "page": "staff:settings",
+      "text": {
+        "en": "Every notification starts on, in the bell and by email. Turn off what you don't want in Notifications; new ones start on too.",
+        "hr": "Sve obavijesti su uključene, u zvoncu i e-poštom. Isključite što ne želite u Obavijestima; nove su također uključene.",
+        "sr": "Сва обавештења су укључена, у звонцу и е-поштом. Искључите шта не желите у Обавештењима; нова су такође укључена."
+      }
+    },
+    {
+      "id": "2026-10-13-phonemenu",
+      "date": "2026-10-13",
+      "page": "console",
+      "text": {
+        "en": "On a phone, the bottom of the menu — Settings, What's new and Sign out — can always be reached.",
+        "hr": "Na mobitelu je dno izbornika — Postavke, Što je novo i Odjava — uvijek dostupno.",
+        "sr": "На мобилном је дно менија — Подешавања, Шта је ново и Одјава — увек доступно."
+      }
     }
   ]
 }

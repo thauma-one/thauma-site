@@ -6,10 +6,13 @@
  * ability to toggle certain ones on and off? I'm mainly thinking for admins
  * and getting email notifications when someone accepts an invitation."
  *
- * THE LIST IS HERE. Each notice says who may receive it (a role) and whether
- * it starts on. A person's own choice is a row in notify_prefs (0056), set on
- * Settings › Notifications; a notice with no row keeps its
- * starting value. A new notice is one entry below, its words in
+ * THE LIST IS HERE. Each notice says who may receive it. EVERY NOTICE STARTS
+ * ON, by email and in the bell (Chase, 2026-10-13: "All notifications should
+ * be on by default. Even for current users … If they turn them off, they are
+ * remembered, but, if we add new notification settings, they are on by
+ * default"). A person's choice is a row in notify_prefs (0056), set on
+ * Settings › Notifications; no row means on — so a notice added later is on
+ * for everybody, and only a switch somebody turned off stays off. A new notice is one entry below, its words in
  * src/_data/emailsAndForms.json ("notify" › "<kind>_subject" …) and its switch label in
  * staff-i18n.js ("set.notify.<kind>"), then a call to notify() where it
  * happens.
@@ -18,7 +21,7 @@
  * thing that happened (somebody confirming their account) must not fail
  * because a notice about it did. And the table may not exist yet — dev runs
  * against the shared database before a migration is applied — in which case
- * every notice keeps its starting value.
+ * every notice is on.
  *
  * TWO WAYS IT ARRIVES, ONE LIST (Chase, 2026-10-13: "Add the in app
  * notifications bell"). Every notice goes to the bell as well as by email,
@@ -30,8 +33,7 @@
  * a role; `to: "all"` goes to every active account; `to: "self"` is about
  * something of that person's own (an answer to the bio they sent) and goes
  * only to them, through notifyPerson. A self notice is offered on Settings
- * only to somebody it can concern. `bell` is the bell's starting value where
- * it differs from email's (`on`).
+ * only to somebody it can concern.
  *
  * THE BELL SAYS ONE LINE (Chase, 2026-10-13: "they need to be summaries of
  * what happened, not all info … When you press the notification, it opens
@@ -43,18 +45,18 @@ import { sendMail, shell, h1, p, button } from "./mail.js";
 import { t } from "./mail-i18n.js";
 
 export const NOTICES = [
-  { kind: "invite_accepted", role: "admin", on: true },
+  { kind: "invite_accepted", role: "admin" },
   /* somebody sent changes to their own bio for approval (0058) */
-  { kind: "profile_proposed", role: "admin", on: true },
+  { kind: "profile_proposed", role: "admin" },
   /* an administrator answered the bio you sent (0058; Chase 2026-10-13:
      "Even a notification if it was approved or declined is good") */
-  { kind: "profile_approved", to: "self", on: true },
-  { kind: "profile_declined", to: "self", on: true },
+  { kind: "profile_approved", to: "self" },
+  { kind: "profile_declined", to: "self" },
   /* the site was published; the notice opens that release on What's new
      (Chase, 2026-10-13: "a notification to users when the site was updated
      with a changelog. Essentially when the publish button is pressed"). To
-     everybody; in the bell, not by email, unless they switch it on. */
-  { kind: "site_published", to: "all", on: false, bell: true },
+     everybody. */
+  { kind: "site_published", to: "all" },
 ];
 
 const BELL = "bell:";
@@ -75,14 +77,14 @@ export async function noticesFor(db, userId, roles, { self = false } = {}) {
 /** The pref row's name for a channel: 'kind' (email) or 'bell:kind'. */
 export function prefKind(kind, channel) { return channel === "bell" ? BELL + kind : kind; }
 
-const wants = (chosen, n, pre = "") => chosen.has(pre + n.kind) ? chosen.get(pre + n.kind)
-  : pre === BELL && n.bell !== undefined ? n.bell : n.on;
+/* on unless this person turned it off */
+const wants = (chosen, n, pre = "") => chosen.has(pre + n.kind) ? chosen.get(pre + n.kind) : true;
 
 async function choices(db, userId) {
   const out = new Map();
   try {
     for (const r of await db.query("notify_prefs_for_user", { user_id: userId })) out.set(r.kind, !!r.is_on);
-  } catch { /* no table yet: every notice keeps its starting value */ }
+  } catch { /* no table yet: every notice is on */ }
   return out;
 }
 

@@ -2036,7 +2036,7 @@ html:not(.roles-known)[data-area="staff"] .console-me-menu a[data-roles]{display
   .menu-open .console-menu-btn .when-open{display:inline}
   .console-menu{display:none}
   .menu-open .console-menu{display:flex;flex-direction:column;flex-basis:100%;
-    max-height:calc(100vh - 56px);overflow-y:auto;padding:4px 0 18px}
+    max-height:calc(100dvh - 56px);overflow-y:auto;overscroll-behavior:contain;padding:4px 0 18px}
   .console-rows{flex:none}
   .console-row{flex-direction:column;align-items:stretch;gap:0;padding:10px 0 6px}
   .console-row + .console-row{border-top:1px solid var(--line)}

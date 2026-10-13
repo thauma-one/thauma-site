@@ -1172,11 +1172,28 @@
       meBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
       header.classList.toggle('me-open', open);
     }
+    /* THE LIST ENDS WHERE THE SCREEN DOES (Chase, 2026-10-13: "On mobile,
+       I can't see the options for settings because it's below the search
+       bar"). It was sized as 100vh less the header, as if the header sat at
+       the top — but on dev the environment band is above it, and on an
+       iPhone 100vh reaches behind Safari's bottom bar. So the last rows
+       (Settings, What's new, Sign out) were below the screen and could not
+       be scrolled to. Measured from where the list actually starts, against
+       the height actually visible. */
+    var menuList = $('consoleMenu');
+    function fitMenu() {
+      if (!menuList || !header.classList.contains('menu-open')) return;
+      var seen = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      menuList.style.maxHeight = Math.max(160, Math.floor(seen - menuList.getBoundingClientRect().top)) + 'px';
+    }
     function setMenu(open) {
       menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
       header.classList.toggle('menu-open', open);
       document.documentElement.classList.toggle('console-menu-open', open);
+      if (open) fitMenu(); else if (menuList) menuList.style.maxHeight = '';
     }
+    window.addEventListener('resize', fitMenu);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', fitMenu);
 
     meBtn.addEventListener('click', function (e) {
       e.stopPropagation();
