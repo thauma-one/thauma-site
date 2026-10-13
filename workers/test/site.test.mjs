@@ -163,7 +163,7 @@ check("a section's button goes to a page of the site, or anywhere safe; never to
   ]);
   const html = page(d);
   assert(html.includes('href="/site/chaseroush/en/mission/">Read the story →'), "to the Mission page, in the owner's words");
-  assert(/href="https:\/\/blog\.example\.org\/" rel="noopener">Read More →/.test(html), "outward, with the built-in words");
+  assert(/href="https:\/\/blog\.example\.org\/" target="_blank" rel="noopener">Read More →/.test(html), "outward, in a new tab, with the built-in words");
   assert(!html.includes("/en/resources/"), "a hidden page is not linked");
   assert(!html.includes("javascript:"), "an unsafe link is dropped");
   eq(cleanDoc(d, ["en"]).pages[0].sections[3].link, "", "and not even stored");
@@ -180,8 +180,8 @@ check("a photo opens the link when asked; link cards carry their own pictures", 
   const html = page(d);
   assert(/<a class="piclink" href="\/site\/chaseroush\/en\/about\/"[^>]*><img src="\/media\/partnersite\/p\/a\.webp"/.test(html), "the photo opens About");
   assert(/<a class="piclink" href="https:\/\/x\.org\/"/.test(html), "a full-width photo opens its link");
-  assert(/<span class="lpic"><img src="\/media\/partnersite\/p\/c\.webp"/.test(html), "a card's picture");
-  assert(html.includes('href="/site/chaseroush/en/give/"><b>Give</b>'), "a card can open a page of the site");
+  assert(/<span class="rc-pic"><img src="\/media\/partnersite\/p\/c\.webp"/.test(html), "a card's picture");
+  assert(/href="\/site\/chaseroush\/en\/give\/"><span class="rc-body"><b class="rc-title">Give<\/b>/.test(html), "a card can open a page of the site");
   assert(html.includes('<p class="lede m">Worth your time</p>'), "a line under the heading");
 });
 
@@ -257,7 +257,7 @@ check("the ministry's widgets sit centered unless put left; the newest newslette
   const html = page(d, "home", "en", { payload: { ...payload, milestones: [{ id: "m" }], mailings: mail } });
   assert(/<section class="data al-center"[^>]*>/.test(html), "centered, by default");
   assert(/<section class="data al-left"[^>]*>/.test(html), "left, when chosen");
-  assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/">'), "the newest");
+  assert(html.includes('<a class="latest m" href="https://thauma.one/archive/chase-roush/news/september/" target="_blank" rel="noopener">'), "the newest, in a new tab");
   assert(!html.includes('href="https://thauma.one/archive/chase-roush/news/august/"'), "only the newest is linked");
   assert(html.includes('<a href="https://thauma.one/archive/chase-roush/news/" target="_blank" rel="noopener">See Past Newsletters</a>'), "the rest, at the list's archive");
 });
@@ -292,8 +292,9 @@ check("Chase, 2026-10-01: initials for a favicon, forms in the site's colors, a 
   /* Every link that leaves the site opens a new tab; the site's own do not. */
   d.links = [{ kind: "youtube", url: "@chase" }];
   const withLinks = page(d);
-  assert(/<a href="https:\/\/www\.youtube\.com\/@chase" target="_blank"[^>]* rel="noopener"/.test(withLinks), "a social link, in a new tab");
-  assert(!/<a href="\/[^"]*" target=/.test(withLinks), "the site's own pages stay in the tab");
+  /* written as the site's own short address (2026-10-12: clean links), and still a new tab */
+  assert(/<a href="\/site\/chaseroush\/YouTube" target="_blank"[^>]* rel="noopener"/.test(withLinks), "a social link, clean, in a new tab");
+  assert(!/<a href="\/site\/chaseroush\/(en|hr)\/[^"]*" target=/.test(withLinks), "the site's own pages stay in the tab");
   /* The tagline in the accent, when chosen. */
   d.footer = { layout: "split", menu: false, socials: "icons", tagline: "accent", words: { en: { tagline: "All of me" } } };
   assert(page(d).includes('<p class="tagline tagline-accent">All of me</p>'), "the tagline's color");
@@ -365,7 +366,7 @@ check("the footer: three layouts, a tagline and small print in each language, th
   });
   const html = page(d);
   assert(html.includes('class="foot foot-center"'), "centered");
-  assert(/<span class="words"><a href="https:\/\/youtube\.com\/@c" target="_blank" rel="noopener">YouTube<\/a><a href="https:\/\/cal\.example\/"/.test(html), "socials as names, beside the owner's links");
+  assert(/<span class="words"><a href="\/site\/chaseroush\/YouTube" target="_blank" rel="noopener">YouTube<\/a><a href="\/site\/chaseroush\/[^"]+" target="_blank"/.test(html), "socials as names, beside the owner's links");
   assert(html.includes('<p class="tagline tagline-plain">All of me for all of Him</p>') && html.includes("Donations are tax-deductible."), "the words");
   assert(/<nav class="menu"[^>]*><a href="\/site\/chaseroush\/en\/">Home<\/a>/.test(html), "the pages");
   assert(html.includes("A Thauma Site"), "the credit");
@@ -645,7 +646,7 @@ check("the page carries each section's alignment, and its buttons follow it", ()
   assert(/<section class="hero hero-behind al-center/.test(html), "the opening");
   assert(/<section[^>]*class="quote quote-large al-left indented"[^>]*>/.test(html), "the quote, indented on the left");
   for (const rule of [".al-right .btns{justify-content:flex-end}", ".al-center .btns{justify-content:center}",
-                      ".indented.al-left>.wrap", ".indented.al-right>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
+                      ".indented:not(.al-right)>.wrap", ".indented.al-right>.wrap", ".al-right .bandrow{flex-direction:row-reverse}"]) {
     assert(html.includes(rule), "missing rule " + rule);
   }
 });
@@ -818,6 +819,12 @@ check("a page's tabs: the page's own sections, then the bar, then a panel per ta
   give.tabs.at = 1;
   const at1 = page(d, "give");
   assert(at1.indexOf(">Above<") < at1.indexOf('<section class="ptabs-bar') && at1.indexOf('id="t-pray"') < at1.indexOf(">Below<"), "the bar where it sits; the rest of the page after the panels");
+  /* Chase, 2026-10-12: the bar inside the tab's section, like chaseroush.com's Give. */
+  give.tabs.place = "inside"; give.tabs.items[0].sections[0].tint = true;
+  const inside = page(d, "give");
+  assert(/<section class="ptabs-bar ptabs-pills al-left ptabs-inside band">/.test(inside), "the bar wears the tab section's background");
+  assert(/<div class="ptab" id="t-give"[^>]*><section class="[^"]*after-tabs"/.test(inside), "the tab's section starts close under the bar");
+  delete give.tabs.place; delete give.tabs.items[0].sections[0].tint;
   delete give.tabs.at; give.sections = [txt("top1", "Above")];
   give.tabs.items.pop();
   const one = page(d, "give");
@@ -841,16 +848,65 @@ check("the new form and Give styles draw; a site saved before keeps its old one"
   eq(cleanDoc({ ...d, pages: [{ ...d.pages[0], sections: [sec("contact", "nonsense")] }] }, ["en"]).pages[0].sections[0].variant, "form", "unknown falls back");
 });
 
-check("links: Large, then Standard, then Small, each in order; a type label; Small has no picture", () => {
+check("links as resource cards: Large, Wide, then Small, each in order; the label is what it is and who made it; a note set apart", () => {
+  /* Chase, 2026-10-12: "I want this to work like CR site's Resources page". */
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
-  const it = (title, tier, type) => ({ url: "https://x.org/" + title, photo: "https://thauma.one/media/p.jpg", tier, words: { en: { title, type } } });
+  const it = (title, tier, extra = {}) => ({ url: "https://x.org/" + title, photo: "https://thauma.one/media/p.jpg", tier, words: { en: { title, ...extra } } });
   d.pages[0].sections = [{ id: "l1", type: "links", variant: "cards", words: { en: { heading: "R" } },
-    items: [it("A", "small"), it("B", "big", "Book"), it("C"), it("D", "big"), it("E", "bogus")] }];
+    items: [it("A", "small", { note: "Short" }), it("B", "big", { type: "Book", by: "Henry Cloud", text: "About it", note: "<b>Mine</b>" }), it("C"), it("D", "big"), it("E", "bogus")] }];
   const html = page(d);
-  const order = [...html.matchAll(/<b>([A-E])<\/b>/g)].map((m) => m[1]).join("");
+  const order = [...html.matchAll(/<b class="rc-title">([A-E])<\/b>/g)].map((m) => m[1]).join("");
   eq(order, "BDCEA", "order");
-  assert(/<ul class="linklist m lt-big"><li><a [^>]*><em class="ltype">Book<\/em><span class="lpic">/.test(html), "label and picture on a large card");
-  assert(/<ul class="linklist m lt-small"><li><a [^>]*><b>A<\/b>/.test(html), "small: no picture");
+  assert(/<ul class="rcards rc-g-big m"><li class="rc rc-big"><a [^>]*><span class="rc-pic"><img/.test(html), "a large card, its picture above");
+  assert(/<span class="rc-type">Book · Henry Cloud<\/span><span class="rc-desc">About it<\/span><span class="rc-note"><b>Mine<\/b><\/span>/.test(html), "label, words and a formatted note");
+  assert(/<li class="rc rc-small"><a [^>]*><span class="rc-pic"><img[^>]*><\/span><span class="rc-body"><b class="rc-title">A<\/b><span class="rc-note">Short<\/span>/.test(html), "small: a little picture, the title and the note");
+  d.pages[0].sections[0].items[0].words.en.title = 'Go <a href="https://y.org">there</a>';
+  assert(!/<a[^>]*>[^]*<a href="https:\/\/y\.org"/.test(page(d).match(/<li class="rc rc-small">[^]*?<\/li>/)[0].replace(/^<li[^>]*><a[^>]*>/, "<a>")), "a link inside a link card");
+});
+
+check("contact: the site's email and social links beside the form, each with its symbol and handle, and a way to give, when chosen", () => {
+  /* Chase, 2026-10-12: "The contact section should have some options for
+     different links to show up. Reference CR site". */
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.links = [{ kind: "email", url: "contact@chaseroush.com" }, { kind: "youtube", url: "https://youtube.com/@ChaseRoushMissions" }];
+  const sec = { id: "c1", type: "contact", variant: "split", words: { en: { heading: "Hi" } } };
+  d.pages[0].sections = [sec];
+  assert(!/class="reach/.test(page(d)), "links shown without being chosen");
+  Object.assign(sec, { reachLinks: true, reachGive: true });
+  const html = page(d, "home", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: "https://give.example/x" } });
+  const list = (html.match(/<ul class="reach m">[^]*?<\/ul>/) || [""])[0];
+  assert(/href="mailto:contact@chaseroush\.com"><i><svg[^]*?<span>contact@chaseroush\.com<\/span>/.test(list), "the email, with its symbol");
+  assert(/<span>@ChaseRoushMissions<\/span>/.test(list), "the channel by its handle");
+  assert(/<span>Support this mission<\/span>/.test(list), "a way to give");
+});
+
+check("Indented: a section at its default alignment is indented too, and a merged section takes the indent of the one it is merged with", () => {
+  /* Chase, 2026-10-12: "the past updates is merged with Prayer sections, but
+     the past updates didn't indent properly". */
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [
+    { id: "p1", type: "text", variant: "left", indent: true, words: { en: { heading: "Pray", text: "Words." } } },
+    { id: "n1", type: "text", variant: "left", join: true, words: { en: { heading: "Past", text: "More." } } }];
+  const html = page(d);
+  assert(/<section class="[^"]*indented[^"]*"[^>]*id="s-n1"/.test(html), "the merged section is not indented");
+  assert(html.includes(".indented:not(.al-right)>.wrap"), "a section with no alignment class is never indented");
+});
+
+check("clean links on the page: the Give button, socials and own links are written as the site's short addresses, which lead where they should", () => {
+  /* Chase, 2026-10-12: "make sure all links on the site creator are clean
+     links. I noticed that the Give section button isn't clean." */
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.give = "https://donate.example.org/chase?campaign=2027&ref=site";
+  d.pages.find((p) => p.id === "give").on = false;
+  d.links = [{ kind: "youtube", url: "https://www.youtube.com/@chase" }, { kind: "custom", url: "https://cal.example/x", label: { en: "Schedule a Conversation" } }];
+  d.pages[0].sections = [{ id: "g1", type: "give", variant: "band", words: { en: { heading: "Give" } } }];
+  const html = page(d);
+  assert(/<a class="btn solid[^"]*" href="\/site\/chaseroush\/Give" target="_blank"/.test(html), "the Give button is not clean");
+  assert(!/donate\.example\.org/.test(html.replace(/<head>[^]*<\/head>/, "")), "the giving link's own address is still on the page");
+  assert(html.includes('href="/site/chaseroush/YouTube"') && html.includes('href="/site/chaseroush/Schedule-a-Conversation"'), "socials or own links are not clean");
+  const doc = cleanDoc(d, ["en"]);
+  eq([cleanLinkTarget(doc, ["Give"], { base: "/site/chaseroush", giving: doc.give }), cleanLinkTarget(doc, ["Schedule-a-Conversation"], { base: "/site/chaseroush" })],
+    [doc.give, "https://cal.example/x"], "the short addresses lead where the links went");
 });
 
 check("videos: the buttons' style and alignment reach the widget; the newest video may head the section", () => {
@@ -894,7 +950,7 @@ check("own links: a page of the site first; a web address may be its site's icon
   eq(words, ["About me", "Mission", "Blog", "chaseroush.com"], "pages first, then the web");
   d.links[2].place = "inline";
   const foot2 = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
-  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="https:\/\/chaseroush\.com\/"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot2), "the icon, through Thauma, beside the socials");
+  assert(/class="socials"[^>]*>[\s\S]*aria-label="YouTube"[\s\S]*<a class="favi" href="\/site\/chaseroush\/chaseroush\.com"[^>]*aria-label="chaseroush\.com"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=chaseroush\.com"/.test(foot2), "the icon, through Thauma, beside the socials");
 });
 
 check("clean links: socials, page names in any language and alphabet, Give, the owner's own links", () => {
@@ -1069,9 +1125,9 @@ check("each of the owner's own footer links: in line with the socials, or separa
     { kind: "custom", url: "https://blog.example.org/", label: { en: "Blog" }, place: "apart", show: "words" },
     { kind: "custom", url: "https://shop.example.org/", label: { en: "Shop" }, place: "apart", show: "icon", iconImg: "/media/site/shop.png" }];
   const foot = page(d).match(/<footer[\s\S]*<\/footer>/)[0];
-  assert(/<span class="socials"><a href="https:\/\/www\.youtube\.com\/@chase"[^]*?<a class="favi no-icon" href="\/site\/chaseroush\/en\/about\/"[^>]*><span class="lt" aria-hidden="true">OS<\/span><\/a><a class="favi" href="https:\/\/github\.com\/"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=github\.com"[^>]*crossorigin="anonymous"><span class="lt" aria-hidden="true">GI<\/span>/.test(foot), "in line: after the socials, a page's initials, a site's icon with initials behind it");
-  assert(/<span class="words"><a href="https:\/\/blog\.example\.org\/"[^>]*>Blog<\/a><\/span>/.test(foot), "separated, as words");
-  assert(/<span class="socials owns"><a class="favi own" href="https:\/\/shop\.example\.org\/"[^>]*><img src="\/media\/site\/shop\.png"/.test(foot), "separated, as its own picture");
+  assert(/<span class="socials"><a href="\/site\/chaseroush\/YouTube"[^]*?<a class="favi no-icon" href="\/site\/chaseroush\/en\/about\/"[^>]*><span class="lt" aria-hidden="true">OS<\/span><\/a><a class="favi" href="[^"]+"[^>]*><img src="https:\/\/thauma\.one\/embed\/v1\/icon\?d=github\.com"[^>]*crossorigin="anonymous"><span class="lt" aria-hidden="true">GI<\/span>/.test(foot), "in line: after the socials, a page's initials, a site's icon with initials behind it");
+  assert(/<span class="words"><a href="\/site\/chaseroush\/Blog"[^>]*>Blog<\/a><\/span>/.test(foot), "separated, as words, by its clean address");
+  assert(/<span class="socials owns"><a class="favi own" href="\/site\/chaseroush\/Shop"[^>]*><img src="\/media\/site\/shop\.png"/.test(foot), "separated, as its own picture");
   d.links[4].iconImg = "javascript:alert(1)";
   assert(!("iconImg" in cleanDoc(d, ["en"]).links[4]), "a picture address that is not one is not kept");
 });
