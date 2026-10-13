@@ -190,6 +190,16 @@
         "hr": "Na mobitelu je dno izbornika — Postavke, Što je novo i Odjava — uvijek dostupno.",
         "sr": "На мобилном је дно менија — Подешавања, Шта је ново и Одјава — увек доступно."
       }
+    },
+    {
+      "id": "2026-10-13-reviewfit",
+      "date": "2026-10-13",
+      "page": "admin:website",
+      "text": {
+        "en": "Review and publish: the list of changes fits the panel — no sideways scrolling, and long lines wrap.",
+        "hr": "Pregled i objava: popis izmjena stane u ploču — bez pomicanja u stranu, a dugi retci se prelamaju.",
+        "sr": "Преглед и објава: списак измена стане у плочу — без померања у страну, а дуги редови се преламају."
+      }
     }
   ]
 }
