@@ -97,6 +97,9 @@ export async function notify(env, db, kind, vars = {}, opts = {}) {
     const people = notice.to === "all" ? await db.query("notify_everyone", {})
       : await db.query("notify_role_holders", { role: notice.role });
     for (const who of people) {
+      /* opts.only(who): a notice that concerns some of them (a release with
+         nothing on their pages tells them nothing) */
+      if (typeof opts.only === "function" && !opts.only(who)) continue;
       sent += await deliver(env, db, who, notice, vars, opts);
     }
   } catch (e) {

@@ -3477,8 +3477,10 @@ DELETE FROM staff_profile_proposals WHERE user_id = :user_id;
 
 -- name: notify_everyone
 -- Every active account, for a notice to everyone (the site was published),
--- never the protected master account.
-SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+-- never the protected master account. With their roles, so a notice can
+-- skip somebody it does not concern.
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang,
+       (SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id) AS roles
   FROM users u
  WHERE u.status = 'active'
    AND COALESCE(u.protected, 0) = 0;

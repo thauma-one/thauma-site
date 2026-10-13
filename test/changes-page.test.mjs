@@ -30,7 +30,8 @@ const ANSWER = {
     { id: "r_new", at: "2026-10-13T12:00:00Z", by: "Chase Roush",
       sections: [{ page: "console", lines: ["The bell <b>tells</b> you"] }, { page: "staff:mail", lines: ["Signatures"] }, { page: "admin:users", lines: ["Bio changes"] }],
       content: ["events", "resources"] },
-    { id: "r_old", at: "2026-10-01T12:00:00Z", by: "", sections: [{ page: "staff:index", lines: ["Home"] }], content: [] },
+    { id: "r_old", at: "2026-10-01T12:00:00Z", by: "", sections: [{ page: "staff:index", lines: ["Home"] }], content: [], others: 3 },
+    { id: "r_elsewhere", at: "2026-09-20T12:00:00Z", by: "", sections: [], content: [], others: 1 },
   ],
   waiting: [{ page: "admin:index", lines: ["Visits"] }],
 };
@@ -59,6 +60,17 @@ await check("each Publish by page, under the header's own names, with the public
   assert(/Published by Chase Roush/.test(rel.querySelector("summary").textContent), "who published");
   const wait = w.document.querySelector(".chg-rel.is-waiting");
   assert(wait && /Not published yet/.test(wait.textContent) && wait.querySelector("h3").textContent === "Overview", "an administrator's waiting entries");
+});
+
+await check("what changed on pages you do not have is one line, counted, not described", async () => {
+  /* Chase, 2026-10-13: "some of those changes may just need to be noted as
+     'other site changes'" */
+  const w = await boot();
+  const old = w.document.getElementById("r_old");
+  eq([old.querySelector(".chg-others h3").textContent, old.querySelector(".chg-others p").textContent],
+     ["Other site changes", "3 other changes, in parts of the console you don't use."], "counted");
+  eq(w.document.querySelector("#r_elsewhere .chg-others p").textContent, "One other change, in a part of the console you don't use.", "one");
+  assert(!w.document.querySelector("#r_new .chg-others"), "a line of others where there are none");
 });
 
 await check("the bell's link opens its release and brings it into view, also while the page is open", async () => {

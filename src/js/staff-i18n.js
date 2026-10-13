@@ -423,6 +423,9 @@
       'chg.waiting': 'Not published yet',
       'chg.waitingNote': 'Goes out with the next Publish',
       'chg.none': 'Nothing has been published since What\'s new began.',
+      'chg.otherHead': 'Other site changes',
+      'chg.othersOne': 'One other change, in a part of the console you don\'t use.',
+      'chg.othersMany': '{n} other changes, in parts of the console you don\'t use.',
 
       'nav.home': 'Home', 'nav.support': 'Support',
       'nav.stewardship': 'Stewardship', 'nav.milestones': 'Milestones',
@@ -2417,6 +2420,9 @@
       'chg.waiting': 'Još nije objavljeno',
       'chg.waitingNote': 'Ide sa sljedećim objavljivanjem',
       'chg.none': 'Ništa nije objavljeno otkad postoji Što je novo.',
+      'chg.otherHead': 'Ostale izmjene',
+      'chg.othersOne': 'Još jedna izmjena, u dijelu konzole koji ne koristite.',
+      'chg.othersMany': 'Još izmjena: {n}, u dijelovima konzole koje ne koristite.',
 
       'nav.home': 'Početna', 'nav.support': 'Podrška',
       'nav.stewardship': 'Skrb', 'nav.milestones': 'Prekretnice',
@@ -4401,6 +4407,9 @@
       'chg.waiting': 'Још није објављено',
       'chg.waitingNote': 'Иде са следећим објављивањем',
       'chg.none': 'Ништа није објављено откад постоји Шта је ново.',
+      'chg.otherHead': 'Остале измене',
+      'chg.othersOne': 'Још једна измена, у делу конзоле који не користите.',
+      'chg.othersMany': 'Још измена: {n}, у деловима конзоле које не користите.',
 
       'nav.home': 'Почетна', 'nav.support': 'Подршка',
       'nav.stewardship': 'Брига', 'nav.milestones': 'Прекретнице',

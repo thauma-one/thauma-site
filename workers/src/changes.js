@@ -23,7 +23,17 @@
  * or "site" (the public site, everyone). A person sees an entry only if one
  * of their roles may open its page — the same list the header is drawn from,
  * so What's new never tells somebody about a page they do not have.
- * Administrators also see what is written and not yet published (waiting).
+ *
+ * NOT EVERYONE IS TOLD EVERYTHING (Chase, 2026-10-13: "not every update to
+ * the site needs to be told to all team members, there may be pages that get
+ * updated that certain roles don't even see. So some of those changes may
+ * just need to be noted as 'other site changes'"). What a person cannot see
+ * is one line — how many other changes there were — never what they were.
+ * And the bell's "site published" notice goes only to somebody with
+ * something of their own in that release (tells, used by admin-publish).
+ *
+ * Administrators also see everything written and not yet published
+ * (waiting) — all pages, since they are the one publishing it.
  */
 import { requireAccess } from "./lib/access.js";
 import { createDb } from "./lib/db.js";
@@ -61,6 +71,19 @@ export function sectionsFor(list, roles, lang) {
   return PAGES.filter(([p]) => by.has(p)).map(([page]) => ({ page, lines: by.get(page) }));
 }
 
+/** How many entries this person cannot see — "other site changes". */
+export function othersFor(list, roles) {
+  const mine = new Set(roles || []);
+  return (list || []).filter((e) => !(ROLES_OF.get(e.page) || []).some((r) => mine.has(r))).length;
+}
+const seesWebsite = (roles) => (ROLES_OF.get("admin:website") || []).some((r) => (roles || []).includes(r));
+
+/** Whether a release has anything of this person's own: an entry on a page
+    they have, or the public site's content for whoever looks after it. */
+export function tells(release, roles) {
+  return sectionsFor(release.entries, roles, "en").length > 0 || (seesWebsite(roles) && (release.content || []).length > 0);
+}
+
 /** Publish: everything not yet in a release becomes one. Returns the new
     release's id, or null when the table is not there yet (before 0062). */
 export async function cutRelease(db, { by, content = [] }) {
@@ -70,7 +93,7 @@ export async function cutRelease(db, { by, content = [] }) {
     const id = "r_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
     await db.query("release_add", { id, now: new Date().toISOString(), by_name: by || null,
       entries: JSON.stringify(fresh), content: JSON.stringify(content || []) });
-    return { id, entries: fresh };
+    return { id, entries: fresh, content: content || [] };
   } catch (err) {
     console.error("release:", err.message);
     return null;
@@ -89,22 +112,29 @@ export default {
     const roles = String(me.roles || "").split(",").filter(Boolean);
     const lang = me.preferred_lang || "en";
     /* the public site's content: shown to whoever may open Website */
-    const seesSite = (ROLES_OF.get("admin:website") || []).some((r) => roles.includes(r));
+    const seesSite = seesWebsite(roles);
 
     let rows = [];
     try { rows = await db.query("releases_recent", {}); } catch { rows = []; }
     const parse = (s) => { try { return JSON.parse(s || "[]"); } catch { return []; } };
-    const releases = rows.map((r) => ({
-      id: r.id, at: r.at, by: r.by_name || "",
-      sections: sectionsFor(parse(r.entries), roles, lang),
-      content: seesSite ? parse(r.content) : [],
-    })).filter((r) => r.sections.length || r.content.length);
+    const releases = rows.map((r) => {
+      const list = parse(r.entries), content = parse(r.content);
+      return {
+        id: r.id, at: r.at, by: r.by_name || "",
+        sections: sectionsFor(list, roles, lang),
+        content: seesSite ? content : [],
+        /* counted, never described: the entries on pages they do not have,
+           and the site's content for somebody who does not look after it */
+        others: othersFor(list, roles) + (!seesSite && content.length ? 1 : 0),
+      };
+    }).filter((r) => r.sections.length || r.content.length || r.others);
 
     const out = { releases };
     if (roles.includes("admin")) {
       let done = new Set();
       try { done = new Set((await db.query("releases_entry_ids", {})).map((r) => r.id)); } catch { /* none yet */ }
-      out.waiting = sectionsFor(entries().filter((e) => !done.has(e.id)), roles, lang);
+      /* everything, whatever their own roles: they are the one publishing it */
+      out.waiting = sectionsFor(entries().filter((e) => !done.has(e.id)), EVERYONE, lang);
     }
     return json(out);
   },

@@ -43,7 +43,7 @@ import { summarize } from "./lib/build-progress.js";
 import { carry, carryConfig } from "./lib/carry.js";
 import { leafMap } from "./lib/translation-file.js";
 import { notify } from "./lib/notify.js";
-import { cutRelease } from "./changes.js";
+import { cutRelease, tells } from "./changes.js";
 import { siteOrigin } from "./lib/origin.js";
 
 const CONFIRM_WORD = "PUBLISH";
@@ -413,13 +413,17 @@ async function act(request, env, db, user, me) {
      publish button is pressed"). The changelog is a release on What's new
      (changes.js): every entry of src/_data/changelog.json not published
      before, by page, each person seeing the pages they have. The notice is
-     one line and opens that release. Never in the way of the publish. */
+     one line, opens that release, and goes only to whoever has something
+     of their own in it. Never in the way of the publish. */
   if (action === "publish") {
     try {
       const by = (me && me.user_name) || user.email;
       const release = await cutRelease(db, { by, content });
+      /* only somebody with something of their own in it (changes.js tells);
+         without a release (before 0062) everyone, as before */
       await notify(env, db, "site_published", { by },
-        { origin: siteOrigin(env, request), link: "/staff/changes/" + (release ? "#" + release.id : "") });
+        { origin: siteOrigin(env, request), link: "/staff/changes/" + (release ? "#" + release.id : ""),
+          only: release ? (who) => tells(release, String(who.roles || "").split(",")) : null });
     } catch (err) {
       console.error("publish notice:", err.message);
     }
