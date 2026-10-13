@@ -108,6 +108,8 @@
         esc(langLabel(l)) + '</option>';
     }).join('');
 
+    renderBio();
+
     /* Notifications (0056): a row and a switch per notice these roles
        receive; no notices, no tab. */
     var notices = (state.you && state.you.notices) || [];
@@ -285,6 +287,88 @@
       if (control) control.disabled = false;
     }
   }
+
+  /* ---- your bio (0058) ------------------------------------------------
+     One language at a time with the reference above each field, as every
+     other editor; the words typed are held while switching languages and
+     across a reload of the page's data, until sent or withdrawn. */
+  var bio = { draft: null, editing: null, ref: null };
+  function bioLangs() { return (state.languages || []).map(function (l) { return { code: l.code, name: l.native_name || l.name }; }); }
+  function bioStash() {
+    var f = $('setBioForm');
+    if (!bio.draft || !f.querySelector('[data-bio="role_title"]')) return;
+    bio.draft.text[bio.editing] = { role_title: f.querySelector('[data-bio="role_title"]').value,
+                                    bio: f.querySelector('[data-bio="bio"]').value };
+    bio.draft.region = f.querySelector('[data-bio="region"]').value;
+  }
+  function renderBio() {
+    var b = state.you && state.you.bio;
+    $('setBioTab').hidden = !b;
+    if (!b) return;
+    if (!bio.draft) {
+      var from = b.proposal || b.live;
+      bio.draft = { region: from.region || '', text: JSON.parse(JSON.stringify(from.text || {})) };
+    }
+    var langs = bioLangs();
+    if (!bio.editing || !langs.some(function (l) { return l.code === bio.editing; })) bio.editing = (state.you.preferred_lang && langs.some(function (l) { return l.code === state.you.preferred_lang; })) ? state.you.preferred_lang : (langs[0] || {}).code;
+    if (!bio.ref || bio.ref === bio.editing) bio.ref = (langs.filter(function (l) { return l.code !== bio.editing; })[0] || {}).code || null;
+    var t = bio.draft.text[bio.editing] || { role_title: '', bio: '' };
+    var r = (bio.ref && bio.draft.text[bio.ref]) || { role_title: '', bio: '' };
+    var pick = function (attr, sel, except) {
+      return '<select class="lang-pick" ' + attr + '>' + langs.filter(function (l) { return l.code !== except; }).map(function (l) {
+        return '<option value="' + esc(l.code) + '"' + (l.code === sel ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('') + '</select>';
+    };
+    var ref = function (v) { return v ? '<small class="ms-ref" lang="' + esc(bio.ref) + '">' + esc(v) + '</small>' : ''; };
+    $('setBioState').textContent = b.proposal
+      ? tr('set.bioWaiting').replace('{when}', new Date(b.proposal.submitted_at).toLocaleDateString())
+      : tr('set.bioLive');
+    $('setBioState').classList.toggle('is-waiting', !!b.proposal);
+    $('setBioWithdraw').hidden = !b.proposal;
+    $('setBioForm').innerHTML =
+      '<div class="ms-writing">' +
+        '<label class="ms-pick"><span>' + esc(tr('con.editing')) + '</span>' + pick('data-bio-lang="edit" data-lang-edit', bio.editing) + '</label>' +
+        (langs.length > 1 ? '<span class="lang-ref">' +
+          '<button type="button" class="lang-swap" data-lang-swap aria-label="' + esc(tr('con.swap')) + '" title="' + esc(tr('con.swap')) + '">&#8644;</button>' +
+          '<label class="ms-pick"><span>' + esc(tr('con.reference')) + '</span>' + pick('data-bio-lang="ref" data-lang-ref', bio.ref, bio.editing) + '</label>' +
+          '<button type="button" class="ghost-btn sm lang-ai" data-lang-translate>' + esc(tr('ai.translate')) + '</button></span>' : '') +
+      '</div>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' + ref(r.role_title) +
+        '<input type="text" data-bio="role_title" lang="' + esc(bio.editing) + '" maxlength="120" value="' + esc(t.role_title || '') + '"></label>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' + ref(r.bio) +
+        '<textarea data-bio="bio" lang="' + esc(bio.editing) + '" rows="8" maxlength="4000">' + esc(t.bio || '') + '</textarea></label>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.region')) + '</span>' +
+        '<input type="text" data-bio="region" maxlength="120" value="' + esc(bio.draft.region || '') + '"></label>' +
+      (b.is_public ? '<a class="set-link" href="/' + esc(bio.editing) + '/team/' + esc(b.slug) + '/" target="_blank" rel="noopener">' + esc(tr('set.bioSee')) + ' →</a>' : '');
+  }
+  $('setBioForm').addEventListener('change', function (e) {
+    var which = e.target.getAttribute('data-bio-lang');
+    if (!which) return;
+    bioStash();
+    if (which === 'edit') { if (e.target.value === bio.ref) bio.ref = bio.editing; bio.editing = e.target.value; }
+    else bio.ref = e.target.value;
+    renderBio();
+  });
+  async function bioSend(payload, btn, message) {
+    btn.disabled = true;
+    try {
+      var res = await fetch(API, { method: 'PATCH', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      var body = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(body.error || ('failed (' + res.status + ')'));
+      state.you.bio = body.bio;
+      bio.draft = null;
+      renderBio();
+      toastKey(message, 'ok');
+    } catch (e) { setStatus(e.message, 'err'); }
+    btn.disabled = false;
+  }
+  $('setBioSend').addEventListener('click', function () {
+    bioStash();
+    bioSend({ bio_proposal: bio.draft }, this, 'set.bioSent');
+  });
+  $('setBioWithdraw').addEventListener('click', function () {
+    bioSend({ bio_withdraw: true }, this, 'set.bioWithdrawn');
+  });
 
   /* ---- wiring --------------------------------------------------------- */
 

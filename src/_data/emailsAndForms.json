@@ -184,7 +184,11 @@
       "invite_accepted_subject": "{name} accepted their invitation",
       "invite_accepted_heading": "An invitation was accepted",
       "invite_accepted_body": "<b>{name}</b> ({email}) confirmed their account and can now sign in to the console.",
-      "invite_accepted_button": "Open People"
+      "invite_accepted_button": "Open People",
+      "profile_proposed_subject": "{name} changed their bio",
+      "profile_proposed_heading": "A bio is waiting for approval",
+      "profile_proposed_body": "<b>{name}</b> sent changes to their team page. Nothing is live until you approve them.",
+      "profile_proposed_button": "Review the changes"
     }
   },
   "hr": {
@@ -372,7 +376,11 @@
       "invite_accepted_subject": "{name}: pozivnica prihvaćena",
       "invite_accepted_heading": "Pozivnica je prihvaćena",
       "invite_accepted_body": "<b>{name}</b> ({email}): račun je potvrđen i prijava u konzolu sada je moguća.",
-      "invite_accepted_button": "Otvori Osobe"
+      "invite_accepted_button": "Otvori Osobe",
+      "profile_proposed_subject": "{name}: izmjene biografije",
+      "profile_proposed_heading": "Biografija čeka odobrenje",
+      "profile_proposed_body": "<b>{name}</b>: poslane su izmjene stranice tima. Ništa nije javno dok ih ne odobrite.",
+      "profile_proposed_button": "Pregledaj izmjene"
     }
   },
   "sr": {
@@ -560,7 +568,11 @@
       "invite_accepted_subject": "{name}: позивница прихваћена",
       "invite_accepted_heading": "Позивница је прихваћена",
       "invite_accepted_body": "<b>{name}</b> ({email}): налог је потврђен и пријава у конзолу сада је могућа.",
-      "invite_accepted_button": "Отвори Особе"
+      "invite_accepted_button": "Отвори Особе",
+      "profile_proposed_subject": "{name}: измене биографије",
+      "profile_proposed_heading": "Биографија чека одобрење",
+      "profile_proposed_body": "<b>{name}</b>: послате су измене странице тима. Ништа није јавно док их не одобрите.",
+      "profile_proposed_button": "Прегледај измене"
     }
   },
   "sl": {
@@ -748,7 +760,11 @@
       "invite_accepted_subject": "{name}: povabilo sprejeto",
       "invite_accepted_heading": "Povabilo je bilo sprejeto",
       "invite_accepted_body": "<b>{name}</b> ({email}): račun je potrjen in prijava v konzolo je zdaj mogoča.",
-      "invite_accepted_button": "Odpri Osebe"
+      "invite_accepted_button": "Odpri Osebe",
+      "profile_proposed_subject": "{name}: spremembe življenjepisa",
+      "profile_proposed_heading": "Življenjepis čaka na odobritev",
+      "profile_proposed_body": "<b>{name}</b>: poslane so spremembe strani ekipe. Nič ni javno, dokler jih ne odobrite.",
+      "profile_proposed_button": "Preglej spremembe"
     }
   }
 }

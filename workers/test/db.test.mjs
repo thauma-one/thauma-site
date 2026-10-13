@@ -327,6 +327,7 @@ await check("every real query converts with its documented params", async () => 
     body_html: "<p>x</p>", body_text: "x",
     owner: "p_chase", html: "<strong>x</strong>", // a mail signature (0055)
     is_on: 1, // a notice switch (0056)
+    payload: "{}", // a bio proposal (0058)
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
     // resources: ownership and sharing
     resource_id: "rs_1", shared_by: "u_1", owner_user_id: null, is_admin: 0,
@@ -371,7 +372,7 @@ await check("every real query converts with its documented params", async () => 
   const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners", "partner_site_all", "partner_site_needing_dns",
                              // What still names a stored file is asked of
                              // everything (media-cleanup.js): keys are unique.
-                             "media_refs_sites", "media_refs_mailings", "media_refs_attachments", "media_refs_resources", "media_refs_signatures",
+                             "media_refs_sites", "media_refs_mailings", "media_refs_attachments", "media_refs_resources", "media_refs_signatures", "profile_proposals_all",
                              // Translation notes are organization-wide and
                              // never about a person or a partner: the whole
                              // set is the answer. The endpoint checks roles.

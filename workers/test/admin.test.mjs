@@ -14,6 +14,7 @@ import handler, { STANDARD_SENDERS, orgDomain, senderProblem, syncPartnerRole } 
 import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
 import { notify, noticesFor, noticeEmail } from "../src/lib/notify.js";
+import { cleanBio } from "../src/staff-settings.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -504,9 +505,21 @@ await check("an accepted invitation emails each administrator who has not switch
   assert(/role = :role[\s\S]*status = 'active'[\s\S]*protected/.test(QUERIES.notify_role_holders), "inactive or master accounts could be mailed");
 });
 
+await check("a person's own bio changes: cleaned, only known languages, waiting rather than live (0058)", async () => {
+  const out = cleanBio({ region: "  KC\u0007 ", text: { en: { role_title: "T".repeat(300), bio: "b" }, xx: { bio: "no" }, hr: "nope" } }, new Set(["en", "hr"]));
+  eq(Object.keys(out.text), ["en"], "an unknown language or a bad shape is dropped");
+  eq([out.region, out.text.en.role_title.length], ["KC", 120], "trimmed and clamped");
+  const set = fs.readFileSync(new URL("../src/staff-settings.js", import.meta.url), "utf8");
+  assert(/profile_proposal_set/.test(set) && !/staff_profile_translation_upsert/.test(set), "Settings writes the live bio, not a proposal");
+  assert(/notify\(env, db, "profile_proposed"/.test(set), "administrators are not told");
+  const prof = fs.readFileSync(new URL("../src/admin-profile.js", import.meta.url), "utf8");
+  assert(/body\.clear_proposal\) await db\.query\("profile_proposal_delete"/.test(prof), "an approved save does not clear what was waiting");
+  assert(/action === "decline-proposal"/.test(prof), "no way to decline");
+});
+
 await check("Settings offers a notice only to the roles that receive it", async () => {
   const db = { query: async () => [{ kind: "invite_accepted", is_on: 0 }] };
-  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false }], "an administrator, switched off");
+  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false }, { kind: "profile_proposed", on: true }], "an administrator: one switched off, the other at its start");
   eq(await noticesFor(db, "u_1", ["staff"]), [], "staff do not get administrators' notices");
   const words = noticeEmail("invite_accepted", { lang: "sr", name: "N", email: "e" });
   assert(/Позивница/.test(words.html) && !/notify\./.test(words.html + words.subject), "a key showed instead of words");

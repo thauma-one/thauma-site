@@ -376,6 +376,11 @@ export default {
         // by region and role title, and a sort cannot wait on 40 requests.
         db.query("staff_profiles_all", {}),
       ]);
+      /* A person's own changes to their bio, waiting for approval (0058).
+         Tolerant: before the migration there are none. */
+      const proposals = (await db.query("profile_proposals_all", {}).catch(() => []))
+        .map((r) => { try { return { user_id: r.user_id, submitted_at: r.submitted_at, ...JSON.parse(r.payload) }; } catch { return null; } })
+        .filter(Boolean);
       // Every sender in the system. Org-wide by design, like the partner list
       // itself — maintaining them IS the administrative act.
       const senders = await db.query("admin_sender_addresses", {});
@@ -399,6 +404,7 @@ export default {
            the moment this landed: it flashed on every admin page they opened.
            Same expression as staff-data.js, so both consoles agree about who
            somebody is. */
+        profile_proposals: proposals,
         you: { id: me.user_id, email: user.email, name: me.user_name || null,
                roles: String(me.roles || "").split(",").filter(Boolean) },
 

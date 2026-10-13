@@ -1332,3 +1332,18 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
 .lib-star:hover{color:var(--text);border-color:var(--console-admin)}
 .lib-star[aria-pressed="true"]{color:var(--console-admin);border-color:var(--console-admin)}
 .lib-star[aria-pressed="true"] svg{fill:currentColor}
+
+/* ---- a person's own bio changes, waiting (0058) ----
+   On the Team page, above the fields: each changed field, what goes struck
+   through, what comes marked in the ministry voice; Approve and Decline at
+   its foot. The row in the list and the Team page tab carry a mark. */
+.pf-proposal{border:1px solid var(--warn);border-radius:var(--radius);padding:16px 18px;margin:0 0 22px;display:flex;flex-direction:column;gap:14px}
+.pf-chg{display:grid;grid-template-columns:180px minmax(0,1fr);gap:6px 18px}
+.pf-chg-what{font-size:var(--fs-sm);color:var(--dim)}
+.pf-diff{white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}
+.pf-diff del{color:var(--dim);text-decoration:line-through;text-decoration-color:var(--warn)}
+.pf-diff ins{text-decoration:none;color:var(--voice-human);background:color-mix(in srgb,var(--voice-human) 14%,transparent);border-radius:3px;padding:0 2px}
+.pf-proposal-actions{display:flex;justify-content:flex-end;gap:10px}
+.role-tag.waiting{border-color:var(--warn);color:var(--warn)}
+.pp-tabs .tab.has-dot::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:var(--warn);vertical-align:middle}
+@media (max-width:640px){ .pf-chg{grid-template-columns:1fr} }

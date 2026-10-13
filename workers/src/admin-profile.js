@@ -199,6 +199,17 @@ export default {
     const person = await db.queryOne("user_by_id_any_status", { id: userId });
     if (!person) return json({ error: "No such person" }, 404);
 
+    /* A PERSON'S OWN CHANGES, DECLINED (0058): dropped, nothing else. */
+    if (request.method === "POST" && body.action === "decline-proposal") {
+      await db.query("profile_proposal_delete", { user_id: userId }).catch(() => {});
+      await db.query("audit_write", {
+        id: "a_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20), now,
+        user_id: user.email, partner_id: null, action: "update", entity: "staff_profile",
+        entity_id: userId, detail: JSON.stringify({ proposal: "declined" }),
+      }).catch(() => {});
+      return json({ ok: true, user_id: userId });
+    }
+
     /* ------------------------------------------------------------ DELETE */
     if (request.method === "DELETE") {
       const rows = await db.query("staff_profiles_all", {});
@@ -309,6 +320,10 @@ export default {
       entity_id: userId,
       detail: JSON.stringify({ slug, file: file && file.ok ? "written" : file }),
     });
+
+    /* APPROVED (0058): the person's own changes were this save; they are no
+       longer waiting. */
+    if (body.clear_proposal) await db.query("profile_proposal_delete", { user_id: userId }).catch(() => {});
 
     return json({
       ok: true,

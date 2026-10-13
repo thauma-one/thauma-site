@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "d249b9f335120767";
+export const SOURCE_DIGEST = "059b97a57ae1db43";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -828,6 +828,12 @@ ON CONFLICT(id) DO UPDATE SET
   is_public = :is_public, is_answered = :is_answered,
   answered_on = :answered_on, sort_order = :sort_order, updated_at = :now
 WHERE prayer.partner_id = :partner_id;`,
+  profile_proposal_delete: `DELETE FROM staff_profile_proposals WHERE user_id = :user_id;`,
+  profile_proposal_get: `SELECT user_id, payload, submitted_at FROM staff_profile_proposals WHERE user_id = :user_id;`,
+  profile_proposal_set: `INSERT INTO staff_profile_proposals (user_id, payload, submitted_at)
+VALUES (:user_id, :payload, :now)
+ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = excluded.submitted_at;`,
+  profile_proposals_all: `SELECT user_id, payload, submitted_at FROM staff_profile_proposals ORDER BY submitted_at;`,
   public_archive_for_list: `SELECT m.slug, m.subject, m.preheader, m.finished_at
 FROM mailings m
 JOIN mailing_lists l ON l.id = m.list_id

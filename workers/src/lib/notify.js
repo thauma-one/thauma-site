@@ -24,6 +24,8 @@ import { t } from "./mail-i18n.js";
 
 export const NOTICES = [
   { kind: "invite_accepted", role: "admin", on: true },
+  /* somebody sent changes to their own bio for approval (0058) */
+  { kind: "profile_proposed", role: "admin", on: true },
 ];
 
 const esc = (s) => String(s == null ? "" : s)

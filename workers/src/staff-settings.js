@@ -23,6 +23,8 @@
  * Every write is written to audit_log. The log is append-only by trigger, so
  * this endpoint can add to the record of who changed what and cannot edit it.
  */
+import { notify } from "./lib/notify.js";
+import { siteOrigin } from "./lib/origin.js";
 import { noticesFor } from "./lib/notify.js";
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -149,6 +151,39 @@ function embedCore(e) {
     shared: { roadmap: !!sh.roadmap, goal: !!sh.goal, prayer: !!sh.prayer, videos: !!sh.videos } };
 }
 
+/* YOUR BIO (0058, Chase 2026-10-13: "they can edit, but it has to be
+   approved by an Admin before it goes live"). The words of your own team
+   page — title and bio in each language, and your region — as they are
+   now, and what you have sent that is waiting. Only for somebody who HAS a
+   team page; who is on it stays an administrator's decision. */
+const BIO_MAX = { region: 120, role_title: 120, bio: 4000 };
+const unpack = (packed) => {
+  const out = {};
+  String(packed || "").split("\u001e").forEach((rec) => {
+    const b = rec.split("\u001f");
+    if (b[0]) out[b[0]] = { role_title: b[1] || "", bio: b[2] || "" };
+  });
+  return out;
+};
+async function bioOf(db, userId) {
+  const row = (await db.query("staff_profiles_all", {})).find((r) => r.user_id === userId);
+  if (!row || !row.slug) return null;
+  const waiting = await db.queryOne("profile_proposal_get", { user_id: userId }).catch(() => null);
+  let proposal = null;
+  try { proposal = waiting ? { ...JSON.parse(waiting.payload), submitted_at: waiting.submitted_at } : null; } catch { proposal = null; }
+  return { is_public: !!row.is_public, slug: row.slug, photo: row.photo || null,
+           live: { region: row.region || "", text: unpack(row.translations) }, proposal };
+}
+export function cleanBio(raw, codes) {
+  const s = (v, max) => String(typeof v === "string" ? v : "").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, " ").trim().slice(0, max);
+  const text = {};
+  for (const [lang, t] of Object.entries((raw && raw.text) || {})) {
+    if (!codes.has(lang) || !t || typeof t !== "object") continue;
+    text[lang] = { role_title: s(t.role_title, BIO_MAX.role_title), bio: s(t.bio, BIO_MAX.bio) };
+  }
+  return { region: s(raw && raw.region, BIO_MAX.region), text };
+}
+
 export default {
   async fetch(request, env) {
     const { db, user, me, partner, roles, isAdmin, actor, denied } = await context(request, env);
@@ -186,6 +221,8 @@ export default {
           /* "Email me when" (0056): the notices this person's roles may
              receive, each with their own choice (lib/notify.js). */
           notices: await noticesFor(db, me.user_id, roles),
+          /* Settings › Your bio (0058); null when you have no team page */
+          bio: await bioOf(db, me.user_id),
         },
         partner: {
           id: partner.id,
@@ -249,6 +286,28 @@ export default {
           return json({ error: "This cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);
         }
         return json({ notices: await noticesFor(db, me.user_id, roles) });
+      }
+
+      // --- personal: your own bio, sent for approval (0058) ---
+      if (body.bio_proposal !== undefined || body.bio_withdraw) {
+        const have = await bioOf(db, me.user_id);
+        if (!have) return json({ error: "You do not have a team page yet. An administrator adds you to it." }, 404);
+        try {
+          if (body.bio_withdraw) {
+            await db.query("profile_proposal_delete", { user_id: me.user_id });
+          } else {
+            const proposal = cleanBio(body.bio_proposal, codes);
+            await db.query("profile_proposal_set", { user_id: me.user_id, payload: JSON.stringify(proposal), now });
+            await audit(db, { user, partner, action: "update", entity: "staff_profile.proposal",
+                              entity_id: me.user_id, detail: { languages: Object.keys(proposal.text) } });
+            /* administrators who asked to be told (Settings › Notifications) */
+            await notify(env, db, "profile_proposed", { name: me.user_name || user.email },
+              { origin: siteOrigin(env, request), link: "/admin/users/" }).catch(() => {});
+          }
+        } catch {
+          return json({ error: "This cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);
+        }
+        return json({ bio: await bioOf(db, me.user_id) });
       }
 
       // --- partner: which languages this site publishes ---

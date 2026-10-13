@@ -2456,6 +2456,14 @@ html.console-menu-open{overflow:hidden}
   padding:22px 0;border-top:1px solid var(--line)}
 .set-you .set-r:last-child{border-bottom:1px solid var(--line)}
 .set-you .set-r:first-child{border-top:0;padding-top:4px}
+/* Settings › Your bio (0058) */
+.set-bio{max-width:760px}
+.set-bio-state{color:var(--dim);margin:0 0 18px;padding:12px 14px;border-left:2px solid var(--line-hard,rgba(255,255,255,.14))}
+.set-bio-state.is-waiting{border-left-color:var(--voice-human);color:var(--text)}
+#setBioForm{display:flex;flex-direction:column;gap:14px}
+#setBioForm textarea{width:100%;resize:vertical;min-height:160px;font-family:inherit;line-height:1.5}
+.set-bio-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.set-bio-actions [hidden]{display:none}
 /* Settings › Notifications: the rows under how they arrive (email; the
    phone later) */
 .set-group{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;

@@ -278,6 +278,7 @@
           '<div class="adm-tags">' + roleTags +
             (profileFor(u.id) && profileFor(u.id).is_public
               ? '<span class="role-tag on-site">' + esc(tr('adm.onSite')) + '</span>' : '') +
+            (proposalFor(u.id) ? '<span class="role-tag waiting">' + esc(tr('adm.pf.waitingTag')) + '</span>' : '') +
           '</div>' +
           '<div class="adm-access">' +
             (u.partner_names.length
@@ -619,6 +620,87 @@
     }
   }
 
+  /* ---- a person's own changes, waiting (0058) ------------------------
+     Chase, 2026-10-13: "they can edit, but it has to be approved by an
+     Admin before it goes live. Just make sure that there is something that
+     shows the edits that were made." Every field that differs from what is
+     saved, word by word: struck through what goes, marked what comes.
+     Approve puts them in the fields and saves (live with the next Publish,
+     like any save); Decline drops them. */
+  function proposalFor(id) {
+    return (state.profile_proposals || []).filter(function (x) { return x.user_id === id; })[0] || null;
+  }
+  /* Words that stayed, went and came, by the longest run they share. */
+  function wordDiff(a, b) {
+    var A = String(a || '').split(/(\s+)/).filter(Boolean), B = String(b || '').split(/(\s+)/).filter(Boolean);
+    if (A.length * B.length > 600000) return '<del>' + esc(a) + '</del> <ins>' + esc(b) + '</ins>';
+    var n = A.length, m = B.length, L = [];
+    for (var i = 0; i <= n; i++) { L.push(new Array(m + 1).fill(0)); }
+    for (i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    var out = '', del = '', ins = '';
+    var flush = function () { if (del) out += '<del>' + esc(del) + '</del>'; if (ins) out += '<ins>' + esc(ins) + '</ins>'; del = ins = ''; };
+    i = 0; j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) { flush(); out += esc(A[i]); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) del += A[i++];
+      else ins += B[j++];
+    }
+    while (i < n) del += A[i++];
+    while (j < m) ins += B[j++];
+    flush();
+    return out;
+  }
+  function proposalBlock(u, p, text) {
+    var w = proposalFor(u.id);
+    if (!w) return '';
+    var names = {};
+    (state.languages || []).forEach(function (l) { names[l.code] = l.native_name || l.name; });
+    var rows = [];
+    var row = function (what, before, after) {
+      if (String(before || '').trim() === String(after || '').trim()) return;
+      rows.push('<div class="pf-chg"><span class="pf-chg-what">' + esc(what) + '</span>' +
+        '<div class="pf-diff">' + (after || before ? wordDiff(before, after) : '') + '</div></div>');
+    };
+    row(tr('adm.pf.region'), p && p.region, w.region);
+    Object.keys(w.text || {}).forEach(function (lang) {
+      var was = text[lang] || {}, now = w.text[lang] || {};
+      row(tr('adm.pf.roleTitle') + ' · ' + (names[lang] || lang), was.role_title, now.role_title);
+      row(tr('adm.pf.bio') + ' · ' + (names[lang] || lang), was.bio, now.bio);
+    });
+    return '<div class="pf-proposal" data-proposal="' + esc(u.id) + '">' +
+      '<span class="adm-label">' + esc(tr('adm.pf.waiting').replace('{name}', u.name || u.email)
+        .replace('{when}', new Date(w.submitted_at).toLocaleDateString())) + '</span>' +
+      (rows.length ? rows.join('') : '<p class="hint">' + esc(tr('adm.pf.waitingSame')) + '</p>') +
+      '<div class="pf-proposal-actions">' +
+        '<button type="button" class="ghost-btn" data-proposal-decline="' + esc(u.id) + '">' + esc(tr('adm.pf.decline')) + '</button>' +
+        '<button type="button" class="solid-btn" data-proposal-approve="' + esc(u.id) + '">' + esc(tr('adm.pf.approve')) + '</button>' +
+      '</div></div>';
+  }
+  async function approveProposal(userId, btn) {
+    var w = proposalFor(userId), sect = document.querySelector('[data-profile="' + userId + '"]');
+    if (!w || !sect) return;
+    pfStash(sect);
+    var draft = pfDraft(userId);
+    Object.keys(w.text || {}).forEach(function (lang) { draft[lang] = { role_title: w.text[lang].role_title || '', bio: w.text[lang].bio || '' }; });
+    var box = sect.querySelector('.pf-langs');
+    if (box) box.outerHTML = profileLangsBlock(userId);
+    var region = sect.querySelector('.pf-grid [data-pf="region"]');
+    if (region && typeof w.region === 'string') region.value = w.region;
+    ui.pfApprove = userId;
+    try { await saveProfile(userId, btn); } finally { ui.pfApprove = null; }
+  }
+  async function declineProposal(userId, btn) {
+    var ok = await window.StaffConfirm({ title: tr('adm.pf.declineTitle'), confirm: tr('adm.pf.decline'), cancel: tr('ms.cancel'), danger: true });
+    if (!ok) return;
+    btn.disabled = true;
+    try {
+      var res = await fetch('/api/admin/profile', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'decline-proposal', user_id: userId }) });
+      if (!res.ok) throw new Error((await res.json().catch(function () { return {}; })).error || tr('err.refused'));
+      await load();
+    } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
+  }
+
   function profileSection(u) {
     var p = profileFor(u.id);
     var on = !!(p && p.is_public);
@@ -630,6 +712,7 @@
        (board "a person: Team page"). */
     return '<div class="adm-section adm-profile pp-team" data-profile="' + esc(u.id) + '">' +
       '<div class="pp-team-fields">' +
+      proposalBlock(u, p, text) +
 
       '<button type="button" class="switch small" role="switch" data-pf-public="' + esc(u.id) + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
@@ -784,7 +867,7 @@
        not a person and has no team page, so it has no tabs either. */
     var tab = system ? 'access' : (ui.personTab || 'access');
     var tabBtn = function (name, key) {
-      return '<button type="button" class="tab" role="tab" data-pp-tab="' + name + '"' +
+      return '<button type="button" class="tab' + (name === 'team' && proposalFor(u.id) ? ' has-dot' : '') + '" role="tab" data-pp-tab="' + name + '"' +
         ' aria-selected="' + (tab === name ? 'true' : 'false') + '">' + esc(tr(key)) + '</button>';
     };
 
@@ -1522,6 +1605,8 @@
       photo_master: shotMaster('photo'),
       bio_photo_master: shotMaster('bio_photo'),
       text: text,
+      /* an approved proposal (0058) stops waiting once this is saved */
+      clear_proposal: ui.pfApprove === userId || undefined,
       /* as this page loaded it, so a save from another site since is caught */
       updated_at: (profileFor(userId) || {}).updated_at
     };
@@ -1656,6 +1741,11 @@
 
     var pub = e.target.closest('[data-pf-public]');
     if (pub) return toggleProfilePublic(pub);
+
+    var appr = e.target.closest('[data-proposal-approve]');
+    if (appr) return approveProposal(appr.getAttribute('data-proposal-approve'), appr);
+    var decl = e.target.closest('[data-proposal-decline]');
+    if (decl) return declineProposal(decl.getAttribute('data-proposal-decline'), decl);
 
     var save = e.target.closest('[data-pf-save]');
     if (save) return saveProfile(save.dataset.pfSave, save);

@@ -3457,3 +3457,20 @@ SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
   JOIN user_roles r ON r.user_id = u.id AND r.role = :role
  WHERE u.status = 'active'
    AND COALESCE(u.protected, 0) = 0;
+
+-- name: profile_proposal_get
+-- A person's own waiting changes to their bio (0058), or nothing.
+SELECT user_id, payload, submitted_at FROM staff_profile_proposals WHERE user_id = :user_id;
+
+-- name: profile_proposals_all
+-- Every waiting change, for the People page (0058).
+SELECT user_id, payload, submitted_at FROM staff_profile_proposals ORDER BY submitted_at;
+
+-- name: profile_proposal_set
+-- Sending again replaces what was waiting.
+INSERT INTO staff_profile_proposals (user_id, payload, submitted_at)
+VALUES (:user_id, :payload, :now)
+ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = excluded.submitted_at;
+
+-- name: profile_proposal_delete
+DELETE FROM staff_profile_proposals WHERE user_id = :user_id;

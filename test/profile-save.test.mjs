@@ -56,9 +56,9 @@ function payload(extra) {
 }
 
 /** The console, rendered, with one person's panel open. */
-async function boot({ postResponse, profiles, languages } = {}) {
+async function boot({ postResponse, profiles, languages, extra } = {}) {
   const posts = [];
-  const over = profiles || languages ? Object.assign({}, profiles ? { profiles } : {}, languages ? { languages } : {}) : null;
+  const over = profiles || languages || extra ? Object.assign({}, profiles ? { profiles } : {}, languages ? { languages } : {}, extra || {}) : null;
   const dom = new JSDOM(readFileSync(`${build}/admin/users/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
     url: "https://dev.thauma.one/admin/users/",
@@ -139,6 +139,27 @@ await check("one language at a time, the reference above, and Save sends EVERY l
   const text = JSON.parse(posts[0].body).text;
   assert(text.en.role_title === "Founder 2" && text.hr.role_title === "Osnivač" && text.sr.role_title === "Оснивач",
     "not every language was sent: " + JSON.stringify(text));
+});
+
+await check("a person's own changes: shown word by word, Approve saves them and clears them (0058)", async () => {
+  /* Chase, 2026-10-13: "they can edit, but it has to be approved by an Admin
+     before it goes live. Just make sure that there is something that shows
+     the edits that were made." */
+  const languages = ["en", "hr"].map((code) => ({ code, name: code, native_name: code, is_active: 1 }));
+  const profile_proposals = [{ user_id: "u_1", submitted_at: "2026-10-13T10:00:00Z", region: "KC",
+    text: { en: { role_title: "Founder and Director", bio: "Bio text" } } }];
+  const { w, posts } = await boot({ languages, extra: { profile_proposals } });
+  const d = w.document;
+  assert(d.querySelector('[data-person="u_1"] .role-tag.waiting'), "the row does not say changes are waiting");
+  const box = d.querySelector('.pf-proposal[data-proposal="u_1"]');
+  assert(box, "no box of waiting changes");
+  const diffs = [...box.querySelectorAll(".pf-diff")].map((x) => x.innerHTML);
+  assert(diffs.length === 1 && /Founder<ins> and Director<\/ins>/.test(diffs[0]), "only the title changed, shown word by word: " + JSON.stringify(diffs));
+  box.querySelector("[data-proposal-approve]").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 250));
+  const body = JSON.parse(posts[0].body);
+  assert(body.clear_proposal === true && body.text.en.role_title === "Founder and Director" && body.text.en.bio === "Bio text",
+    "Approve did not save the changes and clear them: " + JSON.stringify(body));
 });
 
 await check("a FAILED save says so on screen", async () => {
