@@ -7,13 +7,50 @@ if (location.hash && /invite_token|recovery_token|confirmation_token|email_chang
 
 // ---- Language toggle: remember the choice, then navigate (unchanged —
 // this is the actual switch; the dropdown below it is just UI around it) ----
+//
+// THE SAME PLACE, IN THE OTHER LANGUAGE (Chase, 2026-10-12: "is there a way
+// to have the page not go back to the top, but still transition to the new
+// language?"). Before leaving: which section is at the top of the screen
+// and how far into it, and the code being left. The new page scrolls to the
+// same section (keepPlace, below) before it is first drawn, so the page
+// transition fades between the same place in both languages, and the menu
+// rolls from the old code to the new one.
+var LANG_SWITCH = 'thauma.langSwitch';
+function pageSections() {
+  return [].slice.call(document.querySelectorAll('body > section, main > section, .page > section, section'))
+    .filter(function (el, i, all) { return all.indexOf(el) === i && !el.closest('nav, header, footer'); });
+}
 document.querySelectorAll('.lang-toggle').forEach(function (btn) {
   btn.addEventListener('click', function () {
     var lang = btn.dataset.lang;
     document.cookie = 'thauma_lang=' + lang + ';path=/;max-age=31536000;samesite=lax';
+    var secs = pageSections(), at = -1, off = 0;
+    for (var i = 0; i < secs.length; i++) {
+      var r = secs[i].getBoundingClientRect();
+      if (r.bottom > 80) { at = i; off = Math.round(-r.top); break; }
+    }
+    try {
+      sessionStorage.setItem(LANG_SWITCH, JSON.stringify({ from: (document.documentElement.lang || '').toUpperCase(),
+        to: btn.dataset.target, idx: window.scrollY > 0 ? at : -1, off: off, t: Date.now() }));
+    } catch (e) {}
     window.location.href = btn.dataset.target;
   });
 });
+var langSwitched = null;
+(function keepPlace() {
+  var raw = null;
+  try { raw = sessionStorage.getItem(LANG_SWITCH); sessionStorage.removeItem(LANG_SWITCH); } catch (e) {}
+  if (!raw) return;
+  var s; try { s = JSON.parse(raw); } catch (e) { return; }
+  if (!s || Date.now() - s.t > 20000 || s.to.split('#')[0] !== location.pathname) return;
+  langSwitched = s;
+  var el = s.idx >= 0 && pageSections()[s.idx];
+  if (!el) return;
+  var root = document.documentElement, was = root.style.scrollBehavior;
+  root.style.scrollBehavior = 'auto';
+  window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY + s.off));
+  root.style.scrollBehavior = was;
+})();
 
 // ---- Language dropdown: open/close + dismiss (2026-07-17) ----
 // Open/closed state lives entirely in the .open class (not the `hidden`
@@ -29,16 +66,21 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     var list = dd.querySelector('.lang-dropdown-list');
     if (!trigger || !list) return;
     var label = trigger.querySelector('.lang-dropdown-label');
+    /* The button always says the code; the list names the languages
+       (Chase, 2026-10-12). After a switch, the old code rolls out and the
+       new one rolls in, once the page has arrived. */
+    if (label && langSwitched && langSwitched.from && langSwitched.from !== label.dataset.code) {
+      /* after this script has run: whenPageSettled is set up further down */
+      setTimeout(function () { whenPageSettled(function () { rollCode(label, langSwitched.from); }); }, 0);
+    }
     function open() {
       dd.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
-      if (label) { label.classList.remove('is-rolling'); label.textContent = label.dataset.name; }
     }
     function close() {
       if (!dd.classList.contains('open')) return;
       dd.classList.remove('open');
       trigger.setAttribute('aria-expanded', 'false');
-      if (label) rollCode(label);
     }
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -46,13 +88,14 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     });
     dropdowns.push({ el: dd, close: close });
   });
-  /* THE NAME CLEARS AND THE CODE ROLLS IN (2026-10-08): per character, top
-     down, with the cascade's curve and stagger (see the character cascade
-     below), quicker because it is a button answering a press. Put back as
-     plain text once it lands; at once for reduced motion. */
-  function rollCode(el) {
+  /* THE OLD CODE ROLLS OUT, THE NEW ONE IN (2026-10-12): per character,
+     top down, the new letter dropping in over the old — the page wheel's
+     motion, with the cascade's curve and 40ms stagger, quicker because it
+     answers a press. Plain text again once it lands; nothing at all for
+     reduced motion. */
+  function rollCode(el, from) {
     var code = el.dataset.code;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = code; return; }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var lh = el.getBoundingClientRect().height || 14;
     el.textContent = '';
     el.classList.add('is-rolling');
@@ -60,8 +103,12 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     for (var i = 0; i < code.length; i++) {
       var box = document.createElement('span'), inner = document.createElement('span');
       box.className = 'cr-box'; box.style.height = lh + 'px';
-      inner.className = 'cr-in'; inner.style.height = inner.style.lineHeight = lh + 'px';
-      inner.textContent = code[i];
+      inner.className = 'cr-in';
+      [code[i], (from || '')[i] || '\u00A0'].forEach(function (ch) {
+        var line = document.createElement('span');
+        line.style.display = 'block'; line.style.height = line.style.lineHeight = lh + 'px';
+        line.textContent = ch; inner.appendChild(line);
+      });
       inner.style.transition = 'none';
       inner.style.transform = 'translateY(-' + lh + 'px)';
       box.appendChild(inner); el.appendChild(box); inners.push(inner);
@@ -74,7 +121,6 @@ document.querySelectorAll('.lang-toggle').forEach(function (btn) {
       });
     });
     setTimeout(function () {
-      if (!el.classList.contains('is-rolling')) return;
       el.classList.remove('is-rolling');
       el.textContent = code;
     }, 700 + code.length * 40 + 60);

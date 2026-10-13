@@ -207,6 +207,7 @@ html.menu-open .nav{display:flex;position:absolute;left:0;right:0;top:100%;flex-
 .langmenu summary{list-style:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font:600 13px var(--body);letter-spacing:.06em;
   color:var(--fg);padding:7px 12px;border:1px solid var(--line);border-radius:999px}
 .langmenu summary::-webkit-details-marker{display:none}
+.langmenu summary .lc{display:inline-block;min-width:2.4em;text-align:center}
 .langmenu summary svg{width:10px;height:6px;transition:transform .2s ease}.langmenu[open] summary svg{transform:rotate(180deg)}
 .langmenu summary:hover,.langmenu[open] summary{border-color:var(--acc)}
 .langmenu ul{position:absolute;right:0;top:calc(100% + 8px);z-index:50;list-style:none;margin:0;padding:6px;min-width:170px;
@@ -1219,14 +1220,15 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const give = giveOut ? `<a class="givebtn" href="${esc(doc.give)}" target="_blank" rel="noopener">${esc(label("give"))}</a>` : "";
   /* THE LANGUAGE MENU IS ALWAYS A DROPDOWN (Chase, 2026-09-29: "Language
      selection should maintain the dropdown menu regardless"): the current
-     language's code, opening to every language by its own name — and, open,
-     the button says the name too; closed again, the code rolls back in
-     (MOTION_JS; Chase, 2026-10-08). Outside the
+     language's code — one width whatever the code, so the bar never moves —
+     opening to every language by its own name. Choosing one keeps the place
+     on the page and rolls the old code out and the new one in (MOTION_JS;
+     Chase, 2026-10-12). Outside the
      page menu, so it stays on screen on a phone. <details>, so it opens
      without a script; the script only closes it on a click elsewhere. */
   const langMenu = (up) => doc.languages.length > 1
     ? `<details class="langmenu${up ? " up" : ""}"><summary aria-label="${esc(word(lang, "lang"))}">` +
-      `<span data-name="${esc(langNames[lang] || lang.toUpperCase())}">${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
+      `<span class="lc">${esc(lang.toUpperCase())}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary>` +
       `<ul>${doc.languages.map((l) =>
         `<li><a href="${esc(href(pageId, l))}" hreflang="${esc(l)}" lang="${esc(l)}"${l === lang ? ' aria-current="true"' : ""}>${esc(langNames[l] || l.toUpperCase())}</a></li>`).join("")}</ul></details>`
     : "";
@@ -1460,12 +1462,17 @@ function frame(){tick=false;var vh=innerHeight;
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
-[].forEach.call(document.querySelectorAll('details.langmenu'),function(m){var s=m.querySelector('summary span[data-name]');if(!s)return;var code=s.textContent,name=s.getAttribute('data-name');
- m.addEventListener('toggle',function(){if(m.open){s.textContent=name;return}if(still){s.textContent=code;return}
-  var h=s.getBoundingClientRect().height||16,ins=[];s.textContent='';
-  for(var i=0;i<code.length;i++){var b=document.createElement('span'),n=document.createElement('span');b.style.cssText='display:inline-block;overflow:hidden;vertical-align:top;height:'+h+'px';n.style.cssText='display:block;height:'+h+'px;line-height:'+h+'px;transform:translateY(-'+h+'px)';n.textContent=code[i];b.appendChild(n);s.appendChild(b);ins.push(n)}
-  s.getBoundingClientRect();requestAnimationFrame(function(){ins.forEach(function(n,i){n.style.transition='transform .7s cubic-bezier(.55,.05,.45,.95) '+(i*40)+'ms';n.style.transform='none'})});
-  setTimeout(function(){if(!m.open)s.textContent=code},760+code.length*40)})});
+var LS='site.langSwitch',secs=function(){return [].slice.call(document.querySelectorAll('main > section, main section'))};
+[].forEach.call(document.querySelectorAll('.langmenu a[hreflang],.navlang a[hreflang]'),function(a){a.addEventListener('click',function(){var all=secs(),at=-1,off=0;for(var i=0;i<all.length;i++){var r=all[i].getBoundingClientRect();if(r.bottom>80){at=i;off=Math.round(-r.top);break}}
+ try{sessionStorage.setItem(LS,JSON.stringify({from:(d.lang||'').toUpperCase(),to:a.pathname,idx:scrollY>0?at:-1,off:off,t:Date.now()}))}catch(e){}})});
+(function(){var raw=null;try{raw=sessionStorage.getItem(LS);sessionStorage.removeItem(LS)}catch(e){}if(!raw)return;var s;try{s=JSON.parse(raw)}catch(e){return}if(!s||Date.now()-s.t>20000||s.to!==location.pathname)return;
+ var el=s.idx>=0&&secs()[s.idx];if(el){var was=d.style.scrollBehavior;d.style.scrollBehavior='auto';scrollTo(0,Math.max(0,el.getBoundingClientRect().top+scrollY+s.off));d.style.scrollBehavior=was}
+ var lc=document.querySelector('details.langmenu summary .lc');if(!lc||still||!s.from||s.from===lc.textContent)return;
+ var code=lc.textContent,h=lc.getBoundingClientRect().height||16,ins=[];lc.textContent='';
+ for(var i=0;i<code.length;i++){var b=document.createElement('span'),n=document.createElement('span');b.style.cssText='display:inline-block;overflow:hidden;vertical-align:top;height:'+h+'px';n.style.cssText='display:block;transform:translateY(-'+h+'px)';
+  [code[i],s.from[i]||' '].forEach(function(c){var l=document.createElement('span');l.style.cssText='display:block;height:'+h+'px;line-height:'+h+'px';l.textContent=c;n.appendChild(l)});b.appendChild(n);lc.appendChild(b);ins.push(n)}
+ setTimeout(function(){ins.forEach(function(n,i){n.style.transition='transform .7s cubic-bezier(.55,.05,.45,.95) '+(i*40)+'ms';n.style.transform='none'})},350);
+ setTimeout(function(){lc.textContent=code},1160+code.length*40)})();
 [].forEach.call(document.querySelectorAll('.ptabs'),function(bar){var bs=[].slice.call(bar.querySelectorAll('[data-tab]'));
  function show(id,keep){bs.forEach(function(b){var on=b.getAttribute('data-tab')===id;b.setAttribute('aria-selected',on);var p=document.getElementById('t-'+b.getAttribute('data-tab'));if(p)p.hidden=!on});
   if(!keep)try{history.replaceState(null,'','#'+id)}catch(e){}frame()}

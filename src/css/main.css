@@ -248,11 +248,11 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
 }
 .lang-dropdown-current{display:block;padding:8px 10px;color:var(--foam);font-family:'Inter',sans-serif;
   font-size:12px;letter-spacing:.1em;font-weight:600}
-/* The button's words: the code closed, the language's name open (main.js).
+/* The button's code, one width whatever the code (EN and SL are not the
+   same width), so nothing beside it moves when the language changes.
    Letter-spacing off while a code rolls, as the cascade does, so each
-   character box sits where the resting letter will. */
-.lang-dropdown-label{display:inline-block;white-space:nowrap}
-.lang-dropdown.open .lang-dropdown-label{letter-spacing:.06em}
+   character box sits where the resting letter will (main.js). */
+.lang-dropdown-label{display:inline-block;white-space:nowrap;min-width:2.6em;text-align:center}
 .lang-dropdown-label.is-rolling{letter-spacing:0;font-kerning:none}
 .lang-dropdown-label.is-rolling .cr-box{margin-right:.15em}
 .lang-dropdown-list{white-space:nowrap}
