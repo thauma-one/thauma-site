@@ -2290,6 +2290,22 @@ html.console-menu-open{overflow:hidden}
 .sh-words{margin-top:14px}
 .sh-word-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .sh-words .ms-writing{margin-bottom:14px;padding-bottom:12px}
+/* SIDE BY SIDE, ALWAYS, BEYOND A PHONE (2026-10-12, Chase: "In staff sharing,
+   the reference language is sitting below the editing language probably
+   because of room, but I want them to still sit side by side"). The row no
+   longer wraps there; the pickers give up width instead (a long name such
+   as "English · usual words" ends in an ellipsis, whole in the list). */
+@media (min-width:700px){
+  .ms-writing{flex-wrap:nowrap;column-gap:14px}
+  .ms-writing>.ms-pick{min-width:0}
+  .ms-writing .lang-ref{flex:none}
+  .ms-writing .lang-pick{min-width:0;max-width:100%;flex:0 1 auto;text-overflow:ellipsis}
+  .ms-writing .lang-ref .lang-pick{flex:none}
+  .ms-writing .lang-ai{flex:none}
+}
+/* on a phone the pair still wraps, and the Reference half wraps inside
+   itself rather than running off the side */
+@media (max-width:699px){ .ms-writing .lang-ref{flex-wrap:wrap;max-width:100%} }
 .sh-word-fields .ms-ref{display:block}
 .sh-switches{display:flex;flex-direction:column;gap:12px}
 .sh-live .switch-label{font-size:var(--fs-md);color:var(--text)}
