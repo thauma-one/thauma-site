@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "1d5ad43c514c9329";
+export const SOURCE_DIGEST = "17f3cbd97f95f955";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -87,7 +87,13 @@ VALUES (:id, :partner_id, :address, :label, :can_receive, :now);`,
        (SELECT COALESCE(SUM((SELECT COUNT(*) FROM subscribers s
                               WHERE s.list_id = l.id AND s.status = 'subscribed')), 0)
           FROM mailing_lists l
-         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers
+         WHERE l.archived_at IS NULL AND l.from_email = sa.address) AS sends_subscribers,
+       (SELECT COUNT(*) FROM contact_forms f
+         WHERE lower(f.from_address) = lower(sa.address)) AS form_sends,
+       (SELECT COUNT(*) FROM contact_forms f
+         WHERE lower(f.deliver_to) = lower(sa.address))
+     + (SELECT COUNT(*) FROM contact_topics t
+         WHERE lower(t.deliver_to) = lower(sa.address)) AS form_receives
 FROM sender_addresses sa
 LEFT JOIN partners p ON p.id = sa.partner_id
 ORDER BY p.display_name COLLATE NOCASE, sa.address COLLATE NOCASE;`,

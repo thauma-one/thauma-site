@@ -1290,6 +1290,9 @@
       if (a.replies_for) {
         uses.push(tr('adm.mailReplies').replace('{lists}', a.replies_for.split(' | ').join(', ')));
       }
+      /* the contact form, which sends from these and may deliver to them */
+      if (a.form_sends) uses.push(tr('adm.mailFormSends'));
+      if (a.form_receives) uses.push(tr('adm.mailFormGets'));
       return '<div class="adm-sender" data-sender="' + esc(a.id) + '">' +
         '<code class="adm-sender-a">' + esc(a.address) + '</code>' +
         '<span class="adm-sender-used">' +
@@ -1968,6 +1971,7 @@
         lists: a.replies_for.split(' | ').join(', ')
       }));
     }
+    if (a.form_sends || a.form_receives) lines.push(tr('adm.mailRemoveForm'));
 
     var ok = await window.StaffConfirm({
       title: tr('adm.mailRemove'),

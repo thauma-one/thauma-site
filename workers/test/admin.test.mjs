@@ -464,6 +464,14 @@ await check("a new ministry holds its site address at once, and a failure there 
   eq(subdomainFrom("Chase Roush"), "chaseroush", "firstnamelastname, no hyphen");
 });
 
+await check("an address the contact form uses is not called unused", async () => {
+  const q = QUERIES.admin_sender_addresses;
+  assert(/FROM contact_forms f\s+WHERE lower\(f\.from_address\) = lower\(sa\.address\)\) AS form_sends/.test(q), "the form's sender is not counted");
+  assert(/contact_topics t[\s\S]*AS form_receives/.test(q), "where the form delivers is not counted");
+  const js = fs.readFileSync(new URL("../../src/js/admin.js", import.meta.url), "utf8");
+  assert(/a\.form_sends\) uses\.push/.test(js) && /a\.form_receives\) uses\.push/.test(js), "the card does not show it");
+});
+
 await check("the four roles are exactly what the schema allows", async () => {
   const src = await import("node:fs").then((fs) =>
     fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
