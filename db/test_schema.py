@@ -900,14 +900,21 @@ def t_a_team_share_names_its_team():
 
 
 def t_people_find_never_offers_the_asker_or_the_master_account():
+    """people_find returns the CANDIDATES; matching the typed letters is the
+    worker's (staff-data.js findPeople, tested in workers/test/staff-happy-
+    path), since 2026-10-12 — so "Maric" finds "Marić" and someone just
+    invited is found. What the query still owns: never the person asking,
+    never the protected master account, and invited people included."""
     db = _group_world()
-    db.execute("UPDATE users SET name='Ana Horvat' WHERE id='u_b'")
+    db.execute("UPDATE users SET name='Ana Horvat', status='invited' WHERE id='u_b'")
     db.execute("UPDATE users SET name='Ana Admin', protected=1 WHERE id='u_admin'")
     sql, names = _query("people_find")
-    got = [r[1] for r in db.execute(sql, [{"q": "an", "user_id": "u_a"}[n] for n in names])]
-    assert got == ["Ana Horvat"], got
-    got = [r for r in db.execute(sql, [{"q": "ana", "user_id": "u_b"}[n] for n in names])]
-    assert got == [], f"asked by Ana, it offered: {got}"
+    asked = lambda uid: {r[0] for r in db.execute(sql, [{"user_id": uid}[n] for n in names])}
+    got = asked("u_a")
+    assert "u_a" not in got, f"offered the asker: {got}"
+    assert "u_admin" not in got, f"offered the master account: {got}"
+    assert "u_b" in got, f"an invited person is not a candidate: {got}"
+    assert "u_b" not in asked("u_b"), "asked by Ana, it offered Ana"
 
 
 def t_deleting_a_person_takes_their_private_shelf_with_them():
