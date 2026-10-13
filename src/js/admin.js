@@ -2106,7 +2106,10 @@
         $('admPartnerForm').hidden = true;
         $('admPartnerName').value = '';
         await load();
-        toast(tr('toast.saved'), 'ok');
+        /* its site address is held at once (admin.js makePartner) */
+        await loadSites();
+        var held = (state.sites || []).filter(function (x) { return x.partner_id === body.created; })[0];
+        toast(held ? tr('adm.siteHeld').replace('{address}', held.subdomain + '.thauma.one') : tr('toast.saved'), 'ok');
       } catch (err) { toast(err.message, 'err'); }
       finally { btn.disabled = false; }
     });

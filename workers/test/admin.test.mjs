@@ -10,7 +10,7 @@
  * these tests are about.
  */
 import fs from "node:fs";
-import handler, { STANDARD_SENDERS, orgDomain, senderProblem } from "../src/admin.js";
+import handler, { STANDARD_SENDERS, orgDomain, senderProblem, syncPartnerRole } from "../src/admin.js";
 import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
 
@@ -436,6 +436,32 @@ await check("revoking PARTNER does not delete the ministry", async () => {
   // destroy them.
   assert(!/body\.role === "partner"[\s\S]{0,400}admin_partner_delete/.test(src),
     "revoking the partner role deletes the partner");
+});
+
+await check("owning a ministry switches the Partner role on; losing the last switches it off", async () => {
+  const run = async (members, wasOwner) => {
+    const done = [];
+    const db = { query: async (name, p) => {
+      if (name === "admin_partner_members") return members;
+      done.push(name + ":" + p.role); return [];
+    } };
+    await syncPartnerRole(db, "u_1", "u_admin", "now", wasOwner);
+    return done;
+  };
+  eq(await run([{ user_id: "u_1", partner_id: "p_1", role: "owner" }], false), ["admin_role_grant:partner"], "made an owner");
+  eq(await run([{ user_id: "u_1", partner_id: "p_1", role: "view" }], false), [], "a helper changes nothing");
+  eq(await run([], true), ["admin_role_revoke:partner"], "lost the last ministry they owned");
+  eq(await run([{ user_id: "u_1", partner_id: "p_2", role: "owner" }], true), ["admin_role_grant:partner"], "still owns another");
+  const src = fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8");
+  assert(/role: "owner", granted_by: grantedBy, now,\s*\}\);\s*await syncPartnerRole/.test(src), "a ministry made for somebody makes them a partner");
+});
+
+await check("a new ministry holds its site address at once, and a failure there never stops it", async () => {
+  const src = fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8");
+  assert(/try \{ await siteRow\(db, \{ id: pid, display_name: name, slug \}, now\); \}\s*catch/.test(src),
+    "makePartner does not make the site row, or a site failure would undo the partner");
+  const { subdomainFrom } = await import("../src/site/model.js");
+  eq(subdomainFrom("Chase Roush"), "chaseroush", "firstnamelastname, no hyphen");
 });
 
 await check("the four roles are exactly what the schema allows", async () => {
