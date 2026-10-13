@@ -96,7 +96,7 @@ await check("Access opens first: what they can do, their ministries, sign-in, an
   assert(JSON.stringify(tabs) === JSON.stringify([["Access", "true"], ["Team page", "false"]]), JSON.stringify(tabs));
   const access = p.querySelector('[data-pp-panel="access"]');
   assert(shown(access) && !shown(p.querySelector('[data-pp-panel="team"]')), "only Access shows");
-  assert(access.querySelectorAll("[data-role]").length === 4, "the four roles");
+  assert(access.querySelectorAll("[data-role]").length === 5, "the five roles, Communications among them");
   assert(access.querySelector('[data-partner="p_1"]'), "the ministry chip");
   assert(access.querySelector(".status-pick"), "sign-in");
   assert(/save as you make them/.test(access.querySelector(".pp-foot").textContent), "says it saves at once");

@@ -35,7 +35,7 @@ import { requestedTarget } from "./lib/actas.js";
 import { siteOrigin } from "./lib/origin.js";
 import { isReservedSlug } from "./lib/org.js";
 
-const ROLES = new Set(["admin", "partner", "staff", "board"]);
+const ROLES = new Set(["admin", "partner", "staff", "board", "communications"]);
 const STATUSES = new Set(["invited", "active", "suspended"]);
 const PARTNER_ROLES = new Set(["owner", "assist", "view"]);
 

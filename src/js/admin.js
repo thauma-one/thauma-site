@@ -41,15 +41,21 @@
   function toast(msg, kind) { if (window.StaffToast) window.StaffToast(msg, kind); }
 
   var ROLE_LABEL = { admin: 'Administration', partner: 'Partner',
-                     staff: 'Staff', board: 'Board' };
+                     staff: 'Staff', board: 'Board', communications: 'Communications' };
   // Order matters on screen: the two that change what somebody IS come first.
-  var ALL_ROLES = ['admin', 'partner', 'staff', 'board'];
+  /* COMMUNICATIONS (2026-10-13, Chase: "We should build out the
+     Communications role"): the schema has allowed it since 0015 and eight
+     endpoints already honor it — Thauma's own mail, the website's words,
+     its Library and translation — but nothing could grant it. */
+  var ALL_ROLES = ['admin', 'partner', 'staff', 'board', 'communications'];
 
   /* Roles that deserve a sentence before they are granted. Administration
      because of what it reaches, Partner because it CREATES something — a
      ministry record with its own supporters, goals and site. A toggle that
      quietly builds a thing should say so first. */
-  var CONFIRM_ROLES = { admin: true, partner: true };
+  var CONFIRM_ROLES = { admin: true, partner: true, communications: true };
+  /* in the reader's language (role.* in staff-i18n.js), English if missing */
+  function roleLabel(r) { var t = tr('role.' + r); return t && t !== 'role.' + r ? t : (ROLE_LABEL[r] || r); }
 
   /* ---- viewing somebody else's console --------------------------------- */
 
@@ -253,7 +259,7 @@
       var roleTags = u.roles.length
         ? u.roles.map(function (r) {
             return '<span class="role-tag ' + esc(r) + '">' +
-              esc(ROLE_LABEL[r] || r) + '</span>';
+              esc(roleLabel(r)) + '</span>';
           }).join('')
         : '<span class="role-tag none">' + esc(tr('adm.noRoles')) + '</span>';
 
@@ -760,7 +766,7 @@
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
         '<span class="switch-track"><span class="switch-state">' +
           tr(on ? 'switch.on' : 'switch.off') + '</span><span class="switch-knob"></span></span>' +
-        '<span class="switch-label">' + esc(ROLE_LABEL[r]) + '</span></button>';
+        '<span class="switch-label">' + esc(roleLabel(r)) + '</span></button>';
     }).join('');
 
     var partners = state.partners.map(function (p) {
@@ -1773,9 +1779,9 @@
     if (CONFIRM_ROLES[role]) {
       var ok = await window.StaffConfirm({
         title: (grant ? tr('adm.confirm.grant') : tr('adm.confirm.revoke')) +
-               ' ' + ROLE_LABEL[role],
+               ' ' + roleLabel(role),
         body: u.name + ' (' + u.email + ')',
-        note: tr('adm.confirm.' + role + tr(grant ? 'switch.on' : 'switch.off')),
+        note: tr('adm.confirm.' + role + (grant ? 'On' : 'Off')),
         confirm: grant ? tr('adm.confirm.doGrant') : tr('adm.confirm.doRevoke'),
         cancel: tr('ms.cancel'),
         danger: !grant || role === 'admin'

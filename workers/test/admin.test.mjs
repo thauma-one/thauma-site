@@ -515,14 +515,17 @@ await check("Settings offers a notice only to the roles that receive it", async 
     "confirming does not notify, or a failed notice could fail the confirmation");
 });
 
-await check("the four roles are exactly what the schema allows", async () => {
-  const src = await import("node:fs").then((fs) =>
-    fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8"));
-  const schema = await import("node:fs").then((fs) =>
-    fs.readFileSync(new URL("../../db/migrations/0007_partner_role.sql", import.meta.url), "utf8"));
-  for (const r of ["admin", "partner", "staff", "board"]) {
-    assert(src.includes(`"${r}"`), `handler does not allow ${r}`);
+await check("the five roles are exactly what the schema allows, and People can grant each", async () => {
+  /* Communications since 0015 in the schema; grantable since 2026-10-13. */
+  const src = fs.readFileSync(new URL("../src/admin.js", import.meta.url), "utf8");
+  const schema = fs.readFileSync(new URL("../../db/migrations/0015_mailing.sql", import.meta.url), "utf8");
+  const page = fs.readFileSync(new URL("../../src/js/admin.js", import.meta.url), "utf8");
+  const roles = (src.match(/const ROLES = new Set\(\[([^\]]*)\]\)/) || [])[1] || "";
+  const all = (page.match(/var ALL_ROLES = \[([^\]]*)\]/) || [])[1] || "";
+  for (const r of ["admin", "partner", "staff", "board", "communications"]) {
+    assert(roles.includes(`"${r}"`), `handler does not allow ${r}`);
     assert(schema.includes(`'${r}'`), `schema does not allow ${r}`);
+    assert(all.includes(`'${r}'`), `People has no switch for ${r}`);
   }
 });
 
