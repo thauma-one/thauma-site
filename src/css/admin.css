@@ -665,14 +665,12 @@
 .pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:16px;margin-bottom:20px}
 
-/* TWO COLUMNS, the milestone editor's shape. Side by side is the point: a
-   translation is written while looking at what it translates. */
-.pf-langs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.pf-col{min-width:0;display:flex;flex-direction:column;gap:12px}
-.pf-col .lang-pick{width:100%}
-.pf-col textarea{width:100%;resize:vertical;min-height:120px;
+/* ONE LANGUAGE AT A TIME, the reference above each field (2026-10-12): the
+   same Editing ⇄ Reference row as every other editor (.ms-writing). */
+.pf-langs{display:flex;flex-direction:column;gap:12px}
+.pf-langs .ms-writing{margin-bottom:6px}
+.pf-langs textarea{width:100%;resize:vertical;min-height:120px;
   font-family:inherit;font-size:13px;line-height:1.5}
-@media (max-width:760px){ .pf-langs{grid-template-columns:1fr} }
 
 
 /* ---- photos ---- */

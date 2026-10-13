@@ -297,40 +297,73 @@
      toggle is the whole decision; everything under it is only reachable once
      it is on, because a bio nobody will read is not worth the screen space.
 
-     Two language columns, the same shape as the milestone and prayer editors.
-     Learning one teaches all three, and a role title is exactly the kind of
-     thing that gets translated late. */
+     EDITING ⇄ REFERENCE, like every other editor (2026-10-12, Chase: "The
+     people's page doesn't have the same structure for language selection
+     and translation as the rest of the site. It's English beside Croatian,
+     not a single language with the reference language and auto translation
+     tools"). One language's fields, the reference language's words small
+     above each, the swap and Translate (console-translate.js, staff.js) as
+     everywhere. Every language's words are held while switching
+     (ui.pfDraft) and ALL of them are saved — the two columns sent only the
+     two shown, and the server drops a language it is not sent, so saving
+     English beside Croatian wiped a Serbian bio. */
   function profileLangs() {
     var on = (state.languages || []).filter(function (l) { return l.is_active; });
     if (!ui.profileLangA) ui.profileLangA = (on[0] || {}).code || null;
-    if (!ui.profileLangB) {
+    if (!ui.profileLangB || ui.profileLangB === ui.profileLangA) {
       var other = on.filter(function (l) { return l.code !== ui.profileLangA; });
       ui.profileLangB = (other[0] || {}).code || null;
     }
     return on;
   }
 
-  function langPicker(which, selected) {
-    /* Named, because there are two of these side by side — one per column —
-       and "select" twice tells somebody nothing about which is which. */
-    return '<select class="lang-pick" data-plang="' + which + '"' +
-             ' aria-label="' + esc(tr('adm.pf.lang')) + '">' +
-      profileLangs().map(function (l) {
+  function langPicker(which, selected, except) {
+    return '<select class="lang-pick" data-plang="' + which + '" ' + (which === 'a' ? 'data-lang-edit' : 'data-lang-ref') +
+             ' aria-label="' + esc(tr(which === 'a' ? 'con.editing' : 'con.reference')) + '">' +
+      profileLangs().filter(function (l) { return l.code !== except; }).map(function (l) {
         return '<option value="' + esc(l.code) + '"' +
           (l.code === selected ? ' selected' : '') + '>' +
           esc(l.native_name || l.name) + '</option>';
       }).join('') + '</select>';
   }
 
-  function profileColumn(u, which, code, text) {
-    var t = (code && text[code]) || { role_title: '', bio: '' };
-    return '<div class="pf-col">' +
-      langPicker(which, code) +
-      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' +
-        '<input type="text" data-pf="role_title" data-col="' + which + '"' +
+  /* Every language's words for one person, as being edited. */
+  function pfDraft(userId) {
+    ui.pfDraft = ui.pfDraft || {};
+    if (!ui.pfDraft[userId]) ui.pfDraft[userId] = profileText(profileFor(userId));
+    return ui.pfDraft[userId];
+  }
+  /* What the fields say now, into the draft, under the language they show. */
+  function pfStash(sect) {
+    var uid = sect && sect.getAttribute('data-profile');
+    var box = sect && sect.querySelector('.pf-langs');
+    if (!uid || !box) return;
+    var lang = box.getAttribute('data-editing');
+    var role = box.querySelector('[data-pf="role_title"]'), bio = box.querySelector('[data-pf="bio"]');
+    pfDraft(uid)[lang] = { role_title: role ? role.value : '', bio: bio ? bio.value : '' };
+  }
+
+  function profileLangsBlock(userId) {
+    var on = profileLangs();
+    var A = ui.profileLangA, B = ui.profileLangB;
+    var text = pfDraft(userId);
+    var t = text[A] || { role_title: '', bio: '' };
+    var r = (B && text[B]) || { role_title: '', bio: '' };
+    var ref = function (v) { return v ? '<small class="ms-ref" lang="' + esc(B) + '">' + esc(v) + '</small>' : ''; };
+    return '<div class="pf-langs" data-editing="' + esc(A || '') + '">' +
+      '<div class="ms-writing">' +
+        '<label class="ms-pick"><span>' + esc(tr('con.editing')) + '</span>' + langPicker('a', A) + '</label>' +
+        (on.length > 1 ? '<span class="lang-ref">' +
+          '<button type="button" class="lang-swap" data-lang-swap aria-label="' + esc(tr('con.swap')) + '" title="' + esc(tr('con.swap')) + '">&#8644;</button>' +
+          '<label class="ms-pick"><span>' + esc(tr('con.reference')) + '</span>' + langPicker('b', B, A) + '</label>' +
+          '<button type="button" class="ghost-btn sm lang-ai" data-lang-translate>' + esc(tr('ai.translate')) + '</button>' +
+        '</span>' : '') +
+      '</div>' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.roleTitle')) + '</span>' + ref(r.role_title) +
+        '<input type="text" data-pf="role_title" lang="' + esc(A || '') + '"' +
         ' value="' + esc(t.role_title || '') + '" maxlength="120"></label>' +
-      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' +
-        '<textarea data-pf="bio" data-col="' + which + '" rows="6"' +
+      '<label class="fld"><span>' + esc(tr('adm.pf.bio')) + '</span>' + ref(r.bio) +
+        '<textarea data-pf="bio" lang="' + esc(A || '') + '" rows="6"' +
         ' maxlength="4000">' + esc(t.bio || '') + '</textarea></label>' +
     '</div>';
   }
@@ -522,6 +555,7 @@
   }
 
   function markProfileClean(userId) {
+    if (ui.pfDraft) delete ui.pfDraft[userId];   // back to what is saved
     var sect = document.querySelector('[data-profile="' + userId + '"]');
     if (sect) sect.classList.remove('is-dirty');
     var panel = sect && sect.closest('.adm-panel');
@@ -645,10 +679,7 @@
             ' placeholder="' + esc(slugHint(u.name)) + '"></label>' +
         '</div>' +
 
-        '<div class="pf-langs">' +
-          profileColumn(u, 'a', ui.profileLangA, text) +
-          profileColumn(u, 'b', ui.profileLangB, text) +
-        '</div>' +
+        profileLangsBlock(u.id) +
 
         '<div class="pf-photos">' +
           photoSlot(u, 'photo', (p && p.photo) || '') +
@@ -693,7 +724,7 @@
     var pv = sect && sect.querySelector('[data-pf-preview]');
     if (!pv) return;
     var field = function (sel) { var el = sect.querySelector(sel); return el ? el.value.trim() : ''; };
-    pv.querySelector('[data-pv="title"]').textContent = field('[data-pf="role_title"][data-col="a"]');
+    pv.querySelector('[data-pv="title"]').textContent = field('[data-pf="role_title"]');
     pv.querySelector('[data-pv="region"]').textContent = field('.pf-grid [data-pf="region"]');
     var slugEl = sect.querySelector('.pf-grid [data-pf="slug"]');
     var slug = field('.pf-grid [data-pf="slug"]') || (slugEl ? slugEl.placeholder : '');
@@ -1461,19 +1492,13 @@
       return isFinite(v) && v > 0 ? v : null;
     };
 
-    /* Both columns, keyed by whichever language each is showing. Reading the
-       pickers rather than assuming a and b are the first two languages — they
-       are whatever the person editing chose. */
+    /* EVERY language, as held while switching (pfDraft) — not just the one
+       on screen: a language left out is a language the server drops. */
+    pfStash(sect);
     var text = {};
-    ['a', 'b'].forEach(function (which) {
-      var pick = sect.querySelector('[data-plang="' + which + '"]');
-      if (!pick || !pick.value) return;
-      var role = sect.querySelector('[data-pf="role_title"][data-col="' + which + '"]');
-      var bio = sect.querySelector('[data-pf="bio"][data-col="' + which + '"]');
-      text[pick.value] = {
-        role_title: role ? role.value.trim() : '',
-        bio: bio ? bio.value.trim() : ''
-      };
+    var held = pfDraft(userId);
+    Object.keys(held).forEach(function (code) {
+      text[code] = { role_title: String(held[code].role_title || '').trim(), bio: String(held[code].bio || '').trim() };
     });
 
     var payload = {
@@ -1556,7 +1581,8 @@
      themselves because they change a hidden field, which fires nothing. */
   document.addEventListener('input', function (e) {
     var sect = e.target.closest && e.target.closest('[data-profile]');
-    if (sect) { markProfileDirty(e.target); refreshPreview(sect); }
+    /* choosing which language to look at is not a change to the person */
+    if (sect && !e.target.matches('[data-plang]')) { markProfileDirty(e.target); refreshPreview(sect); }
   });
 
   /* A person's two tabs. Remembered, so the panel re-rendered by a save or
@@ -1593,11 +1619,23 @@
       return;
     }
 
+    /* Another language: the words written so far are kept, and only the
+       language block is drawn again — the rest of the person's unsaved
+       changes stay where they are. */
     var pick = e.target.closest('[data-plang]');
     if (!pick) return;
-    if (pick.dataset.plang === 'a') ui.profileLangA = pick.value;
-    else ui.profileLangB = pick.value;
-    render();
+    var sect = pick.closest('[data-profile]');
+    pfStash(sect);
+    if (pick.dataset.plang === 'a') {
+      if (pick.value === ui.profileLangB) ui.profileLangB = ui.profileLangA;
+      ui.profileLangA = pick.value;
+    } else ui.profileLangB = pick.value;
+    document.querySelectorAll('[data-profile]').forEach(function (other) {
+      if (other !== sect) pfStash(other);
+      var box = other.querySelector('.pf-langs');
+      if (box) box.outerHTML = profileLangsBlock(other.getAttribute('data-profile'));
+    });
+    refreshPreview(sect);
   });
 
   document.addEventListener('click', function (e) {

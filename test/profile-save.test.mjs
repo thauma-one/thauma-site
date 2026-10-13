@@ -56,9 +56,9 @@ function payload(extra) {
 }
 
 /** The console, rendered, with one person's panel open. */
-async function boot({ postResponse, profiles } = {}) {
+async function boot({ postResponse, profiles, languages } = {}) {
   const posts = [];
-  const over = profiles ? { profiles } : null;
+  const over = profiles || languages ? Object.assign({}, profiles ? { profiles } : {}, languages ? { languages } : {}) : null;
   const dom = new JSDOM(readFileSync(`${build}/admin/users/index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
     url: "https://dev.thauma.one/admin/users/",
@@ -108,6 +108,37 @@ await check("Save actually posts the profile", async () => {
   const body = JSON.parse(posts[0].body);
   assert(body.user_id === "u_1", "the wrong person was saved");
   assert(body.is_public === true, "the publish flag did not travel");
+});
+
+await check("one language at a time, the reference above, and Save sends EVERY language", async () => {
+  /* The two columns sent only the two shown, and the server drops a language
+     it is not sent — saving English beside Croatian wiped a Serbian bio. */
+  const languages = ["en", "hr", "sr"].map((code) => ({ code, name: code, native_name: code, is_active: 1 }));
+  const three = Object.assign({}, PROFILE, { translations: ["en" + US + "Founder" + US + "Bio",
+    "hr" + US + "Osnivač" + US + "Bio hr", "sr" + US + "Оснивач" + US + "Био"].join(String.fromCharCode(30)) });
+  const { w, posts } = await boot({ profiles: [three], languages });
+  const d = w.document;
+  const fire = (el, type) => el.dispatchEvent(new w.Event(type, { bubbles: true }));
+  assert(!d.querySelector(".pf-col"), "still two columns");
+  assert(d.querySelector("[data-plang=a][data-lang-edit]") && d.querySelector("[data-plang=b][data-lang-ref]") &&
+         d.querySelector("[data-profile] [data-lang-translate]"), "no Editing ⇄ Reference row with Translate");
+  const role = () => d.querySelector('[data-profile] [data-pf="role_title"]');
+  assert(role().value === "Founder", "editing English: " + role().value);
+  const refLine = role().previousElementSibling;
+  assert(refLine && refLine.matches(".ms-ref") && refLine.getAttribute("lang") === "hr" && refLine.textContent === "Osnivač",
+    "Croatian is not shown above the field");
+  role().value = "Founder 2"; fire(role(), "input");
+  const edit = d.querySelector("[data-plang=a]");
+  edit.value = "sr"; fire(edit, "change");
+  assert(role().value === "Оснивач", "switching did not show Serbian");
+  const again = d.querySelector("[data-plang=a]");   // drawn again by the switch
+  again.value = "en"; fire(again, "change");
+  assert(role().value === "Founder 2", "the unsaved English was lost on switching");
+  d.querySelector("[data-pf-save]").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 250));
+  const text = JSON.parse(posts[0].body).text;
+  assert(text.en.role_title === "Founder 2" && text.hr.role_title === "Osnivač" && text.sr.role_title === "Оснивач",
+    "not every language was sent: " + JSON.stringify(text));
 });
 
 await check("a FAILED save says so on screen", async () => {
