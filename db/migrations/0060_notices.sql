@@ -12,8 +12,8 @@
 -- choice is a notify_prefs row whose kind is 'bell:<kind>' (0056), so no
 -- second table of switches.
 --
--- Read notices older than 60 days, and any notice older than a year, are
--- deleted by the daily job.
+-- A notice older than a year is deleted by the daily job; until then a
+-- cleared or long-read one is under "Past notifications" (0061).
 --
 -- Additive: the code reads it in statements that tolerate its absence, so a
 -- deploy ahead of this migration simply has an empty bell.

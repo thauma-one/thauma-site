@@ -3475,6 +3475,14 @@ ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = ex
 -- name: profile_proposal_delete
 DELETE FROM staff_profile_proposals WHERE user_id = :user_id;
 
+-- name: notify_everyone
+-- Every active account, for a notice to everyone (the site was published),
+-- never the protected master account.
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;
+
 -- name: notify_person
 -- One person a notice is meant for by name (an answer to their own bio),
 -- with what notify_role_holders gives for a role.
@@ -3499,9 +3507,45 @@ SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;
 -- name: notices_read_all
 UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;
 
+-- name: notices_current
+-- The bell's list (0061): not cleared, and unread or read since :since (six
+-- hours ago). The rest is Past.
+SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND cleared_at IS NULL AND (read_at IS NULL OR read_at > :since)
+ ORDER BY created_at DESC LIMIT 50;
+
+-- name: notices_past
+-- Cleared by hand, or read before :since — kept for a year, newest first.
+SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND (cleared_at IS NOT NULL OR read_at <= :since)
+ ORDER BY created_at DESC LIMIT 100;
+
+-- name: notice_clear
+-- One notice off the bell's list; clearing it is also reading it.
+UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE id = :id AND user_id = :user_id;
+
+-- name: notices_clear_all
+UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE user_id = :user_id AND cleared_at IS NULL;
+
+-- name: release_add
+-- What one Publish put live (0062).
+INSERT INTO releases (id, at, by_name, entries, content) VALUES (:id, :now, :by_name, :entries, :content);
+
+-- name: releases_recent
+-- What's new, newest first.
+SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60;
+
+-- name: releases_entry_ids
+-- Every changelog entry already published, to know what the next Publish adds.
+SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;
+
 -- name: notices_prune
--- Read and older than :read_before, or older than :before whatever.
-DELETE FROM notices WHERE (read_at IS NOT NULL AND read_at < :read_before) OR created_at < :before;
+-- A year old, whatever: Past keeps everything until then.
+DELETE FROM notices WHERE created_at < :before;
 
 -- name: hit_add
 -- One page seen (0059). See the migration for what is kept and why.

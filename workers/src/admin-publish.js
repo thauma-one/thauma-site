@@ -42,6 +42,9 @@ import { compareBranches, dispatchWorkflow, lastSuccessfulRun, latestRun, mergeB
 import { summarize } from "./lib/build-progress.js";
 import { carry, carryConfig } from "./lib/carry.js";
 import { leafMap } from "./lib/translation-file.js";
+import { notify } from "./lib/notify.js";
+import { cutRelease } from "./changes.js";
+import { siteOrigin } from "./lib/origin.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
@@ -348,6 +351,10 @@ async function act(request, env, db, user, me) {
      settings out mid-reload that evening; on GitHub the Pi's checkout never
      moves. A conflict changes nothing and says so. */
   let merged = null;
+  /* which of the public site's content is going live (Website tabs), for
+     What's new — asked before the merge, while live is still the old build */
+  const content = action === "publish" ? await changes(env).then((c) => c.tabs).catch(() => []) : [];
+
   if (action === "publish" && stagingBranch(env) !== branch) {
     const m = await mergeBranch(env, branch, stagingBranch(env),
       `Publish: bring ${stagingBranch(env)} into ${branch} (${(me && me.user_name) || user.email})`);
@@ -400,6 +407,23 @@ async function act(request, env, db, user, me) {
     detail: { by: (me && me.user_name) || user.email, branch, merged,
               carried: carried.skipped ? undefined : { rows: carried.rows, migrations: carried.migrations, matched: carried.matched } },
   });
+
+  /* EVERYONE IS TOLD, with what changed (Chase, 2026-10-13: "a notification
+     to users when the site was updated with a changelog. Essentially when the
+     publish button is pressed"). The changelog is a release on What's new
+     (changes.js): every entry of src/_data/changelog.json not published
+     before, by page, each person seeing the pages they have. The notice is
+     one line and opens that release. Never in the way of the publish. */
+  if (action === "publish") {
+    try {
+      const by = (me && me.user_name) || user.email;
+      const release = await cutRelease(db, { by, content });
+      await notify(env, db, "site_published", { by },
+        { origin: siteOrigin(env, request), link: "/staff/changes/" + (release ? "#" + release.id : "") });
+    } catch (err) {
+      console.error("publish notice:", err.message);
+    }
+  }
 
   return json({
     ok: true,

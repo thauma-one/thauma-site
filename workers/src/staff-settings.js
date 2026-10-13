@@ -294,7 +294,7 @@ export default {
                                                                 pictures: !!(proposal.photo !== have.live.photo || proposal.bio_photo !== have.live.bio_photo) } });
             /* administrators who asked to be told (Settings › Notifications) */
             await notify(env, db, "profile_proposed", { name: me.user_name || user.email },
-              { origin: siteOrigin(env, request), link: "/admin/users/" }).catch(() => {});
+              { origin: siteOrigin(env, request), link: "/admin/users/#" + me.user_id + "/team" }).catch(() => {});
           }
         } catch {
           return json({ error: "This cannot be kept until the database is updated (Review and publish › Apply changes)." }, 409);

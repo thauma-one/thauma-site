@@ -622,6 +622,11 @@
   });
 
   showTab((location.hash || '#account').slice(1));
+  /* the bell's notices open a tab here (#bio) while this page is open too */
+  window.addEventListener('hashchange', function () {
+    var t = (location.hash || '').slice(1);
+    if (document.querySelector('.tab[data-tab="' + t + '"]:not([hidden])')) showTab(t);
+  });
   load();
 })();
 

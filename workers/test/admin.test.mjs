@@ -17,6 +17,8 @@ import { notify, notifyPerson, noticesFor, noticeEmail, noticeWords } from "../s
 import { cleanBio as cleanBioLib, outcomes, answerProposal } from "../src/lib/bio.js";
 import { cleanBio } from "../src/staff-settings.js";
 import { hit, isLive, referrerHost } from "../src/analytics.js";
+import { sectionsFor, cutRelease, entries as changelog, PAGES } from "../src/changes.js";
+import { KEEP_READ_MS } from "../src/notices.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -603,6 +605,70 @@ await check("an answer to a bio, part by part, is kept for the person and told t
   assert(/нису одобрене/.test(mail.subject) && /Не сада/.test(mail.html) && /Не сада/.test(mail.text), "the email has no note, or not in Serbian");
 });
 
+await check("Publish: a release of what changed, by page, each person seeing the pages they have; everyone told in one line (0062)", async () => {
+  /* "a notification to users when the site was updated with a changelog …
+     understandable to an end user … separate into different sections by the
+     different pages of the site filtered to each user by their role" */
+  const ids = new Set(), pages = new Set(PAGES.map(([p]) => p));
+  for (const e of changelog()) {
+    assert(!ids.has(e.id), "an entry id used twice: " + e.id); ids.add(e.id);
+    assert(pages.has(e.page), e.id + ": no such page " + e.page);
+    for (const l of ["en", "hr", "sr"]) assert(e.text && String(e.text[l] || "").trim(), e.id + ": no " + l);
+    assert(!/migration|commit|\b0\d{3}\b|\[skip ci\]/i.test(e.text.en), e.id + " is written for a developer: " + e.text.en);
+  }
+  const list = [{ id: "a", page: "console", text: { en: "Bell", hr: "Zvonce" } }, { id: "b", page: "admin:users", text: { en: "People" } },
+                { id: "c", page: "staff:stewardship", text: { en: "Gifts" } }, { id: "d", page: "staff:mail", text: { en: "Mail" } }];
+  eq(sectionsFor(list, ["communications"], "hr"), [{ page: "console", lines: ["Zvonce"] }, { page: "staff:mail", lines: ["Mail"] }],
+     "communications: the console and Mail, not People or Stewardship; Croatian where there is some, English where not");
+  eq(sectionsFor(list, ["admin"], "en").map((x) => x.page), ["console", "admin:users"], "an administrator without a ministry: no ministry pages");
+
+  const rows = [];
+  const db = { query: async (name, p) => {
+    if (name === "releases_entry_ids") return rows.flatMap((r) => JSON.parse(r.entries).map((e) => ({ id: e.id })));
+    if (name === "release_add") { rows.push(p); return []; }
+    throw new Error("unexpected " + name);
+  } };
+  const first = await cutRelease(db, { by: "Chase", content: ["events"] });
+  eq([first.entries.length, rows[0].by_name, JSON.parse(rows[0].content)], [changelog().length, "Chase", ["events"]], "the first release has everything");
+  eq((await cutRelease(db, { by: "Chase" })).entries.length, 0, "the next has only what is new");
+  eq(await cutRelease({ query: async () => { throw new Error("no such table: releases"); } }, { by: "C" }), null, "before 0062: no release, no failure");
+
+  const pub = fs.readFileSync(new URL("../src/admin-publish.js", import.meta.url), "utf8");
+  assert(/dispatchWorkflow\(env, workflow, branch\)[\s\S]{0,1800}if \(action === "publish"\) \{\s*try \{[\s\S]{0,300}cutRelease\(db[\s\S]{0,200}notify\(env, db, "site_published"[\s\S]{0,200}"\/staff\/changes\/"/.test(pub),
+    "not told after the build is started, not linked to the release, or a failed notice could fail the publish");
+  const people = [{ user_id: "u_a", email: "a@x.org", preferred_lang: "en" }, { user_id: "u_s", email: "s@x.org", preferred_lang: "hr" }];
+  const bells = [], sent = [];
+  const ndb = { query: async (name, p) => {
+    if (name === "notify_everyone") return people;
+    if (name === "notify_prefs_for_user") return p.user_id === "u_s" ? [{ kind: "site_published", is_on: 1 }] : [];
+    if (name === "notice_add") { bells.push(p); return []; }
+    throw new Error("unexpected " + name);
+  } };
+  await notify({}, ndb, "site_published", { by: "Chase" }, { link: "/staff/changes/#r_1", send: async (env, m) => { sent.push(m); return { ok: true }; } });
+  eq([bells.map((b) => b.user_id), bells[0].link, sent.map((m) => m.to)], [["u_a", "u_s"], "/staff/changes/#r_1", ["s@x.org"]],
+     "everyone's bell, opening the release; email only for whoever switched it on");
+  const w = noticeWords("site_published", "en", { by: "<C>" });
+  eq(w.summary, "<b>&lt;C&gt;</b> published the site — see what's new", "one line in the bell, escaped");
+  for (const k of ["invite_accepted", "profile_proposed", "profile_approved", "profile_declined", "site_published"]) {
+    for (const l of ["en", "hr", "sr", "sl"]) assert(!/notify\./.test(noticeWords(k, l, { name: "N", by: "B" }).summary), `${k} has no ${l} summary`);
+  }
+  assert(/link: "\/admin\/users\/#" \+ id/.test(fs.readFileSync(new URL("../src/confirm-account.js", import.meta.url), "utf8")), "an accepted invitation does not open that person");
+  assert(/link: "\/admin\/users\/#" \+ me\.user_id \+ "\/team"/.test(fs.readFileSync(new URL("../src/staff-settings.js", import.meta.url), "utf8")), "a bio waiting does not open their Team page");
+});
+
+await check("the bell: cleared, or read six hours ago, is Past — kept a year, not deleted (0061)", async () => {
+  /* "a way for bell notifications to be cleared from the dropdown, but …
+     they can still find past notifications … it clears automatically, but
+     not immediately … just have a 6 hour timer on it?" */
+  eq(KEEP_READ_MS, 6 * 3600 * 1000, "six hours");
+  assert(/cleared_at IS NULL AND \(read_at IS NULL OR read_at > :since\)/.test(QUERIES.notices_current), "the list");
+  assert(/cleared_at IS NOT NULL OR read_at <= :since/.test(QUERIES.notices_past), "Past");
+  assert(/read_at = COALESCE\(read_at, :now\)/.test(QUERIES.notice_clear), "clearing does not also read it");
+  assert(!/read_at/.test(QUERIES.notices_prune), "reading something still deletes it early");
+  const mig = fs.readFileSync(new URL("../../db/migrations/0061_notices_cleared.sql", import.meta.url), "utf8");
+  assert(/ALTER TABLE notices ADD COLUMN cleared_at/.test(mig), "no column to clear with");
+});
+
 await check("a visit is counted without knowing who: thin, real sites told apart, bots and junk ignored (0059)", async () => {
   const env = { SITE_DOMAIN: "thauma.one" };
   eq([isLive("thauma.one", env), isLive("www.thauma.one", env), isLive("chaseroush.thauma.one", env),
@@ -636,9 +702,10 @@ await check("a visit is counted without knowing who: thin, real sites told apart
 
 await check("Settings offers a notice only to the roles that receive it", async () => {
   const db = { query: async () => [{ kind: "invite_accepted", is_on: 0 }] };
-  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false, bell: true }, { kind: "profile_proposed", on: true, bell: true }], "an administrator: one switched off by email, the bell at its start");
-  eq(await noticesFor(db, "u_1", ["staff"]), [], "staff do not get administrators' notices");
-  eq((await noticesFor(db, "u_1", ["staff"], { self: true })).map((n) => n.kind), ["profile_approved", "profile_declined"], "the answers to your own bio, when you have one");
+  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false, bell: true }, { kind: "profile_proposed", on: true, bell: true },
+     { kind: "site_published", on: false, bell: true }], "an administrator: one switched off by email, the bell at its start; the site's publishing in the bell only");
+  eq((await noticesFor(db, "u_1", ["staff"])).map((n) => n.kind), ["site_published"], "staff do not get administrators' notices, but hear the site was published");
+  eq((await noticesFor(db, "u_1", ["staff"], { self: true })).map((n) => n.kind), ["profile_approved", "profile_declined", "site_published"], "the answers to your own bio, when you have one");
   const words = noticeEmail("invite_accepted", { lang: "sr", name: "N", email: "e" });
   assert(/Позивница/.test(words.html) && !/notify\./.test(words.html + words.subject), "a key showed instead of words");
   const src = fs.readFileSync(new URL("../src/confirm-account.js", import.meta.url), "utf8");

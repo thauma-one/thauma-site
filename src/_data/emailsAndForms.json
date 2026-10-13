@@ -200,7 +200,18 @@
       "profile_declined_button": "See your bio",
       "profile_approved_body_partly": "<b>{by}</b> answered the changes you sent to your team page: some are approved, some are not. Your bio in Settings shows each one. What is approved reaches the site with the next Publish.",
       "profile_approved_subject_partly": "Your bio changes were answered",
-      "profile_approved_heading_partly": "Your bio changes were answered"
+      "profile_approved_heading_partly": "Your bio changes were answered",
+      "site_published_subject": "The site was updated",
+      "site_published_heading": "The site was updated",
+      "site_published_body": "<b>{by}</b> published the site. The changes are live in a few minutes; What's new in the console lists them.",
+      "site_published_button": "See what's new",
+      "invite_accepted_summary": "<b>{name}</b> accepted their invitation",
+      "profile_proposed_summary": "<b>{name}</b> sent bio changes to approve",
+      "profile_approved_summary": "<b>{by}</b> approved your bio changes",
+      "profile_approved_summary_edited": "<b>{by}</b> approved your bio changes, with edits",
+      "profile_approved_summary_partly": "<b>{by}</b> answered your bio changes",
+      "profile_declined_summary": "<b>{by}</b> declined your bio changes",
+      "site_published_summary": "<b>{by}</b> published the site — see what's new"
     }
   },
   "hr": {
@@ -404,7 +415,18 @@
       "profile_declined_button": "Pogledaj biografiju",
       "profile_approved_body_partly": "<b>{by}</b>: odgovoreno je na izmjene koje ste poslali za svoju stranicu tima — neke su odobrene, neke nisu. Vaša biografija u Postavkama pokazuje svaku. Odobreno stiže na stranicu sljedećim objavljivanjem.",
       "profile_approved_subject_partly": "Odgovor na izmjene vaše biografije",
-      "profile_approved_heading_partly": "Odgovor na izmjene vaše biografije"
+      "profile_approved_heading_partly": "Odgovor na izmjene vaše biografije",
+      "site_published_subject": "Stranica je ažurirana",
+      "site_published_heading": "Stranica je ažurirana",
+      "site_published_body": "<b>{by}</b>: stranica je objavljena. Izmjene su javne za nekoliko minuta; Što je novo u konzoli ih nabraja.",
+      "site_published_button": "Što je novo",
+      "invite_accepted_summary": "<b>{name}</b>: pozivnica prihvaćena",
+      "profile_proposed_summary": "<b>{name}</b>: izmjene biografije čekaju odobrenje",
+      "profile_approved_summary": "<b>{by}</b>: izmjene vaše biografije su odobrene",
+      "profile_approved_summary_edited": "<b>{by}</b>: izmjene vaše biografije su odobrene, uz ispravke",
+      "profile_approved_summary_partly": "<b>{by}</b>: odgovor na izmjene vaše biografije",
+      "profile_declined_summary": "<b>{by}</b>: izmjene vaše biografije nisu odobrene",
+      "site_published_summary": "<b>{by}</b>: stranica je objavljena — pogledajte što je novo"
     }
   },
   "sr": {
@@ -608,7 +630,18 @@
       "profile_declined_button": "Погледај биографију",
       "profile_approved_body_partly": "<b>{by}</b>: одговорено је на измене које сте послали за своју страницу тима — неке су одобрене, неке нису. Ваша биографија у Подешавањима показује сваку. Одобрено стиже на сајт следећим објављивањем.",
       "profile_approved_subject_partly": "Одговор на измене ваше биографије",
-      "profile_approved_heading_partly": "Одговор на измене ваше биографије"
+      "profile_approved_heading_partly": "Одговор на измене ваше биографије",
+      "site_published_subject": "Сајт је ажуриран",
+      "site_published_heading": "Сајт је ажуриран",
+      "site_published_body": "<b>{by}</b>: сајт је објављен. Измене су јавне за неколико минута; Шта је ново у конзоли их набраја.",
+      "site_published_button": "Шта је ново",
+      "invite_accepted_summary": "<b>{name}</b>: позивница прихваћена",
+      "profile_proposed_summary": "<b>{name}</b>: измене биографије чекају одобрење",
+      "profile_approved_summary": "<b>{by}</b>: измене ваше биографије су одобрене",
+      "profile_approved_summary_edited": "<b>{by}</b>: измене ваше биографије су одобрене, уз исправке",
+      "profile_approved_summary_partly": "<b>{by}</b>: одговор на измене ваше биографије",
+      "profile_declined_summary": "<b>{by}</b>: измене ваше биографије нису одобрене",
+      "site_published_summary": "<b>{by}</b>: сајт је објављен — погледајте шта је ново"
     }
   },
   "sl": {
@@ -812,7 +845,18 @@
       "profile_declined_button": "Poglej življenjepis",
       "profile_approved_body_partly": "<b>{by}</b>: odgovorjeno je na spremembe, ki ste jih poslali za svojo stran ekipe — nekatere so odobrene, nekatere ne. Vaš življenjepis v Nastavitvah pokaže vsako. Odobreno pride na spletno stran z naslednjo objavo.",
       "profile_approved_subject_partly": "Odgovor na spremembe vašega življenjepisa",
-      "profile_approved_heading_partly": "Odgovor na spremembe vašega življenjepisa"
+      "profile_approved_heading_partly": "Odgovor na spremembe vašega življenjepisa",
+      "site_published_subject": "Spletna stran je posodobljena",
+      "site_published_heading": "Spletna stran je posodobljena",
+      "site_published_body": "<b>{by}</b>: spletna stran je objavljena. Spremembe so javne v nekaj minutah; Kaj je novo v konzoli jih našteje.",
+      "site_published_button": "Kaj je novo",
+      "invite_accepted_summary": "<b>{name}</b>: povabilo sprejeto",
+      "profile_proposed_summary": "<b>{name}</b>: spremembe življenjepisa čakajo na odobritev",
+      "profile_approved_summary": "<b>{by}</b>: spremembe vašega življenjepisa so odobrene",
+      "profile_approved_summary_edited": "<b>{by}</b>: spremembe vašega življenjepisa so odobrene, s popravki",
+      "profile_approved_summary_partly": "<b>{by}</b>: odgovor na spremembe vašega življenjepisa",
+      "profile_declined_summary": "<b>{by}</b>: spremembe vašega življenjepisa niso odobrene",
+      "site_published_summary": "<b>{by}</b>: spletna stran je objavljena — poglejte, kaj je novo"
     }
   }
 }

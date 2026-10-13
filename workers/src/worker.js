@@ -41,6 +41,7 @@ import staffSite, { siteAddress, ensureSiteNames } from "./staff-site.js";
 import { serveSite, closedSite } from "./site/serve.js";
 import { hit, adminAnalytics } from "./analytics.js";
 import notices from "./notices.js";
+import changesPage from "./changes.js";
 import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
@@ -317,6 +318,8 @@ const ROUTES = {
   "/api/staff-settings": staffSettings,
   /* the console's bell (0060, notices.js) */
   "/api/notices": notices,
+  /* What's new: what each Publish put live, by page (0062, changes.js) */
+  "/api/changes": changesPage,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
   // check is done once at the top of the handler and fails closed.
@@ -605,10 +608,9 @@ export default {
       } catch (err) {
         console.error("hits prune:", err.message);
       }
-      /* the bell (0060): read and two months old, or a year old whatever */
+      /* the bell (0060): a year old; until then it is under Past (0061) */
       try {
-        await db.query("notices_prune", { read_before: new Date(Date.now() - 60 * 864e5).toISOString(),
-                                          before: new Date(Date.now() - 365 * 864e5).toISOString() });
+        await db.query("notices_prune", { before: new Date(Date.now() - 365 * 864e5).toISOString() });
       } catch (err) {
         console.error("notices prune:", err.message);
       }

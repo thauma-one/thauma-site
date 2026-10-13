@@ -171,7 +171,24 @@
       if (window.StaffProblem) window.StaffProblem(tr('err.renderFailed') + ': ' + e.message, null);
       console.error('admin render failed:', e);
     }
+    if (!ui.hashDone) { ui.hashDone = true; openFromHash(); }
   }
+
+  /* A NOTICE OPENS WHERE IT HAPPENED (Chase, 2026-10-13: "When you press
+     the notification, it opens the notification to where it needs to").
+     People takes #<person id>, and #<person id>/team for their Team page —
+     the links the bell's notices carry (workers/src/lib/notify.js). Read once
+     the people are drawn, and again when the bell is pressed on this page. */
+  async function openFromHash() {
+    if (page !== 'users') return;
+    var m = /^#(u_[A-Za-z0-9_-]+)(?:\/(team|access))?$/.exec(location.hash || '');
+    if (!m || !document.querySelector('[data-person="' + m[1] + '"]')) return;
+    if (m[2]) ui.personTab = m[2];
+    if (state.editing !== m[1]) await togglePerson(m[1]);
+    var tab = m[2] && document.querySelector('[data-person="' + m[1] + '"] [data-pp-tab="' + m[2] + '"]');
+    if (tab && tab.getAttribute('aria-selected') !== 'true') tab.click();
+  }
+  window.addEventListener('hashchange', openFromHash);
 
   /* Sends one change, then reloads. The server is the only thing that knows
      what actually happened — including the refusals, which are the point. */

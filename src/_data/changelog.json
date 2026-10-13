@@ -1,0 +1,175 @@
+{
+  "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
+  "entries": [
+    {
+      "id": "2026-10-13-bell",
+      "date": "2026-10-13",
+      "page": "console",
+      "text": {
+        "en": "The bell at the top of the console tells you what happened since you last looked. Press a notice to go straight to it. Clear what you have seen; Past notifications keeps it for a year.",
+        "hr": "Zvonce na vrhu konzole pokazuje što se dogodilo otkad ste zadnji put pogledali. Pritisnite obavijest i otvara se ondje gdje treba. Uklonite ono što ste vidjeli; Prijašnje obavijesti to čuvaju godinu dana.",
+        "sr": "Звонце на врху конзоле показује што се догодило откад сте задњи пут погледали. Притисните обавијест и отвара се ондје гдје треба. Уклоните оно што сте видјели; Претходна обавештења то чувају годину дана."
+      }
+    },
+    {
+      "id": "2026-10-13-whatsnew",
+      "date": "2026-10-13",
+      "page": "console",
+      "text": {
+        "en": "What's new (under your name) lists what changed in the console after each Publish, sorted by page.",
+        "hr": "Što je novo (pod vašim imenom) nabraja što se promijenilo u konzoli nakon svakog objavljivanja, po stranicama.",
+        "sr": "Шта је ново (под вашим именом) набраја што се промијенило у конзоли након сваког објављивања, по страницама."
+      }
+    },
+    {
+      "id": "2026-10-12-langmenus",
+      "date": "2026-10-12",
+      "page": "console",
+      "text": {
+        "en": "Language menus name each language and keep your place when you switch.",
+        "hr": "Izbornici jezika imenuju svaki jezik i čuvaju vaše mjesto kad ga promijenite.",
+        "sr": "Изборници језика именују сваки језик и чувају ваше мјесто кад га промијените."
+      }
+    },
+    {
+      "id": "2026-10-12-sidebyside",
+      "date": "2026-10-12",
+      "page": "console",
+      "text": {
+        "en": "Editing and Reference sit side by side on a wide screen and fit properly on a phone.",
+        "hr": "Uređivanje i Referenca stoje jedno uz drugo na širokom zaslonu i ispravno stanu na mobitel.",
+        "sr": "Уређивање и Референца стоје једно уз друго на широком заслону и исправно стану на мобител."
+      }
+    },
+    {
+      "id": "2026-10-13-notifications",
+      "date": "2026-10-13",
+      "page": "staff:settings",
+      "text": {
+        "en": "Notifications: choose what you hear about, in the bell and by email, one switch each.",
+        "hr": "Obavijesti: odaberite o čemu želite znati, u zvoncu i e-poštom, svaki zasebno.",
+        "sr": "Обавештења: одаберите о чему желите знати, у звонцу и е-поштом, сваки засебно."
+      }
+    },
+    {
+      "id": "2026-10-13-yourbio",
+      "date": "2026-10-13",
+      "page": "staff:settings",
+      "text": {
+        "en": "Your bio: change your own team page — words, email and photos — and send it for approval. You are told what was approved.",
+        "hr": "Vaša biografija: mijenjajte svoju stranicu tima — tekst, e-poštu i fotografije — i pošaljite je na odobrenje. Dobit ćete obavijest o tome što je odobreno.",
+        "sr": "Ваша биографија: мијењајте своју страницу тима — текст, е-пошту и фотографије — и пошаљите је на одобрење. Добит ћете обавијест о томе што је одобрено."
+      }
+    },
+    {
+      "id": "2026-10-13-signatures",
+      "date": "2026-10-13",
+      "page": "staff:mail",
+      "text": {
+        "en": "Signatures: write them once and add one to any email. Keep several, each with a name and a picture.",
+        "hr": "Potpisi: napišite ih jednom i dodajte bilo kojoj poruci. Možete imati više njih, svaki s imenom i slikom.",
+        "sr": "Потписи: напишите их једном и додајте било којој поруци. Можете имати више њих, сваки с именом и сликом."
+      }
+    },
+    {
+      "id": "2026-10-12-sitecreator",
+      "date": "2026-10-12",
+      "page": "staff:website",
+      "text": {
+        "en": "Text sizes you type now stay, links can show as resource cards, and a section can hold tabs.",
+        "hr": "Veličine teksta koje upišete sada ostaju, poveznice se mogu prikazati kao kartice resursa, a odjeljak može imati kartice.",
+        "sr": "Величине текста које упишете сада остају, повезнице се могу приказати као картице ресурса, а одјељак може имати картице."
+      }
+    },
+    {
+      "id": "2026-10-12-videobuttons",
+      "date": "2026-10-12",
+      "page": "staff:website",
+      "text": {
+        "en": "A videos section can have buttons of its own, in every language and each in its own color.",
+        "hr": "Odjeljak s videozapisima može imati vlastite gumbe, na svakom jeziku i svaki u svojoj boji.",
+        "sr": "Одјељак с видеозаписима може имати властите гумбе, на сваком језику и сваки у својој боји."
+      }
+    },
+    {
+      "id": "2026-10-13-looks",
+      "date": "2026-10-13",
+      "page": "staff:website",
+      "text": {
+        "en": "Resources can show as tiles, with switches for the description and personal note. Contact links can be a line, tiles or icons.",
+        "hr": "Resursi se mogu prikazati kao pločice, uz prekidače za opis i osobnu napomenu. Kontaktne poveznice mogu biti u retku, pločice ili ikone.",
+        "sr": "Ресурси се могу приказати као плочице, уз прекидаче за опис и особну напомену. Контактне повезнице могу бити у ретку, плочице или иконе."
+      }
+    },
+    {
+      "id": "2026-10-12-share",
+      "date": "2026-10-12",
+      "page": "staff:resources",
+      "text": {
+        "en": "Sharing a resource finds people who were just invited, and accents no longer matter when you search.",
+        "hr": "Dijeljenje resursa pronalazi i tek pozvane osobe, a naglasci pri pretraživanju više nisu važni.",
+        "sr": "Дијељење ресурса проналази и тек позване особе, а нагласци при претраживању више нису важни."
+      }
+    },
+    {
+      "id": "2026-10-13-analytics",
+      "date": "2026-10-13",
+      "page": "admin:index",
+      "text": {
+        "en": "Overview shows how the site is visited: a graph, a map, pages, where visitors came from — counted without cookies.",
+        "hr": "Pregled pokazuje kako se stranica posjećuje: grafikon, kartu, stranice i odakle posjetitelji dolaze — brojano bez kolačića.",
+        "sr": "Преглед показује како се страница посјећује: графикон, карту, странице и одакле посјетитељи долазе — бројано без колачића."
+      }
+    },
+    {
+      "id": "2026-10-13-bioapproval",
+      "date": "2026-10-13",
+      "page": "admin:users",
+      "text": {
+        "en": "Bio changes people send show word by word on their Team page. Approve, edit or decline each change; they are told.",
+        "hr": "Izmjene biografije koje osobe pošalju vide se riječ po riječ na njihovoj stranici tima. Svaku izmjenu odobrite, uredite ili odbijte; osoba dobiva obavijest.",
+        "sr": "Измјене биографије које особе пошаљу виде се ријеч по ријеч на њиховој страници тима. Сваку измјену одобрите, уредите или одбијте; особа добива обавијест."
+      }
+    },
+    {
+      "id": "2026-10-12-teamlangs",
+      "date": "2026-10-12",
+      "page": "admin:users",
+      "text": {
+        "en": "Team page: one language at a time with Reference and Translate, and saving keeps every language.",
+        "hr": "Stranica tima: jedan jezik odjednom, uz Referencu i Prijevod, a spremanje čuva sve jezike.",
+        "sr": "Страница тима: један језик одједном, уз Референцу и Пријевод, а спремање чува све језике."
+      }
+    },
+    {
+      "id": "2026-10-13-communications",
+      "date": "2026-10-13",
+      "page": "admin:users",
+      "text": {
+        "en": "The Communications role can be given to people.",
+        "hr": "Uloga Komunikacije može se dodijeliti osobama.",
+        "sr": "Улога Комуникације може се додијелити особама."
+      }
+    },
+    {
+      "id": "2026-10-12-newministry",
+      "date": "2026-10-12",
+      "page": "admin:partners",
+      "text": {
+        "en": "A new ministry gets its own web address straight away, and addresses its contact form uses show as in use.",
+        "hr": "Nova služba odmah dobiva vlastitu web-adresu, a adrese koje koristi njezin kontaktni obrazac prikazane su kao korištene.",
+        "sr": "Нова служба одмах добива властиту wеб-адресу, а адресе које користи њезин контактни образац приказане су као кориштене."
+      }
+    },
+    {
+      "id": "2026-10-12-events",
+      "date": "2026-10-12",
+      "page": "admin:website",
+      "text": {
+        "en": "Events: a photo is edited beside a picture of its invitation, and Edit reopens the whole original photo.",
+        "hr": "Događaji: fotografija se uređuje pokraj slike pozivnice, a Uredi ponovno otvara cijelu izvornu fotografiju.",
+        "sr": "Догађаји: фотографија се уређује покрај слике позивнице, а Уреди поновно отвара цијелу изворну фотографију."
+      }
+    }
+  ]
+}

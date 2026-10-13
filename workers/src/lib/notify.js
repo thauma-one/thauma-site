@@ -26,10 +26,18 @@
  * a notify_prefs row named 'bell:<kind>', starting as the notice does. The
  * bell keeps kind and vars and renders the same words when it is opened.
  *
- * TO A ROLE OR TO ONE PERSON. Most notices go to whoever holds a role; a
- * notice marked `to: "self"` is about something of that person's own (an
- * answer to the bio they sent) and goes only to them, through notifyPerson.
- * A self notice is offered on Settings only to somebody it can concern.
+ * TO A ROLE, TO EVERYONE, OR TO ONE PERSON. Most notices go to whoever holds
+ * a role; `to: "all"` goes to every active account; `to: "self"` is about
+ * something of that person's own (an answer to the bio they sent) and goes
+ * only to them, through notifyPerson. A self notice is offered on Settings
+ * only to somebody it can concern. `bell` is the bell's starting value where
+ * it differs from email's (`on`).
+ *
+ * THE BELL SAYS ONE LINE (Chase, 2026-10-13: "they need to be summaries of
+ * what happened, not all info … When you press the notification, it opens
+ * the notification to where it needs to"): notify.<kind>_summary, and the
+ * notice's `link` is the exact place — the person on People, their Team
+ * page, Your bio, the release on What's new. The email keeps the whole.
  */
 import { sendMail, shell, h1, p, button } from "./mail.js";
 import { t } from "./mail-i18n.js";
@@ -42,6 +50,11 @@ export const NOTICES = [
      "Even a notification if it was approved or declined is good") */
   { kind: "profile_approved", to: "self", on: true },
   { kind: "profile_declined", to: "self", on: true },
+  /* the site was published; the notice opens that release on What's new
+     (Chase, 2026-10-13: "a notification to users when the site was updated
+     with a changelog. Essentially when the publish button is pressed"). To
+     everybody; in the bell, not by email, unless they switch it on. */
+  { kind: "site_published", to: "all", on: false, bell: true },
 ];
 
 const BELL = "bell:";
@@ -55,14 +68,15 @@ const esc = (s) => String(s == null ? "" : s)
 export async function noticesFor(db, userId, roles, { self = false } = {}) {
   const mine = new Set((roles || []).map(String));
   const chosen = await choices(db, userId);
-  return NOTICES.filter((n) => (n.to === "self" ? self : mine.has(n.role)))
+  return NOTICES.filter((n) => (n.to === "self" ? self : n.to === "all" ? true : mine.has(n.role)))
     .map((n) => ({ kind: n.kind, on: wants(chosen, n), bell: wants(chosen, n, BELL) }));
 }
 
 /** The pref row's name for a channel: 'kind' (email) or 'bell:kind'. */
 export function prefKind(kind, channel) { return channel === "bell" ? BELL + kind : kind; }
 
-const wants = (chosen, n, pre = "") => chosen.has(pre + n.kind) ? chosen.get(pre + n.kind) : n.on;
+const wants = (chosen, n, pre = "") => chosen.has(pre + n.kind) ? chosen.get(pre + n.kind)
+  : pre === BELL && n.bell !== undefined ? n.bell : n.on;
 
 async function choices(db, userId) {
   const out = new Map();
@@ -78,7 +92,9 @@ export async function notify(env, db, kind, vars = {}, opts = {}) {
   if (!notice || notice.to === "self") return { sent: 0 };
   let sent = 0;
   try {
-    for (const who of await db.query("notify_role_holders", { role: notice.role })) {
+    const people = notice.to === "all" ? await db.query("notify_everyone", {})
+      : await db.query("notify_role_holders", { role: notice.role });
+    for (const who of people) {
       sent += await deliver(env, db, who, notice, vars, opts);
     }
   } catch (e) {
@@ -119,8 +135,9 @@ async function deliver(env, db, who, notice, vars, { origin = "https://thauma.on
   return 0;
 }
 
-/** A notice's words in one language: the heading, the body as safe HTML
-    (only <b> is markup; every value is escaped), and the note, if any —
+/** A notice's words in one language: the heading, the body and the bell's
+    one-line summary as safe HTML (only <b> is markup; every value is
+    escaped), and the note, if any —
     something a person wrote to go with it (an administrator's word on a
     declined bio). `_v` in vars picks a second wording of the body, e.g.
     profile_approved_body_edited. Shared by the email and the bell. */
@@ -130,6 +147,8 @@ export function noticeWords(kind, lang, vars = {}) {
   return {
     heading: worded(lang, kind, "heading", _v, rest),
     body: worded(lang, kind, "body", _v, safe),
+    /* the bell's one line, as safe HTML like the body */
+    summary: worded(lang, kind, "summary", _v, safe),
     note: note ? String(note).slice(0, 600) : "",
   };
 }
@@ -149,7 +168,8 @@ export function noticeEmail(kind, { lang, origin, link, ...vars }) {
   return {
     subject: worded(lang, kind, "subject", vars._v, vars),
     text: [w.heading, "", w.body.replace(/<\/?b>/g, "").replace(/&(amp|lt|gt|quot|#39);/g, (m, c) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" }[c])),
-           ...(w.note ? ["", "\u201c" + w.note + "\u201d"] : []), "", url, "", off].join("\n"),
+           ...(w.note ? ["", "\u201c" + w.note + "\u201d"] : []),
+           "", url, "", off].join("\n"),
     html: shell({
       heading: w.heading,
       origin,

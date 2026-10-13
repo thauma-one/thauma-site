@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "4f6caad1f8dcf4b5";
+export const SOURCE_DIGEST = "fd57a5ad4ee22722";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -667,12 +667,28 @@ WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
   notice_add: `INSERT INTO notices (id, user_id, kind, vars, link, created_at)
 VALUES (:id, :user_id, :kind, :vars, :link, :now);`,
+  notice_clear: `UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE id = :id AND user_id = :user_id;`,
+  notices_clear_all: `UPDATE notices SET cleared_at = :now, read_at = COALESCE(read_at, :now)
+ WHERE user_id = :user_id AND cleared_at IS NULL;`,
+  notices_current: `SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND cleared_at IS NULL AND (read_at IS NULL OR read_at > :since)
+ ORDER BY created_at DESC LIMIT 50;`,
   notices_for_user: `SELECT id, kind, vars, link, created_at, read_at
   FROM notices WHERE user_id = :user_id
  ORDER BY created_at DESC LIMIT 40;`,
-  notices_prune: `DELETE FROM notices WHERE (read_at IS NOT NULL AND read_at < :read_before) OR created_at < :before;`,
+  notices_past: `SELECT id, kind, vars, link, created_at, read_at
+  FROM notices
+ WHERE user_id = :user_id AND (cleared_at IS NOT NULL OR read_at <= :since)
+ ORDER BY created_at DESC LIMIT 100;`,
+  notices_prune: `DELETE FROM notices WHERE created_at < :before;`,
   notices_read_all: `UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;`,
   notices_unread_count: `SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;`,
+  notify_everyone: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.status = 'active'
+   AND COALESCE(u.protected, 0) = 0;`,
   notify_person: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
   FROM users u
  WHERE u.id = :user_id AND u.status = 'active';`,
@@ -999,6 +1015,9 @@ WHERE provider_id = :provider_id;`,
 WHERE provider_id = :provider_id;`,
   recipient_opened: `UPDATE mailing_recipients SET opened_at = COALESCE(opened_at, :now)
 WHERE provider_id = :provider_id;`,
+  release_add: `INSERT INTO releases (id, at, by_name, entries, content) VALUES (:id, :now, :by_name, :entries, :content);`,
+  releases_entry_ids: `SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;`,
+  releases_recent: `SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60;`,
   resource_can_edit_shared: `SELECT 1 AS ok FROM resource_shares
  WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
 UNION ALL

@@ -105,7 +105,8 @@ export default {
     /* Administrators who asked to be told (lib/notify.js, Settings › Account
        › Email me when). Never a reason for confirming to fail. */
     await notify(env, db, "invite_accepted", { name: me.name || me.email, email: me.email },
-      { origin: siteOrigin(env, request), link: "/admin/users/" }).catch(() => {});
+      /* opens this person on People (admin.js reads the #) */
+      { origin: siteOrigin(env, request), link: "/admin/users/#" + id }).catch(() => {});
 
     return page("Confirmed", `
       <h1>Your account is confirmed</h1>

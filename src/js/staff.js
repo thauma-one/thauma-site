@@ -1208,22 +1208,27 @@
      THE BELL (0060; Chase 2026-10-13: "Add the in app notifications bell")
      =====================================================================
      The notices email also sends — an invitation accepted, a bio waiting, an
-     answer to yours — kept in the console (workers/src/notices.js). The
-     number is asked for on every page and every few minutes while the page
-     is in front; the list only when it is opened. OPENING IT IS READING IT:
-     what was new keeps its mark for as long as the list is open, and the
-     number goes. Each switch is on Settings › Notifications.
+     answer to yours, the site published — kept in the
+     console (workers/src/notices.js). THE NUMBER is how many arrived since
+     you last opened it: asked for on every page and every few minutes while
+     the page is in front. OPENING IT IS READING IT: what was new keeps its
+     mark while the list is open, and the number goes.
 
-     The words come from the server already in your console language; the
-     body is HTML the server built with every value escaped (only <b>). */
+     CLEARED, NOT GONE (0061): Clear takes one off the list, Clear all every
+     one; six hours after reading, a notice leaves the list by itself. Either
+     way it is under Past notifications for a year.
+
+     The line comes from the server already in your console language, as
+     HTML it built with every value escaped (only <b>). */
   (function bell() {
     var box = $('consoleBell'), btn = $('consoleBellBtn'), n = $('consoleBellN'), list = $('consoleBellItems');
+    var clearAll = $('consoleBellClearAll'), pastBtn = $('consoleBellPast'), back = $('consoleBellBack'), title = $('consoleBellTitle');
     if (!box || !btn || !n || !list || !window.fetch) return;
-    var API = '/api/notices';
+    var API = '/api/notices', past = false;
 
     function show(count) {
       n.hidden = !count;
-      n.textContent = count > 9 ? '9+' : String(count || '');
+      n.textContent = count > 99 ? '99+' : String(count || '');
       btn.setAttribute('aria-label', count ? tr('bell.title') + ' · ' + fill('bell.unread', { n: count }) : tr('bell.title'));
     }
     function count() {
@@ -1232,6 +1237,10 @@
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (b) { if (b) show(b.unread); })
         .catch(function () {});
+    }
+    function post(body) {
+      return fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (b) { if (!r.ok) throw new Error(b.error || r.status); return b; }); });
     }
     function ago(iso) {
       var s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -1245,37 +1254,65 @@
       } catch (e) {}
       return new Date(iso).toLocaleDateString(lang);
     }
+    function empty() {
+      list.innerHTML = '<li class="console-bell-empty">' + esc(tr(past ? 'bell.pastEmpty' : 'bell.empty')) + '</li>';
+      clearAll.hidden = true;
+    }
     function render(items) {
-      if (!items.length) { list.innerHTML = '<li class="console-bell-empty">' + esc(tr('bell.empty')) + '</li>'; return; }
+      if (!items.length) return empty();
+      clearAll.hidden = past;
+      /* ONE LINE EACH, and the line is the way there (Chase: "summaries of
+         what happened, not all info … When you press the notification, it
+         opens the notification to where it needs to") */
       list.innerHTML = items.map(function (i) {
-        var inner = '<b class="console-bell-h">' + esc(i.heading) + '</b>' +
-          '<span class="console-bell-b">' + i.body + '</span>' +
-          (i.note ? '<q class="console-bell-q">' + esc(i.note) + '</q>' : '') +
+        var inner = '<span class="console-bell-s">' + i.summary + '</span>' +
           '<time datetime="' + esc(i.at) + '">' + esc(ago(i.at)) + '</time>';
-        return '<li class="' + (i.read ? '' : 'is-new') + '">' +
-          (i.link ? '<a href="' + esc(i.link) + '">' + inner + '</a>' : '<div>' + inner + '</div>') + '</li>';
+        return '<li class="' + (i.read ? '' : 'is-new') + '" data-notice-id="' + esc(i.id) + '">' +
+          (i.link ? '<a href="' + esc(i.link) + '">' + inner + '</a>' : '<div>' + inner + '</div>') +
+          (past ? '' : '<button type="button" class="console-bell-x" data-bell-clear="' + esc(i.id) + '"' +
+            ' aria-label="' + esc(tr('bell.clear')) + '" title="' + esc(tr('bell.clear')) + '">&times;</button>') + '</li>';
       }).join('');
+    }
+    function fetchList() {
+      list.innerHTML = '<li class="console-bell-empty">…</li>';
+      return fetch(API + (past ? '?past' : ''), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function (b) {
+          render(b.items || []);
+          if (!past && b.unread) post({ read: 'all' }).then(function () { show(0); }).catch(function () {});
+        })
+        .catch(function () { render([]); });
+    }
+    function setPast(on) {
+      past = on;
+      back.hidden = !on; pastBtn.hidden = on;
+      title.textContent = tr(on ? 'bell.past' : 'bell.title');
+      fetchList();
     }
     function setOpen(open) {
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       box.classList.toggle('bell-open', open);
-      if (!open) return;
-      list.innerHTML = '<li class="console-bell-empty">…</li>';
-      fetch(API, { credentials: 'same-origin' })
-        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
-        .then(function (b) {
-          render(b.items || []);
-          if (b.unread) {
-            fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ read: 'all' }) }).then(function () { show(0); }).catch(function () {});
-          }
-        })
-        .catch(function () { render([]); });
+      if (open) setPast(false);
     }
 
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       setOpen(btn.getAttribute('aria-expanded') !== 'true');
+    });
+    pastBtn.addEventListener('click', function () { setPast(true); });
+    back.addEventListener('click', function () { setPast(false); });
+    clearAll.addEventListener('click', function () {
+      post({ clear: 'all' }).then(function () { empty(); }).catch(function (e) { if (window.StaffToast) window.StaffToast(e.message, 'err'); });
+    });
+    list.addEventListener('click', function (e) {
+      if (e.target.closest('a')) { setOpen(false); return; }
+      var x = e.target.closest('[data-bell-clear]');
+      if (!x) return;
+      var li = x.closest('li');
+      post({ clear: x.getAttribute('data-bell-clear') }).then(function () {
+        li.remove();
+        if (!list.querySelector('[data-notice-id]')) empty();
+      }).catch(function (err) { if (window.StaffToast) window.StaffToast(err.message, 'err'); });
     });
     document.addEventListener('click', function (e) {
       if (box.classList.contains('bell-open') && !e.target.closest('.console-bell')) setOpen(false);
