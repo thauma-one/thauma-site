@@ -401,3 +401,17 @@ scores API (GAME_ADMIN_TOKEN) if wanted.
   and closes a game (out of order) on the live site or the preview site.
 - Scores are client-submitted and forgeable by design. Decide whether that
   still holds once the arcade is public.
+
+## 5. The app (push notifications) — PLANNED, waiting on Chase (2026-10-13)
+See docs/APP-PLAN.md: the console, each ministry's site and thauma.one as
+installable web apps with push; "I prayed", give, a "Tell your supporters"
+button with an after-Publish pop-up, "Get the app", a first-open tour. Four
+decisions listed at its foot. Also there: an in-app notification bell
+(recommended) and why Teams-style chat is not recommended.
+
+## 6. Smaller follow-ups from 2026-10-13
+- Your bio: photos are still an administrator's job; people edit words and
+  region only. Decide whether a person may send new photos for approval.
+- Communications without a ministry of their own reaches Thauma's mail and
+  website, but not Settings (Settings belongs to a ministry today), so such
+  a person has no Notifications tab.
