@@ -54,6 +54,11 @@
        picture, a Website › Photos picture. */
     team:       { mode: 'crop', shapes: ['square'] },
     bio:        { mode: 'crop', shapes: ['original', 'free', 'square', 'portrait', 'tall', 'landscape', 'wide'] },
+    /* An event's picture: any shape, shown as it will sit on the Events
+       page's invitation — the photo beside the card (Chase, 2026-10-08: the
+       editor "still doesn't align with what shows up on the event card").
+       `ar` is the range the uploaded picture is kept within (photo-crop.js). */
+    event:      { mode: 'crop', shapes: ['original', 'free', 'square', 'portrait', 'tall', 'landscape', 'wide'], card: 'event', ar: [0.4, 2.5] },
     home:       { mode: 'crop', shapes: ['cinema'] },
     wide:       { mode: 'crop', shapes: ['wide'] },
     site:       { mode: 'crop', shapes: ['original', 'free'] }
@@ -153,8 +158,18 @@
     var prev = el('div', 'pe-prev'), prevImg = el('img'), shade = el('i', 'pe-shade');
     prevImg.src = img.src; prevImg.alt = '';
     prev.appendChild(prevImg); prev.appendChild(shade);
-    side.appendChild(el('span', 'pe-lbl', t('pe.result', 'Result')));
+    side.appendChild(el('span', 'pe-lbl', P.card ? t('pe.onCard', 'On the Events page') : t('pe.result', 'Result')));
     prevWrap.appendChild(prev);
+    /* THE CARD BESIDE IT, as the page draws an invitation: the photo in its
+       own shape, the card's words beside it, the photo centered against the
+       card (main.css .invite). */
+    if (P.card) {
+      prevWrap.classList.add('pe-card');
+      var mock = el('div', 'pe-cardtext');
+      mock.setAttribute('aria-hidden', 'true');
+      ['cue', 'date', 'title', 'title2', 'line', 'line2'].forEach(function (k) { mock.appendChild(el('i', 'pe-ct-' + k)); });
+      prevWrap.appendChild(mock);
+    }
     side.appendChild(prevWrap);
 
     function chips(label, list, cur, onPick) {
@@ -258,7 +273,17 @@
         win.style.left = v.x * sw + 'px'; win.style.top = v.y * sh + 'px';
         win.style.width = v.w * sw + 'px'; win.style.height = v.h * sh + 'px';
         ar = (v.w * W) / (v.h * H);
-        prevImg.style.cssText = 'position:absolute;max-width:none;width:' + (100 / v.w) + '%;left:' + (-v.x / v.w * 100) + '%;top:' + (-v.y / v.h * 100) + '%';
+        /* What is actually kept: a shape outside the place's range is
+           trimmed to it, from the middle (photo-crop.js render), so the
+           preview shows that rather than the window. */
+        var e = { x: v.x, y: v.y, w: v.w, h: v.h };
+        if (P.ar && (ar < P.ar[0] || ar > P.ar[1])) {
+          var keep = clamp(ar, P.ar[0], P.ar[1]);
+          if (ar > keep) { var nw = e.w * keep / ar; e.x += (e.w - nw) / 2; e.w = nw; }
+          else { var nh = e.h * ar / keep; e.y += (e.h - nh) / 2; e.h = nh; }
+          ar = keep;
+        }
+        prevImg.style.cssText = 'position:absolute;max-width:none;width:' + (100 / e.w) + '%;left:' + (-e.x / e.w * 100) + '%;top:' + (-e.y / e.h * 100) + '%';
         /* Square where this place offers no corners: the Result is what is kept. */
         prev.style.borderRadius = !P.corners ? '0' : v.corners === 'round' ? '24px' : v.corners === 'soft' ? '10px' : '0';
         prev.style.boxShadow = P.border && v.bw ? '0 0 0 ' + v.bw + 'px ' + borderColor(v.bc, accent, accent2) : 'none';
@@ -277,7 +302,9 @@
       }
       /* The result at its TRUE shape, inside a box — sized here, because a
          height cap on an aspect-ratio box squashes it out of shape. */
-      var pw = Math.min(PW, PH * ar), ph = pw / ar;
+      /* On the card, the photo takes its column's width (5 of 11 parts, as
+         the page) and its own height. */
+      var pw = P.card ? 120 : Math.min(PW, PH * ar), ph = pw / ar;
       prev.style.width = Math.round(pw) + 'px'; prev.style.height = Math.round(ph) + 'px';
       shade.style.background = 'rgba(0,0,0,' + (v.darken || 0) + ')';
     }

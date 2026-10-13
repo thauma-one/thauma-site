@@ -1316,7 +1316,18 @@ body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:no
    unsaved change — nothing here is at risk. */
 .badge.waiting{color:var(--voice-tech);background:var(--voice-tech-dim);border:1px solid rgba(47,216,255,.3)}
 
-/* An event's star (admin-library.js): highlighted at the top of Events. */
+/* An event's star (admin-library.js): highlighted at the top of Events. In
+   its own last column, one width on every row, so the stars line up. */
+/* Events and Resources rows in fixed columns, so the kind, the date, the
+   missing languages and the star sit in the same place on every row
+   (Chase, 2026-10-08: "aligned with each other"). Each row is its own grid,
+   so only fixed widths line them up. */
+@media (min-width:901px){
+  [data-lib-list] .adm-row{grid-template-columns:auto minmax(0,1fr) 300px 170px 122px}
+  [data-lib-list] .lib-tags{justify-content:flex-start}
+}
+.lib-star-col{justify-self:end;display:flex;justify-content:flex-end;min-width:122px}
+.lib-star-col .lib-star{width:122px;justify-content:center}
 .lib-star{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;
   background:none;color:var(--dim);font:11px var(--font-body);letter-spacing:.04em;cursor:pointer}
 .lib-star svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linejoin:round}

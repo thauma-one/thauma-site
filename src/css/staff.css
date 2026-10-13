@@ -2883,6 +2883,18 @@ html.pe-open{overflow:hidden}
 .pe-dot{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--voice-tech);box-shadow:0 0 0 3px rgba(0,0,0,.5);pointer-events:none}
 .pe-side{flex:0 0 280px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;max-height:calc(100dvh - 180px);padding-right:4px}
 .pe-prevwrap{display:flex;align-items:center;justify-content:center;height:170px}
+/* An event's picture, previewed as the invitation it goes on (photo-editor.js
+   purpose "event"): the photo in its own shape at its column's width, the
+   card's words beside it, the photo centered against the card — as main.css
+   draws .invite on the Events page. */
+.pe-prevwrap.pe-card{display:grid;grid-template-columns:120px 150px;align-items:center;height:auto;min-height:0;justify-content:center;padding-block:12px}
+.pe-cardtext{align-self:stretch;min-height:112px;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:14px 12px;
+  background:#101823;border:1px solid rgba(92,242,196,.25);border-left:0}
+.pe-cardtext i{display:block;height:5px;border-radius:3px;background:rgba(237,242,248,.16)}
+.pe-ct-cue{width:40%;background:rgba(47,216,255,.55)!important}
+.pe-ct-date{width:70%;height:9px!important;background:rgba(237,242,248,.5)!important}
+.pe-ct-title{width:85%;height:7px!important;background:rgba(237,242,248,.32)!important}.pe-ct-title2{width:55%;height:7px!important;background:rgba(237,242,248,.32)!important}
+.pe-ct-line{width:90%}.pe-ct-line2{width:65%}
 .pe-prev{position:relative;overflow:hidden;background:#000}
 .pe-prev img{display:block}.pe-shade{position:absolute;inset:0;pointer-events:none}
 .pe-row{display:flex;flex-direction:column;gap:7px}

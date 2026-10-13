@@ -78,9 +78,10 @@ pageTitle: events
     {%- set summary = g.summary[lang] or g.summary.en %}
     {#- THE PICTURE IN ITS OWN SHAPE (photo_ar, gatherings.js), the same
        shape it keeps when the gathering moves to the record below. With no
-       picture there is no empty frame: the card alone, with a slow shimmer
-       across it that says "new, and coming" (2026-10-07). -#}
-    <article class="invite is-next{% if not g.photo %} is-new{% endif %}">
+       picture there is no empty frame: the card alone. -#}
+    {#- Every invitation shimmers, photo or not (2026-10-08, Chase: "I still
+       want it to shimmer"): the light crosses the photo and the card. -#}
+    <article class="invite is-next is-new">
       {% if g.photo %}<div class="invite-photo" style="aspect-ratio:{{ g.photo_ar }}"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
 
       <div class="invite-card">

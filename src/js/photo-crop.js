@@ -59,7 +59,9 @@
     /* An event's or a resource's picture: ANY SHAPE (2026-10-07, Chase: "it
        should be able to be any size and the photo frame adjusts to match");
        the page reads the shape back from photo_ar. */
-    library:     { aspect: null,   max: 1600, label: 'Event or resource picture' }
+    library:     { aspect: null,   max: 1600, label: 'Event or resource picture' },
+    /* An event's: the same, edited beside a picture of its invitation. */
+    event:       { aspect: null,   max: 1600, label: 'Event picture' }
   };
   var FREE_MIN = 0.4, FREE_MAX = 2.5;
 
@@ -78,19 +80,21 @@
      given the purpose that matches each frame below. This file keeps what
      Thauma's frames want and turns the choice into the pixels uploaded,
      because the static site shows exactly the file it is given. */
-  var PURPOSE = { photo: 'team', bio_photo: 'bio', home: 'home', wide: 'wide', newsletter: 'mail', site: 'site', library: 'bio' };
+  var PURPOSE = { photo: 'team', bio_photo: 'bio', home: 'home', wide: 'wide', newsletter: 'mail', site: 'site', library: 'bio', event: 'event' };
 
   /**
    * @param {File}   file   what the person chose
    * @param {string} kind   a key in FRAMES
-   * @returns {Promise<{blob, width, height, aspect} | null>}  null = canceled
+   * @param {object} [value] where the editor starts: a crop it returned
+   *                         before ({x, y, w, h, ar}), on the same original
+   * @returns {Promise<{blob, width, height, aspect, crop} | null>}  null = canceled
    */
-  function open(file, kind) {
+  function open(file, kind, value) {
     var frame = FRAMES[kind] || FRAMES.photo;
     if (!window.PhotoEditor) return Promise.reject(new Error(t('pe.cannotLoad', 'The photo editor did not load.')));
     var url = URL.createObjectURL(file);
     return decode(file).then(function (bitmap) {
-      return window.PhotoEditor.open(url, { purpose: PURPOSE[kind] || 'wide' }).then(function (v) {
+      return window.PhotoEditor.open(url, { purpose: PURPOSE[kind] || 'wide', value: value || null }).then(function (v) {
         if (!v || v.remove) return null;
         return render(bitmap, frame, v);
       });
@@ -142,7 +146,9 @@
     ctx.drawImage(bitmap, x, y, w, h, 0, 0, c.width, c.height);
     return toBlob(c).then(function (blob) {
       if (!blob) throw new Error('this browser could not convert that image');
-      return { blob: blob, width: c.width, height: c.height, aspect: c.width / c.height };
+      /* the editor's choice too, so Edit can start from it next time */
+      return { blob: blob, width: c.width, height: c.height, aspect: c.width / c.height,
+               crop: { x: v.x, y: v.y, w: v.w, h: v.h, ar: (v.w * W) / (v.h * H) } };
     });
   }
 

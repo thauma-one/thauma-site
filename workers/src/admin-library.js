@@ -55,7 +55,9 @@ const COLLECTIONS = {
     /* Where an uploaded picture is kept, so the editor can offer it back for
        re-cropping rather than only ever replacing it. Same idea as a staff
        photo's master. */
-    hidden: ["photo_master"],
+    /* kept but never shown: the original, and where on it the picture was
+       cut (x,y,w,h), so Edit starts there again */
+    hidden: ["photo_master", "photo_crop"],
   },
   gatherings: {
     dir: "src/content/gatherings",
@@ -81,7 +83,9 @@ const COLLECTIONS = {
        to work it out from a sentence somebody wrote in prose. */
     plain: ["date", "end_date", "time", "location", "map_url", "registration",
             "cohort_name", "capacity", "photo", "photo_ar"],
-    hidden: ["photo_master"],
+    /* kept but never shown: the original, and where on it the picture was
+       cut (x,y,w,h), so Edit starts there again */
+    hidden: ["photo_master", "photo_crop"],
   },
 };
 
