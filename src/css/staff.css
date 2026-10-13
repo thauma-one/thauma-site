@@ -1479,6 +1479,18 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-sigbody{border:1px solid var(--line);border-radius:0 0 8px 8px;padding:12px 14px;min-height:0;max-height:40vh}
 .cp-sigbody .ProseMirror{min-height:120px}
 .cp-sigbody .ProseMirror p{margin:0}
+.cp-sigpick{display:flex;gap:10px;align-items:center}
+.cp-sigpick select[hidden]{display:none}
+.cp-sigbody .cp-img{margin:6px 0;max-width:60%}
+.cp-sigdlg .dlg-actions{display:flex;align-items:center;gap:10px}
+.cp-sigdlg .dlg-gap{flex:1}
+.cp-sigdlg #cpSigDelete[hidden]{display:none}
+/* which signature: a small list under the {{signature}} chip */
+.cp-sigmenu{position:absolute;z-index:90;display:flex;flex-direction:column;min-width:180px;padding:6px;
+  background:var(--panel);border:1px solid var(--line-hard,rgba(255,255,255,.14));border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.cp-sigmenu[hidden]{display:none}
+.cp-sigmenu button{background:none;border:0;color:var(--text);text-align:left;padding:8px 10px;border-radius:6px;font:inherit;cursor:pointer}
+.cp-sigmenu button:hover,.cp-sigmenu button:focus-visible{background:var(--line);outline:none}
 .cp-body .ProseMirror>*:first-child{margin-top:0}
 .cp-body p{margin:0 0 14px}
 .cp-body h2{font-family:Georgia,Cambria,'Times New Roman',serif;font-size:22px;

@@ -3200,6 +3200,12 @@ SELECT draft, published FROM partner_sites;
 SELECT body_html, body_md FROM mailings;
 
 
+-- name: media_refs_signatures
+-- Every mail signature's words (0057): a signature's picture is kept as long
+-- as the signature holds it.
+SELECT html FROM mail_sigs;
+
+
 -- name: media_refs_attachments
 SELECT object_key FROM mailing_attachments;
 
@@ -3415,16 +3421,23 @@ SELECT id, color_mode FROM mailings
 SELECT id, layout FROM mailings
  WHERE list_id = :list_id AND partner_id IS :partner_id;
 
--- name: mail_signature_get
--- The signature for one sender (0055). :owner is a partner id or '~organisation'.
-SELECT html FROM mail_signatures WHERE owner = :owner;
+-- name: mail_sigs_for
+-- A sender's signatures (0057), in their order. :owner is a partner id or
+-- '~organisation'.
+SELECT id, name, html FROM mail_sigs WHERE owner = :owner ORDER BY sort_order, name COLLATE NOCASE;
 
--- name: mail_signature_set
--- Written whole; an empty signature is kept as empty rather than deleted, so
--- "I cleared it" and "never had one" read the same.
-INSERT INTO mail_signatures (owner, html, updated_at, updated_by)
-VALUES (:owner, :html, :now, :user_id)
-ON CONFLICT(owner) DO UPDATE SET html = excluded.html, updated_at = excluded.updated_at, updated_by = excluded.updated_by;
+-- name: mail_sig_upsert
+-- Written whole. ONLY the sender's own: an id belonging to another sender is
+-- not overwritten (the WHERE on the update), so a request naming somebody
+-- else's signature changes nothing.
+INSERT INTO mail_sigs (id, owner, name, html, sort_order, updated_at, updated_by)
+VALUES (:id, :owner, :name, :html, :sort_order, :now, :user_id)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, html = excluded.html,
+  updated_at = excluded.updated_at, updated_by = excluded.updated_by
+WHERE mail_sigs.owner = excluded.owner;
+
+-- name: mail_sig_delete
+DELETE FROM mail_sigs WHERE id = :id AND owner = :owner;
 
 -- name: notify_prefs_for_user
 -- A person's own choices about notices (0056). A notice with no row keeps its

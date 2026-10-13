@@ -37,7 +37,7 @@ import { createEditor, applyLink, insertImage, tokensToVariables } from "./edito
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   const cp = {
-    lists: [], mailings: [], attachments: [],
+    lists: [], mailings: [], attachments: [], signatures: [],
     you: null, testInbox: null,
     listId: null, id: null,
     savedHtml: "", savedSubject: "", savedPreheader: "", dirty: false,
@@ -157,39 +157,99 @@ import { createEditor, applyLink, insertImage, tokensToVariables } from "./edito
   $("cpVarRow").addEventListener("click", (e) => {
     const b = e.target.closest("[data-var]");
     if (!b) return;
-    editor.chain().focus().insertVariable(b.dataset.var).run();
+    /* which signature, when there is more than one (0057) */
+    if (b.dataset.var === "signature" && cp.signatures.length > 1) return sigMenu(b);
+    const one = b.dataset.var === "signature" && cp.signatures[0];
+    editor.chain().focus().insertVariable(b.dataset.var, one ? { sig: one.id, sigName: one.name } : null).run();
     closeRows();
   });
+  function sigMenu(chip) {
+    const m = $("cpSigMenu");
+    m.innerHTML = cp.signatures.map((x) =>
+      `<button type="button" role="menuitem" data-sig-pick="${esc(x.id)}">${esc(x.name)}</button>`).join("");
+    const r = chip.getBoundingClientRect();
+    m.style.left = Math.round(r.left + window.scrollX) + "px";
+    m.style.top = Math.round(r.bottom + window.scrollY + 4) + "px";
+    m.hidden = false;
+    const first = m.querySelector("button"); if (first) first.focus();
+  }
+  $("cpSigMenu").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sig-pick]");
+    if (!b) return;
+    const x = cp.signatures.find((y) => y.id === b.dataset.sigPick);
+    $("cpSigMenu").hidden = true;
+    if (x) editor.chain().focus().insertVariable("signature", { sig: x.id, sigName: x.name }).run();
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (!$("cpSigMenu").hidden && !e.target.closest("#cpSigMenu")) $("cpSigMenu").hidden = true;
+  });
 
-  /* ---- the signature (0055) -------------------------------------------
-     Written here, beside the {{signature}} chip that puts it in a mail; one
-     per sender, so it follows the page's scope switch like everything else.
-     A small editor of its own: bold, italic, underline, links. Enter is a
-     line break in the mail (lib/newsletter.js signatureHtml). */
-  let sig = null;
-  function sigOpen() {
-    if (!sig) {
-      sig = createEditor({ element: $("cpSigBody"), toolbar: $("cpSigTools") }).editor;
-      $("cpSigLinkBtn").addEventListener("click", () => {
-        const row = $("cpSigLinkRow");
-        row.hidden = !row.hidden;
-        if (!row.hidden) { $("cpSigLinkUrl").value = sig.getAttributes("link").href || ""; $("cpSigLinkUrl").focus(); }
-      });
-      const sigLink = () => {
-        let href = $("cpSigLinkUrl").value.trim();
-        if (href && !/^[a-z][a-z0-9+.-]*:/i.test(href)) {
-          href = /^[^\s/@]+@[^\s@]+\.[^\s@]+$/.test(href) ? "mailto:" + href : "https://" + href;
-        }
-        if (href && !/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
-        applyLink(sig, href || null);
-        $("cpSigLinkRow").hidden = true;
-        sig.commands.focus();
-      };
-      $("cpSigLinkApply").addEventListener("click", sigLink);
-      $("cpSigLinkUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sigLink(); } });
-    }
-    sig.commands.setContent(cp.signature || "");
+  /* ---- signatures (0055, several by name 0057) -------------------------
+     Written here, beside the {{signature}} chip that puts one in a mail; a
+     sender's own, so they follow the page's scope switch like everything
+     else. A small editor of its own: bold, italic, underline, links, a
+     picture (2026-10-13). Enter is a line break in the mail
+     (lib/newsletter.js signatureHtml). */
+  let sig = null, sigId = null;
+  function sigEditor() {
+    if (sig) return;
+    sig = createEditor({ element: $("cpSigBody"), toolbar: $("cpSigTools"),
+      onImageFiles: (files) => sigPictures(files) }).editor;
+    $("cpSigLinkBtn").addEventListener("click", () => {
+      const row = $("cpSigLinkRow");
+      row.hidden = !row.hidden;
+      if (!row.hidden) { $("cpSigLinkUrl").value = sig.getAttributes("link").href || ""; $("cpSigLinkUrl").focus(); }
+    });
+    const sigLink = () => {
+      let href = $("cpSigLinkUrl").value.trim();
+      if (href && !/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+        href = /^[^\s/@]+@[^\s@]+\.[^\s@]+$/.test(href) ? "mailto:" + href : "https://" + href;
+      }
+      if (href && !/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
+      applyLink(sig, href || null);
+      $("cpSigLinkRow").hidden = true;
+      sig.commands.focus();
+    };
+    $("cpSigLinkApply").addEventListener("click", sigLink);
+    $("cpSigLinkUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sigLink(); } });
+    $("cpSigPic").addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.type = "file"; input.accept = "image/jpeg,image/png,image/webp";
+      input.addEventListener("change", function () { if (this.files && this.files[0]) sigPictures([this.files[0]]); });
+      input.click();
+    });
+  }
+  /* uploaded like the letter's own pictures, but small: a logo or a face */
+  async function sigPictures(files) {
+    try {
+      for (const file of files) {
+        const blob = await shrink(file, 600);
+        const res = await fetch("/api/admin/media?kind=newsletter", {
+          method: "POST", credentials: "same-origin",
+          headers: { "Content-Type": blob.type, "X-File-Name": "signature" }, body: blob,
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || `failed (${res.status})`);
+        /* not noted for release: it belongs to the signature, not the draft */
+        insertImage(sig, body.url, null);
+      }
+    } catch (e) { toast(e.message, "bad"); }
+  }
+  function sigShow(id) {
+    const x = cp.signatures.find((y) => y.id === id) || null;
+    sigId = x ? x.id : null;
+    $("cpSigWhich").innerHTML = cp.signatures.map((y) =>
+      `<option value="${esc(y.id)}"${y.id === sigId ? " selected" : ""}>${esc(y.name)}</option>`).join("") +
+      (sigId ? "" : `<option value="" selected>${esc(tr("ml.sigNewName"))}</option>`);
+    $("cpSigWhich").hidden = !cp.signatures.length;
+    $("cpSigName").value = x ? x.name : (cp.signatures.length ? "" : tr("ml.sigFirstName"));
+    $("cpSigDelete").hidden = !sigId;
+    sig.commands.setContent(x ? x.html : "");
     $("cpSigLinkRow").hidden = true;
+  }
+  function sigOpen() {
+    sigEditor();
+    sigShow((cp.signatures[0] || {}).id);
     const back = $("cpSigBack");
     back.hidden = false; void back.offsetHeight; back.classList.add("in");
     sig.commands.focus("end");
@@ -197,18 +257,35 @@ import { createEditor, applyLink, insertImage, tokensToVariables } from "./edito
   function sigClose() { $("cpSigBack").hidden = true; $("cpSigBack").classList.remove("in"); }
   async function sigSave() {
     const html = sig.isEmpty ? "" : sig.getHTML();
-    const r = await post({ action: "signature", html });
+    const r = await post({ action: "signature", id: sigId || undefined, name: $("cpSigName").value.trim(), html });
     if (r.error) { toast(r.error, "bad"); return; }
-    cp.signature = r.signature || "";
-    sigClose();
+    cp.signatures = r.signatures || cp.signatures;
+    sigShow(r.id);
     toast(tr("ml.sigKept"), "ok");
     measureSoon();
+  }
+  async function sigDelete() {
+    if (!sigId) return;
+    const x = cp.signatures.find((y) => y.id === sigId);
+    const ok = window.StaffConfirm ? await window.StaffConfirm({ title: tr("ml.sigDeleteTitle").replace("{name}", x ? x.name : ""),
+      confirm: tr("common.delete"), cancel: tr("ms.cancel"), danger: true }) : true;
+    if (!ok) return;
+    const r = await post({ action: "signature-delete", id: sigId });
+    if (r.error) { toast(r.error, "bad"); return; }
+    cp.signatures = r.signatures || [];
+    sigShow((cp.signatures[0] || {}).id);
   }
   $("cpSigEdit").addEventListener("click", sigOpen);
   $("cpSigCancel").addEventListener("click", sigClose);
   $("cpSigSave").addEventListener("click", sigSave);
+  $("cpSigDelete").addEventListener("click", sigDelete);
+  $("cpSigNew").addEventListener("click", () => { sigShow(null); $("cpSigName").focus(); });
+  $("cpSigWhich").addEventListener("change", (e) => sigShow(e.target.value || null));
   $("cpSigBack").addEventListener("click", (e) => { if (e.target === e.currentTarget) sigClose(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("cpSigBack").hidden) sigClose(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("cpSigMenu").hidden) $("cpSigMenu").hidden = true;
+    else if (e.key === "Escape" && !$("cpSigBack").hidden) sigClose();
+  });
 
   /* ---- loading -------------------------------------------------------- */
 
@@ -228,7 +305,7 @@ import { createEditor, applyLink, insertImage, tokensToVariables } from "./edito
     cp.mailings = body.mailings || [];
     cp.you = body.you || null;
     cp.testInbox = body.test_inbox || null;
-    cp.signature = body.signature || "";
+    cp.signatures = body.signatures || [];
     renderPickers();
     renderTestTo();
     /* The page around this shows the drafts waiting and what has gone out;

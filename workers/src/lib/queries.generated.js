@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "70c1b5e88b2fd648";
+export const SOURCE_DIGEST = "d249b9f335120767";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -408,10 +408,13 @@ ORDER BY (e.occurred_on IS NULL) DESC, e.occurred_on DESC, e.created_at DESC;`,
   JOIN mailing_lists l ON l.id = m.list_id
  WHERE l.partner_id = :partner_id AND r.status = 'bounced'
    AND r.updated_at > COALESCE((SELECT mail_bounces_seen_at FROM partners WHERE id = :partner_id), '');`,
-  mail_signature_get: `SELECT html FROM mail_signatures WHERE owner = :owner;`,
-  mail_signature_set: `INSERT INTO mail_signatures (owner, html, updated_at, updated_by)
-VALUES (:owner, :html, :now, :user_id)
-ON CONFLICT(owner) DO UPDATE SET html = excluded.html, updated_at = excluded.updated_at, updated_by = excluded.updated_by;`,
+  mail_sig_delete: `DELETE FROM mail_sigs WHERE id = :id AND owner = :owner;`,
+  mail_sig_upsert: `INSERT INTO mail_sigs (id, owner, name, html, sort_order, updated_at, updated_by)
+VALUES (:id, :owner, :name, :html, :sort_order, :now, :user_id)
+ON CONFLICT(id) DO UPDATE SET name = excluded.name, html = excluded.html,
+  updated_at = excluded.updated_at, updated_by = excluded.updated_by
+WHERE mail_sigs.owner = excluded.owner;`,
+  mail_sigs_for: `SELECT id, name, html FROM mail_sigs WHERE owner = :owner ORDER BY sort_order, name COLLATE NOCASE;`,
   mailing_attachment_add: `INSERT INTO mailing_attachments
   (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
 VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);`,
@@ -610,6 +613,7 @@ ORDER BY CASE m.status WHEN 'draft' THEN 0 ELSE 1 END,
   media_refs_attachments: `SELECT object_key FROM mailing_attachments;`,
   media_refs_mailings: `SELECT body_html, body_md FROM mailings;`,
   media_refs_resources: `SELECT photo FROM resources WHERE photo IS NOT NULL;`,
+  media_refs_signatures: `SELECT html FROM mail_sigs;`,
   media_refs_sites: `SELECT draft, published FROM partner_sites;`,
   milestone_delete: `DELETE FROM milestones WHERE id = :id AND partner_id = :partner_id;`,
   milestone_reorder: `UPDATE milestones SET sort_order = :sort_order, updated_at = :now

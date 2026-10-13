@@ -131,13 +131,20 @@ const Variable = Node.create({
     return {
       v: { default: "first_name", parseHTML: (el) => el.getAttribute("data-var"),
            renderHTML: (a) => ({ "data-var": a.v }) },
+      /* WHICH SIGNATURE (0057): its id, and its name to show while writing */
+      sig: { default: null, parseHTML: (el) => el.getAttribute("data-sig"),
+             renderHTML: (a) => (a.sig ? { "data-sig": a.sig } : {}) },
+      sigName: { default: null, parseHTML: (el) => el.getAttribute("data-sig-name"),
+                 renderHTML: (a) => (a.sigName ? { "data-sig-name": a.sigName } : {}) },
     };
   },
   parseHTML() {
     return [{ tag: "span[data-var]", getAttrs: (el) => (VARIABLES.includes(el.getAttribute("data-var")) ? null : false) }];
   },
   renderHTML({ node, HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }), VAR_TOKENS[node.attrs.v] || node.attrs.v];
+    const token = node.attrs.v === "signature" && node.attrs.sigName
+      ? "{{signature: " + node.attrs.sigName + "}}" : VAR_TOKENS[node.attrs.v] || node.attrs.v;
+    return ["span", mergeAttributes(HTMLAttributes, { class: "cp-var" }), token];
   },
   renderText({ node }) { return VAR_TOKENS[node.attrs.v] || node.attrs.v; },
   addInputRules() {
@@ -151,8 +158,8 @@ const Variable = Node.create({
   },
   addCommands() {
     return {
-      insertVariable: (v) => ({ commands }) =>
-        commands.insertContent({ type: this.name, attrs: { v } }),
+      insertVariable: (v, extra) => ({ commands }) =>
+        commands.insertContent({ type: this.name, attrs: Object.assign({ v }, extra || {}) }),
     };
   },
 });
