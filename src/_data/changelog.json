@@ -200,6 +200,16 @@
         "hr": "Pregled i objava: popis izmjena stane u ploču — bez pomicanja u stranu, a dugi retci se prelamaju.",
         "sr": "Преглед и објава: списак измена стане у плочу — без померања у страну, а дуги редови се преламају."
       }
+    },
+    {
+      "id": "2026-10-13-yourpages",
+      "date": "2026-10-13",
+      "page": "console",
+      "text": {
+        "en": "What's new describes changes to your own pages; changes elsewhere are one line, \"Other site changes\". The bell only tells you about a Publish that has something of yours.",
+        "hr": "Što je novo opisuje izmjene vaših stranica; izmjene drugdje su jedan redak, „Ostale izmjene”. Zvonce vam javlja samo objavu u kojoj ima nešto vaše.",
+        "sr": "Шта је ново описује измене ваших страница; измене другде су један ред, „Остале измене”. Звонце вам јавља само објаву у којој има нешто ваше."
+      }
     }
   ]
 }

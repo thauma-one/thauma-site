@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "fd57a5ad4ee22722";
+export const SOURCE_DIGEST = "334fc9bbe3123d90";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -685,7 +685,8 @@ VALUES (:id, :user_id, :kind, :vars, :link, :now);`,
   notices_prune: `DELETE FROM notices WHERE created_at < :before;`,
   notices_read_all: `UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;`,
   notices_unread_count: `SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;`,
-  notify_everyone: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  notify_everyone: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang,
+       (SELECT GROUP_CONCAT(r.role) FROM user_roles r WHERE r.user_id = u.id) AS roles
   FROM users u
  WHERE u.status = 'active'
    AND COALESCE(u.protected, 0) = 0;`,

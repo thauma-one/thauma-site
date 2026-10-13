@@ -17,7 +17,7 @@ import { notify, notifyPerson, noticesFor, noticeEmail, noticeWords } from "../s
 import { cleanBio as cleanBioLib, outcomes, answerProposal } from "../src/lib/bio.js";
 import { cleanBio } from "../src/staff-settings.js";
 import { hit, isLive, referrerHost } from "../src/analytics.js";
-import { sectionsFor, cutRelease, entries as changelog, PAGES } from "../src/changes.js";
+import { sectionsFor, cutRelease, entries as changelog, PAGES, othersFor, tells } from "../src/changes.js";
 import { KEEP_READ_MS } from "../src/notices.js";
 
 let pass = 0, fail = 0;
@@ -654,6 +654,33 @@ await check("Publish: a release of what changed, by page, each person seeing the
   }
   assert(/link: "\/admin\/users\/#" \+ id/.test(fs.readFileSync(new URL("../src/confirm-account.js", import.meta.url), "utf8")), "an accepted invitation does not open that person");
   assert(/link: "\/admin\/users\/#" \+ me\.user_id \+ "\/team"/.test(fs.readFileSync(new URL("../src/staff-settings.js", import.meta.url), "utf8")), "a bio waiting does not open their Team page");
+});
+
+await check("what a person cannot see is counted, never told, and a release with nothing of theirs sends them no notice (Chase, 2026-10-13)", async () => {
+  /* "not every update to the site needs to be told to all team members …
+     some of those changes may just need to be noted as 'other site
+     changes'" */
+  const rel = { entries: [{ id: "a", page: "admin:users", text: { en: "People" } }, { id: "b", page: "admin:partners", text: { en: "Partners" } },
+                          { id: "c", page: "staff:mail", text: { en: "Mail" } }], content: ["events"] };
+  eq([sectionsFor(rel.entries, ["staff"], "en").map((x) => x.page), othersFor(rel.entries, ["staff"])], [["staff:mail"], 2],
+     "staff: Mail told, the two administration changes only counted");
+  eq([tells(rel, ["staff"]), tells({ entries: rel.entries.slice(0, 2), content: [] }, ["staff"]), tells({ entries: [], content: ["events"] }, ["communications"]),
+      tells({ entries: [], content: ["events"] }, ["board"])], [true, false, true, false],
+     "told when something is theirs; not when it is all elsewhere; the site's content tells whoever looks after it");
+  const people = [{ user_id: "u_a", email: "a@x.org", roles: "admin" }, { user_id: "u_s", email: "s@x.org", roles: "staff,partner" }];
+  const bells = [];
+  const db = { query: async (name, p) => {
+    if (name === "notify_everyone") return people;
+    if (name === "notify_prefs_for_user") return [];
+    if (name === "notice_add") { bells.push(p.user_id); return []; }
+    throw new Error("unexpected " + name);
+  } };
+  const only = { entries: rel.entries.slice(0, 2), content: [] };
+  await notify({}, db, "site_published", { by: "C" }, { link: "/staff/changes/#r_1", send: async () => ({ ok: true }), only: (who) => tells(only, String(who.roles).split(",")) });
+  eq(bells, ["u_a"], "only whoever has something in it");
+  assert(/GROUP_CONCAT\(r\.role\)/.test(QUERIES.notify_everyone), "the people asked for carry no roles to decide by");
+  const pub = fs.readFileSync(new URL("../src/admin-publish.js", import.meta.url), "utf8");
+  assert(/only: release \? \(who\) => tells\(release,/.test(pub), "Publish tells everyone whatever is in it");
 });
 
 await check("the bell: cleared, or read six hours ago, is Past — kept a year, not deleted (0061)", async () => {

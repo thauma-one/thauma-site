@@ -2584,6 +2584,7 @@ div + .set-group{margin-top:30px}
 .chg-sec ul{margin:0;padding-left:18px;color:var(--dim);line-height:1.6}
 .chg-sec li + li{margin-top:4px}
 .chg-empty{color:var(--dim)}
+.chg-others p{margin:0;color:var(--dim);font-size:var(--fs-sm)}
 .set-lbl{font-family:var(--font-display);font-weight:300;font-size:17px;color:var(--text)}
 .set-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
 .set-now{min-width:240px;overflow-wrap:anywhere}
