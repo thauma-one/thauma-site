@@ -188,7 +188,19 @@
       "profile_proposed_subject": "{name} changed their bio",
       "profile_proposed_heading": "A bio is waiting for approval",
       "profile_proposed_body": "<b>{name}</b> sent changes to their team page. Nothing is live until you approve them.",
-      "profile_proposed_button": "Review the changes"
+      "profile_proposed_button": "Review the changes",
+      "profile_approved_subject": "Your bio changes were approved",
+      "profile_approved_heading": "Your bio changes were approved",
+      "profile_approved_body": "<b>{by}</b> approved the changes you sent to your team page. They reach the site with the next Publish.",
+      "profile_approved_body_edited": "<b>{by}</b> approved the changes you sent to your team page, with some changes of their own. Your bio in Settings shows what they changed. It reaches the site with the next Publish.",
+      "profile_approved_button": "See your bio",
+      "profile_declined_subject": "Your bio changes were not approved",
+      "profile_declined_heading": "Your bio changes were not approved",
+      "profile_declined_body": "<b>{by}</b> did not approve the changes you sent to your team page. Your page stays as it was.",
+      "profile_declined_button": "See your bio",
+      "profile_approved_body_partly": "<b>{by}</b> answered the changes you sent to your team page: some are approved, some are not. Your bio in Settings shows each one. What is approved reaches the site with the next Publish.",
+      "profile_approved_subject_partly": "Your bio changes were answered",
+      "profile_approved_heading_partly": "Your bio changes were answered"
     }
   },
   "hr": {
@@ -380,7 +392,19 @@
       "profile_proposed_subject": "{name}: izmjene biografije",
       "profile_proposed_heading": "Biografija čeka odobrenje",
       "profile_proposed_body": "<b>{name}</b>: poslane su izmjene stranice tima. Ništa nije javno dok ih ne odobrite.",
-      "profile_proposed_button": "Pregledaj izmjene"
+      "profile_proposed_button": "Pregledaj izmjene",
+      "profile_approved_subject": "Izmjene vaše biografije su odobrene",
+      "profile_approved_heading": "Izmjene vaše biografije su odobrene",
+      "profile_approved_body": "<b>{by}</b>: odobrene su izmjene koje ste poslali za svoju stranicu tima. Na stranicu stižu sljedećim objavljivanjem.",
+      "profile_approved_body_edited": "<b>{by}</b>: odobrene su izmjene koje ste poslali za svoju stranicu tima, uz nekoliko vlastitih izmjena. Vaša biografija u Postavkama pokazuje što je promijenjeno. Na stranicu stiže sljedećim objavljivanjem.",
+      "profile_approved_button": "Pogledaj biografiju",
+      "profile_declined_subject": "Izmjene vaše biografije nisu odobrene",
+      "profile_declined_heading": "Izmjene vaše biografije nisu odobrene",
+      "profile_declined_body": "<b>{by}</b>: izmjene koje ste poslali za svoju stranicu tima nisu odobrene. Vaša stranica ostaje kakva je bila.",
+      "profile_declined_button": "Pogledaj biografiju",
+      "profile_approved_body_partly": "<b>{by}</b>: odgovoreno je na izmjene koje ste poslali za svoju stranicu tima — neke su odobrene, neke nisu. Vaša biografija u Postavkama pokazuje svaku. Odobreno stiže na stranicu sljedećim objavljivanjem.",
+      "profile_approved_subject_partly": "Odgovor na izmjene vaše biografije",
+      "profile_approved_heading_partly": "Odgovor na izmjene vaše biografije"
     }
   },
   "sr": {
@@ -572,7 +596,19 @@
       "profile_proposed_subject": "{name}: измене биографије",
       "profile_proposed_heading": "Биографија чека одобрење",
       "profile_proposed_body": "<b>{name}</b>: послате су измене странице тима. Ништа није јавно док их не одобрите.",
-      "profile_proposed_button": "Прегледај измене"
+      "profile_proposed_button": "Прегледај измене",
+      "profile_approved_subject": "Измене ваше биографије су одобрене",
+      "profile_approved_heading": "Измене ваше биографије су одобрене",
+      "profile_approved_body": "<b>{by}</b>: одобрене су измене које сте послали за своју страницу тима. На сајт стижу следећим објављивањем.",
+      "profile_approved_body_edited": "<b>{by}</b>: одобрене су измене које сте послали за своју страницу тима, уз неколико сопствених измена. Ваша биографија у Подешавањима показује шта је промењено. На сајт стиже следећим објављивањем.",
+      "profile_approved_button": "Погледај биографију",
+      "profile_declined_subject": "Измене ваше биографије нису одобрене",
+      "profile_declined_heading": "Измене ваше биографије нису одобрене",
+      "profile_declined_body": "<b>{by}</b>: измене које сте послали за своју страницу тима нису одобрене. Ваша страница остаје каква је била.",
+      "profile_declined_button": "Погледај биографију",
+      "profile_approved_body_partly": "<b>{by}</b>: одговорено је на измене које сте послали за своју страницу тима — неке су одобрене, неке нису. Ваша биографија у Подешавањима показује сваку. Одобрено стиже на сајт следећим објављивањем.",
+      "profile_approved_subject_partly": "Одговор на измене ваше биографије",
+      "profile_approved_heading_partly": "Одговор на измене ваше биографије"
     }
   },
   "sl": {
@@ -764,7 +800,19 @@
       "profile_proposed_subject": "{name}: spremembe življenjepisa",
       "profile_proposed_heading": "Življenjepis čaka na odobritev",
       "profile_proposed_body": "<b>{name}</b>: poslane so spremembe strani ekipe. Nič ni javno, dokler jih ne odobrite.",
-      "profile_proposed_button": "Preglej spremembe"
+      "profile_proposed_button": "Preglej spremembe",
+      "profile_approved_subject": "Spremembe vašega življenjepisa so odobrene",
+      "profile_approved_heading": "Spremembe vašega življenjepisa so odobrene",
+      "profile_approved_body": "<b>{by}</b>: odobrene so spremembe, ki ste jih poslali za svojo stran ekipe. Na spletno stran pridejo z naslednjo objavo.",
+      "profile_approved_body_edited": "<b>{by}</b>: odobrene so spremembe, ki ste jih poslali za svojo stran ekipe, z nekaj lastnimi spremembami. Vaš življenjepis v Nastavitvah pokaže, kaj je bilo spremenjeno. Na spletno stran pride z naslednjo objavo.",
+      "profile_approved_button": "Poglej življenjepis",
+      "profile_declined_subject": "Spremembe vašega življenjepisa niso odobrene",
+      "profile_declined_heading": "Spremembe vašega življenjepisa niso odobrene",
+      "profile_declined_body": "<b>{by}</b>: spremembe, ki ste jih poslali za svojo stran ekipe, niso odobrene. Vaša stran ostaja takšna, kot je bila.",
+      "profile_declined_button": "Poglej življenjepis",
+      "profile_approved_body_partly": "<b>{by}</b>: odgovorjeno je na spremembe, ki ste jih poslali za svojo stran ekipe — nekatere so odobrene, nekatere ne. Vaš življenjepis v Nastavitvah pokaže vsako. Odobreno pride na spletno stran z naslednjo objavo.",
+      "profile_approved_subject_partly": "Odgovor na spremembe vašega življenjepisa",
+      "profile_approved_heading_partly": "Odgovor na spremembe vašega življenjepisa"
     }
   }
 }

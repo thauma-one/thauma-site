@@ -28,6 +28,7 @@ const check = async (name, fn) => {
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
+const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b), `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
 console.log("saving a profile\n");
 if (!build) { console.log("  SKIP  no build — run eleventy first."); process.exit(1); }
@@ -82,6 +83,8 @@ async function boot({ postResponse, profiles, languages, extra } = {}) {
     w.document.head.appendChild(st);
   }
   w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  /* the word-by-word marking is shared from here (StaffWordDiff) */
+  w.eval(readFileSync("src/js/staff.js", "utf8"));
   w.eval(readFileSync("src/js/photo-crop.js", "utf8"));
   w.eval(readFileSync("src/js/admin.js", "utf8"));
   await new Promise((r) => setTimeout(r, 150));
@@ -160,6 +163,43 @@ await check("a person's own changes: shown word by word, Approve saves them and 
   const body = JSON.parse(posts[0].body);
   assert(body.clear_proposal === true && body.text.en.role_title === "Founder and Director" && body.text.en.bio === "Bio text",
     "Approve did not save the changes and clear them: " + JSON.stringify(body));
+});
+
+await check("a person's own changes: each approved, edited or declined on its own, saved with a note (0058)", async () => {
+  /* Chase, 2026-10-13: "We should have the ability to approve, edit, or
+     decline individual aspects of the staff bio edits, all communicating
+     back to the staff member." */
+  const languages = ["en"].map((code) => ({ code, name: code, native_name: code, is_active: 1 }));
+  const profile_proposals = [{ user_id: "u_1", submitted_at: "2026-10-13T10:00:00Z", region: "Zagreb",
+    public_email: "chase@thauma.one", photo: "/media/team/new.webp", bio_photo: "/media/b.webp", bio_photo_aspect: 0.75,
+    photo_master: "/media/team/new-master.webp", bio_photo_master: "",
+    text: { en: { role_title: "Founder", bio: "Bio text, longer" } } }];
+  const { w, posts } = await boot({ languages, extra: { profile_proposals } });
+  const d = w.document;
+  const box = () => d.querySelector('.pf-proposal[data-proposal="u_1"]');
+  eq([...box().querySelectorAll("[data-chg]")].map((x) => x.getAttribute("data-chg")),
+     ["region", "public_email", "text.en.bio", "photo"], "every changed part, each answerable");
+  assert(box().querySelector('[data-chg="photo"] .pf-pics img.was') && box().querySelector('[data-chg="photo"] img[src="/media/team/new.webp"]'), "the photo is not shown before and after");
+  const click = (key, how) => { box().querySelector(`[data-chg="${key}"] [data-chg-do="${how}"]`).dispatchEvent(new w.MouseEvent("click", { bubbles: true })); };
+  click("public_email", "decline");
+  click("region", "edit");
+  await new Promise((r) => setTimeout(r, 50));
+  const sect = d.querySelector('[data-profile="u_1"]');
+  eq([sect.querySelector('.pf-grid [data-pf="region"]').value, sect.querySelector('.pf-grid [data-pf="public_email"]').value,
+      sect.querySelector('[data-slot="photo"] [data-pf="photo"]').value, sect.querySelector('[data-slot="photo"] [data-pf-master="photo"]').value],
+     ["Zagreb", "", "/media/team/new.webp", "/media/team/new-master.webp"], "declined left as saved, the rest as sent");
+  eq(box().querySelector('[data-chg="public_email"] [aria-pressed="true"]').getAttribute("data-chg-do"), "decline", "the choice shows");
+  eq(box().querySelector("[data-proposal-approve]").textContent, "Save answer", "the button says it is an answer, not an approval");
+  click("public_email", "approve");
+  click("public_email", "decline");
+  sect.querySelector('.pf-grid [data-pf="region"]').value = "Zagreb, Croatia";
+  box().querySelector("[data-proposal-note]").value = "Kept your old address";
+  d.querySelector('[data-pf-save="u_1"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 250));
+  const body = JSON.parse(posts[0].body);
+  eq([body.clear_proposal, body.region, body.public_email, body.photo, body.text.en.bio, body.proposal_note],
+     [true, "Zagreb, Croatia", "", "/media/team/new.webp", "Bio text, longer", "Kept your old address"],
+     "Save did not send the answer");
 });
 
 await check("a FAILED save says so on screen", async () => {

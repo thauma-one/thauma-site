@@ -118,6 +118,10 @@
 
   async function load() {
     var res, body;
+    /* A reload redraws every person from what is saved, so an answer to a
+       bio being put together in the fields is no longer there to send. */
+    ui.pfEditing = null;
+    ui.pfChoice = {};
     try {
       /* Activity reads further back than Overview's forty. */
       res = await fetch(API + (page === 'activity' ? '?audit=300' : ''), { credentials: 'same-origin', cache: 'no-store' });
@@ -630,62 +634,135 @@
   function proposalFor(id) {
     return (state.profile_proposals || []).filter(function (x) { return x.user_id === id; })[0] || null;
   }
-  /* Words that stayed, went and came, by the longest run they share. */
-  function wordDiff(a, b) {
-    var A = String(a || '').split(/(\s+)/).filter(Boolean), B = String(b || '').split(/(\s+)/).filter(Boolean);
-    if (A.length * B.length > 600000) return '<del>' + esc(a) + '</del> <ins>' + esc(b) + '</ins>';
-    var n = A.length, m = B.length, L = [];
-    for (var i = 0; i <= n; i++) { L.push(new Array(m + 1).fill(0)); }
-    for (i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-    var out = '', del = '', ins = '';
-    var flush = function () { if (del) out += '<del>' + esc(del) + '</del>'; if (ins) out += '<ins>' + esc(ins) + '</ins>'; del = ins = ''; };
-    i = 0; j = 0;
-    while (i < n && j < m) {
-      if (A[i] === B[j]) { flush(); out += esc(A[i]); i++; j++; }
-      else if (L[i + 1][j] >= L[i][j + 1]) del += A[i++];
-      else ins += B[j++];
-    }
-    while (i < n) del += A[i++];
-    while (j < m) ins += B[j++];
-    flush();
+  /* staff.js: the same word-by-word marking the person sees on their side */
+  function wordDiff(a, b) { return window.StaffWordDiff(a, b); }
+  /* The parts of a proposal that differ from what is saved, by key (the
+     same keys as workers/src/lib/bio.js partsOf): region, public_email,
+     photo, bio_photo, text.<lang>.role_title, text.<lang>.bio. */
+  function proposalParts(w, p, text) {
+    var out = [], n = function (v) { return String(v == null ? '' : v).trim(); };
+    var names = {};
+    (state.languages || []).forEach(function (l) { names[l.code] = l.native_name || l.name; });
+    ['region', 'public_email'].forEach(function (f) {
+      if (typeof w[f] === 'string' && n(w[f]) !== n(p && p[f])) out.push({ key: f, label: tr(f === 'region' ? 'adm.pf.region' : 'adm.pf.email'), was: (p && p[f]) || '', sent: w[f] });
+    });
+    Object.keys(w.text || {}).forEach(function (lang) {
+      ['role_title', 'bio'].forEach(function (f) {
+        var was = (text[lang] || {})[f] || '', sent = (w.text[lang] || {})[f] || '';
+        if (n(was) !== n(sent)) out.push({ key: 'text.' + lang + '.' + f, lang: lang, field: f,
+          label: tr(f === 'bio' ? 'adm.pf.bio' : 'adm.pf.roleTitle') + ' · ' + (names[lang] || lang), was: was, sent: sent });
+      });
+    });
+    ['photo', 'bio_photo'].forEach(function (k) {
+      if (typeof w[k] === 'string' && w[k] !== ((p && p[k]) || '')) out.push({ key: k, pic: true, label: tr('adm.pf.' + k), was: (p && p[k]) || '', sent: w[k] });
+    });
     return out;
   }
+  /* EACH CHANGE ANSWERED ON ITS OWN (Chase, 2026-10-13: "approve, edit, or
+     decline individual aspects of the staff bio edits, all communicating
+     back to the staff member"). Approve puts what they sent in the field,
+     Decline leaves what is saved, Edit puts theirs in and takes you to the
+     field to change it. Save sends the answer; the server reads each part's
+     outcome from what was saved, and tells them (lib/bio.js). */
   function proposalBlock(u, p, text) {
     var w = proposalFor(u.id);
     if (!w) return '';
-    var names = {};
-    (state.languages || []).forEach(function (l) { names[l.code] = l.native_name || l.name; });
-    var rows = [];
-    var row = function (what, before, after) {
-      if (String(before || '').trim() === String(after || '').trim()) return;
-      rows.push('<div class="pf-chg"><span class="pf-chg-what">' + esc(what) + '</span>' +
-        '<div class="pf-diff">' + (after || before ? wordDiff(before, after) : '') + '</div></div>');
-    };
-    row(tr('adm.pf.region'), p && p.region, w.region);
-    Object.keys(w.text || {}).forEach(function (lang) {
-      var was = text[lang] || {}, now = w.text[lang] || {};
-      row(tr('adm.pf.roleTitle') + ' · ' + (names[lang] || lang), was.role_title, now.role_title);
-      row(tr('adm.pf.bio') + ' · ' + (names[lang] || lang), was.bio, now.bio);
+    var parts = proposalParts(w, p, text);
+    var chosen = (ui.pfChoice && ui.pfChoice[u.id]) || {};
+    var rows = parts.map(function (c) {
+      var how = chosen[c.key] || 'approve';
+      var shown = c.pic
+        ? '<div class="pf-pics">' + (c.was ? '<img class="was" src="' + esc(c.was) + '" alt="">' : '') + '<span aria-hidden="true">→</span>' +
+            (c.sent ? '<img src="' + esc(c.sent) + '" alt="">' : '<span class="pf-empty">' + esc(tr('adm.pf.noPhoto')) + '</span>') + '</div>'
+        : '<div class="pf-diff">' + wordDiff(c.was, c.sent) + '</div>';
+      return '<div class="pf-chg is-' + how + '" data-chg="' + esc(c.key) + '"><span class="pf-chg-what">' + esc(c.label) + '</span>' + shown +
+        '<div class="pf-do" role="group" aria-label="' + esc(c.label) + '">' +
+          ['approve', 'edit', 'decline'].map(function (d) {
+            return '<button type="button" data-chg-do="' + d + '" data-user="' + esc(u.id) + '" aria-pressed="' + (how === d ? 'true' : 'false') + '">' + esc(tr('adm.pf.do.' + d)) + '</button>';
+          }).join('') + '</div></div>';
     });
+    var first = String(u.name || u.email || '').trim().split(/\s+/)[0];
+    var answering = ui.pfEditing === u.id;
+    var allApproved = parts.every(function (c) { return (chosen[c.key] || 'approve') === 'approve'; });
     return '<div class="pf-proposal" data-proposal="' + esc(u.id) + '">' +
       '<span class="adm-label">' + esc(tr('adm.pf.waiting').replace('{name}', u.name || u.email)
         .replace('{when}', new Date(w.submitted_at).toLocaleDateString())) + '</span>' +
       (rows.length ? rows.join('') : '<p class="hint">' + esc(tr('adm.pf.waitingSame')) + '</p>') +
+      (answering ? '<p class="pf-infields">' + esc(fill('adm.pf.inFields', { name: first })) + '</p>' : '') +
+      '<label class="fld pf-note"><span>' + esc(fill('adm.pf.note', { name: first })) + '</span>' +
+        '<textarea data-proposal-note rows="2" maxlength="600"></textarea></label>' +
       '<div class="pf-proposal-actions">' +
-        '<button type="button" class="ghost-btn" data-proposal-decline="' + esc(u.id) + '">' + esc(tr('adm.pf.decline')) + '</button>' +
-        '<button type="button" class="solid-btn" data-proposal-approve="' + esc(u.id) + '">' + esc(tr('adm.pf.approve')) + '</button>' +
+        '<button type="button" class="ghost-btn" data-proposal-decline="' + esc(u.id) + '">' + esc(tr('adm.pf.declineAll')) + '</button>' +
+        '<button type="button" class="solid-btn" data-proposal-approve="' + esc(u.id) + '">' + esc(tr(allApproved ? 'adm.pf.approve' : 'adm.pf.saveAnswer')) + '</button>' +
       '</div></div>';
   }
+  /* One part into the fields: what they sent, or what is saved. */
+  function setPart(userId, c, sent) {
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    var w = proposalFor(userId), p = profileFor(userId);
+    var u = (state.users || []).filter(function (x) { return x.id === userId; })[0];
+    if (!sect || !w || !u) return;
+    var value = sent ? c.sent : c.was;
+    if (c.lang) {
+      pfStash(sect);
+      var draft = pfDraft(userId);
+      draft[c.lang] = draft[c.lang] || { role_title: '', bio: '' };
+      draft[c.lang][c.field] = value;
+      var box = sect.querySelector('.pf-langs');
+      if (box) box.outerHTML = profileLangsBlock(userId);
+    } else if (c.pic) {
+      var slot = sect.querySelector('[data-slot="' + c.key + '"]');
+      if (!slot) return;
+      slot.outerHTML = photoSlot(u, c.key, value);
+      if (sent) {
+        slot = sect.querySelector('[data-slot="' + c.key + '"]');
+        slot.querySelector('[data-pf-master="' + c.key + '"]').value = w[c.key + '_master'] || '';
+        slot.querySelector('[data-pf-aspect="' + c.key + '"]').value = c.key === 'bio_photo' && w.bio_photo_aspect ? w.bio_photo_aspect : '';
+      }
+    } else {
+      var el = sect.querySelector('.pf-grid [data-pf="' + c.key + '"]');
+      if (el) el.value = value;
+    }
+    markProfileDirty(sect.querySelector('.pf-grid') || sect);
+    refreshPreview(sect);
+  }
+  function redrawProposal(userId) {
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    var box = sect && sect.querySelector('.pf-proposal');
+    if (!box) return;
+    var note = box.querySelector('[data-proposal-note]').value, p = profileFor(userId);
+    box.outerHTML = proposalBlock((state.users || []).filter(function (x) { return x.id === userId; })[0], p, profileText(p));
+    sect.querySelector('[data-proposal-note]').value = note;
+  }
+  /* Answering starts with every part as sent (each row's starting choice),
+     so the fields and the rows agree from the first click. */
+  function startAnswer(userId) {
+    if (ui.pfEditing === userId) return;
+    var p = profileFor(userId);
+    proposalParts(proposalFor(userId), p, profileText(p)).forEach(function (c) { setPart(userId, c, true); });
+    ui.pfEditing = userId;
+  }
+  function chooseChange(userId, key, how) {
+    var p = profileFor(userId);
+    var c = proposalParts(proposalFor(userId), p, profileText(p)).filter(function (x) { return x.key === key; })[0];
+    if (!c) return;
+    startAnswer(userId);
+    ui.pfChoice = ui.pfChoice || {};
+    ui.pfChoice[userId] = ui.pfChoice[userId] || {};
+    ui.pfChoice[userId][key] = how;
+    if (how === 'edit' && c.lang) { ui.profileLangA = c.lang; if (ui.profileLangB === c.lang) ui.profileLangB = null; }
+    setPart(userId, c, how !== 'decline');
+    redrawProposal(userId);
+    if (how !== 'edit') return;
+    var sect = document.querySelector('[data-profile="' + userId + '"]');
+    var field = c.lang ? sect.querySelector('.pf-langs [data-pf="' + c.field + '"]')
+      : c.pic ? sect.querySelector('[data-slot="' + c.key + '"]') : sect.querySelector('.pf-grid [data-pf="' + c.key + '"]');
+    if (field) { field.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (field.focus) field.focus({ preventScroll: true }); }
+  }
   async function approveProposal(userId, btn) {
-    var w = proposalFor(userId), sect = document.querySelector('[data-profile="' + userId + '"]');
-    if (!w || !sect) return;
-    pfStash(sect);
-    var draft = pfDraft(userId);
-    Object.keys(w.text || {}).forEach(function (lang) { draft[lang] = { role_title: w.text[lang].role_title || '', bio: w.text[lang].bio || '' }; });
-    var box = sect.querySelector('.pf-langs');
-    if (box) box.outerHTML = profileLangsBlock(userId);
-    var region = sect.querySelector('.pf-grid [data-pf="region"]');
-    if (region && typeof w.region === 'string') region.value = w.region;
+    /* while answering, the fields ARE the answer; otherwise approve it all */
+    if (!proposalFor(userId)) return;
+    startAnswer(userId);
     ui.pfApprove = userId;
     try { await saveProfile(userId, btn); } finally { ui.pfApprove = null; }
   }
@@ -693,10 +770,12 @@
     var ok = await window.StaffConfirm({ title: tr('adm.pf.declineTitle'), confirm: tr('adm.pf.decline'), cancel: tr('ms.cancel'), danger: true });
     if (!ok) return;
     btn.disabled = true;
+    var note = (document.querySelector('[data-proposal="' + userId + '"] [data-proposal-note]') || {}).value || '';
     try {
       var res = await fetch('/api/admin/profile', { method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'decline-proposal', user_id: userId }) });
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'decline-proposal', user_id: userId, note: note }) });
       if (!res.ok) throw new Error((await res.json().catch(function () { return {}; })).error || tr('err.refused'));
+      if (ui.pfEditing === userId) { ui.pfEditing = null; markProfileClean(userId); }
       await load();
     } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
   }
@@ -1605,8 +1684,12 @@
       photo_master: shotMaster('photo'),
       bio_photo_master: shotMaster('bio_photo'),
       text: text,
-      /* an approved proposal (0058) stops waiting once this is saved */
-      clear_proposal: ui.pfApprove === userId || undefined,
+      /* an answered proposal (0058) stops waiting once this is saved, and
+         the person is told — with the administrator's note, if any. While
+         answering, any Save sends the answer. */
+      clear_proposal: ui.pfApprove === userId || ui.pfEditing === userId || undefined,
+      proposal_note: (ui.pfApprove === userId || ui.pfEditing === userId)
+        ? ((sect.querySelector('[data-proposal-note]') || {}).value || '') : undefined,
       /* as this page loaded it, so a save from another site since is caught */
       updated_at: (profileFor(userId) || {}).updated_at
     };
@@ -1744,6 +1827,8 @@
 
     var appr = e.target.closest('[data-proposal-approve]');
     if (appr) return approveProposal(appr.getAttribute('data-proposal-approve'), appr);
+    var chg = e.target.closest('[data-chg-do]');
+    if (chg) return chooseChange(chg.getAttribute('data-user'), chg.closest('[data-chg]').getAttribute('data-chg'), chg.getAttribute('data-chg-do'));
     var decl = e.target.closest('[data-proposal-decline]');
     if (decl) return declineProposal(decl.getAttribute('data-proposal-decline'), decl);
 

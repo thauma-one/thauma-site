@@ -3475,6 +3475,34 @@ ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = ex
 -- name: profile_proposal_delete
 DELETE FROM staff_profile_proposals WHERE user_id = :user_id;
 
+-- name: notify_person
+-- One person a notice is meant for by name (an answer to their own bio),
+-- with what notify_role_holders gives for a role.
+SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.id = :user_id AND u.status = 'active';
+
+-- name: notice_add
+-- One notice in somebody's bell (0060).
+INSERT INTO notices (id, user_id, kind, vars, link, created_at)
+VALUES (:id, :user_id, :kind, :vars, :link, :now);
+
+-- name: notices_for_user
+-- The bell's list: the newest forty, read or not.
+SELECT id, kind, vars, link, created_at, read_at
+  FROM notices WHERE user_id = :user_id
+ ORDER BY created_at DESC LIMIT 40;
+
+-- name: notices_unread_count
+SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;
+
+-- name: notices_read_all
+UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;
+
+-- name: notices_prune
+-- Read and older than :read_before, or older than :before whatever.
+DELETE FROM notices WHERE (read_at IS NOT NULL AND read_at < :read_before) OR created_at < :before;
+
 -- name: hit_add
 -- One page seen (0059). See the migration for what is kept and why.
 INSERT INTO page_hits (at, day, site, live, path, lang, country, referrer, device, session)

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "5a3b8782c30d4a25";
+export const SOURCE_DIGEST = "4f6caad1f8dcf4b5";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -665,6 +665,17 @@ WHERE milestones.partner_id = :partner_id;`,
 FROM milestones
 WHERE partner_id = :partner_id
 ORDER BY (actual_date IS NULL), actual_date ASC, sort_order ASC;`,
+  notice_add: `INSERT INTO notices (id, user_id, kind, vars, link, created_at)
+VALUES (:id, :user_id, :kind, :vars, :link, :now);`,
+  notices_for_user: `SELECT id, kind, vars, link, created_at, read_at
+  FROM notices WHERE user_id = :user_id
+ ORDER BY created_at DESC LIMIT 40;`,
+  notices_prune: `DELETE FROM notices WHERE (read_at IS NOT NULL AND read_at < :read_before) OR created_at < :before;`,
+  notices_read_all: `UPDATE notices SET read_at = :now WHERE user_id = :user_id AND read_at IS NULL;`,
+  notices_unread_count: `SELECT COUNT(*) AS n FROM notices WHERE user_id = :user_id AND read_at IS NULL;`,
+  notify_person: `SELECT u.id AS user_id, u.name, u.email, u.preferred_lang
+  FROM users u
+ WHERE u.id = :user_id AND u.status = 'active';`,
   notify_pref_set: `INSERT INTO notify_prefs (user_id, kind, is_on, updated_at)
 VALUES (:user_id, :kind, :is_on, :now)
 ON CONFLICT(user_id, kind) DO UPDATE SET is_on = excluded.is_on, updated_at = excluded.updated_at;`,

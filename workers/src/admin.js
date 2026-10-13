@@ -24,6 +24,7 @@
  * audit_log with their name on it. "I can fix anything" stays true; "I have
  * standing access to everyone's supporters" does not.
  */
+import { readProposal, isWaiting } from "./lib/bio.js";
 import { siteRow } from "./staff-site.js";
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
@@ -379,8 +380,7 @@ export default {
       /* A person's own changes to their bio, waiting for approval (0058).
          Tolerant: before the migration there are none. */
       const proposals = (await db.query("profile_proposals_all", {}).catch(() => []))
-        .map((r) => { try { return { user_id: r.user_id, submitted_at: r.submitted_at, ...JSON.parse(r.payload) }; } catch { return null; } })
-        .filter(Boolean);
+        .map(readProposal).filter(isWaiting);
       // Every sender in the system. Org-wide by design, like the partner list
       // itself — maintaining them IS the administrative act.
       const senders = await db.query("admin_sender_addresses", {});

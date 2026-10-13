@@ -106,4 +106,5 @@ update to the app.
    supporter add their first name?
 3. Should a ministry's app be on for every ministry, or switched on per
    ministry like the site itself?
-4. In-app notification bell with step 1: yes or no?
+4. ~~In-app notification bell with step 1: yes or no?~~ Built 2026-10-13
+   (Chase: "Add the in app notifications bell"), migration 0060.

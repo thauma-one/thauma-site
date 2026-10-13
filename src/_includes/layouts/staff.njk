@@ -91,7 +91,8 @@
    Home's "Log a contact" opens it (board "Home"). -#}
 {% if staffPage == "stewardship" or staffPage == "index" %}<script src="/js/staff-stewardship.js?v={{ "/js/staff-stewardship.js" | v }}"></script>{% endif %}
 {% if staffPage == "activity" %}<script src="/js/activity.js?v={{ "/js/activity.js" | v }}"></script>{% endif %}
-{% if staffPage == "settings" %}<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
+{% if staffPage == "settings" %}<script src="/js/photo-crop.js?v={{ "/js/photo-crop.js" | v }}"></script>
+<script src="/js/staff-settings.js?v={{ "/js/staff-settings.js" | v }}"></script>{% endif %}
 {#- The color wheel, shared by Sharing and the Site Creator (color-pair.js). -#}
 {% if staffPage == "sharing" or staffPage == "website" %}<script src="/js/color-pair.js?v={{ "/js/color-pair.js" | v }}"></script>{% endif %}
 {% if staffPage == "sharing" %}<script src="/js/staff-sharing.js?v={{ "/js/staff-sharing.js" | v }}"></script>{% endif %}

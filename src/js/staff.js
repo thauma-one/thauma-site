@@ -1204,6 +1204,114 @@
     }
   })();
 
+  /* =====================================================================
+     THE BELL (0060; Chase 2026-10-13: "Add the in app notifications bell")
+     =====================================================================
+     The notices email also sends — an invitation accepted, a bio waiting, an
+     answer to yours — kept in the console (workers/src/notices.js). The
+     number is asked for on every page and every few minutes while the page
+     is in front; the list only when it is opened. OPENING IT IS READING IT:
+     what was new keeps its mark for as long as the list is open, and the
+     number goes. Each switch is on Settings › Notifications.
+
+     The words come from the server already in your console language; the
+     body is HTML the server built with every value escaped (only <b>). */
+  (function bell() {
+    var box = $('consoleBell'), btn = $('consoleBellBtn'), n = $('consoleBellN'), list = $('consoleBellItems');
+    if (!box || !btn || !n || !list || !window.fetch) return;
+    var API = '/api/notices';
+
+    function show(count) {
+      n.hidden = !count;
+      n.textContent = count > 9 ? '9+' : String(count || '');
+      btn.setAttribute('aria-label', count ? tr('bell.title') + ' · ' + fill('bell.unread', { n: count }) : tr('bell.title'));
+    }
+    function count() {
+      if (document.visibilityState === 'hidden') return;
+      fetch(API + '?count', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (b) { if (b) show(b.unread); })
+        .catch(function () {});
+    }
+    function ago(iso) {
+      var s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (!(s >= 60)) return tr('bell.now');
+      var lang = (window.StaffI18n && window.StaffI18n.lang) || 'en';
+      try {
+        var f = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+        if (s < 3600) return f.format(-Math.round(s / 60), 'minute');
+        if (s < 86400) return f.format(-Math.round(s / 3600), 'hour');
+        if (s < 7 * 86400) return f.format(-Math.round(s / 86400), 'day');
+      } catch (e) {}
+      return new Date(iso).toLocaleDateString(lang);
+    }
+    function render(items) {
+      if (!items.length) { list.innerHTML = '<li class="console-bell-empty">' + esc(tr('bell.empty')) + '</li>'; return; }
+      list.innerHTML = items.map(function (i) {
+        var inner = '<b class="console-bell-h">' + esc(i.heading) + '</b>' +
+          '<span class="console-bell-b">' + i.body + '</span>' +
+          (i.note ? '<q class="console-bell-q">' + esc(i.note) + '</q>' : '') +
+          '<time datetime="' + esc(i.at) + '">' + esc(ago(i.at)) + '</time>';
+        return '<li class="' + (i.read ? '' : 'is-new') + '">' +
+          (i.link ? '<a href="' + esc(i.link) + '">' + inner + '</a>' : '<div>' + inner + '</div>') + '</li>';
+      }).join('');
+    }
+    function setOpen(open) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      box.classList.toggle('bell-open', open);
+      if (!open) return;
+      list.innerHTML = '<li class="console-bell-empty">…</li>';
+      fetch(API, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function (b) {
+          render(b.items || []);
+          if (b.unread) {
+            fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ read: 'all' }) }).then(function () { show(0); }).catch(function () {});
+          }
+        })
+        .catch(function () { render([]); });
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(btn.getAttribute('aria-expanded') !== 'true');
+    });
+    document.addEventListener('click', function (e) {
+      if (box.classList.contains('bell-open') && !e.target.closest('.console-bell')) setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && box.classList.contains('bell-open')) { setOpen(false); btn.focus(); }
+    });
+    document.addEventListener('visibilitychange', count);
+    count();
+    setInterval(count, 3 * 60 * 1000);
+  })();
+
+  /* WORDS THAT STAYED, WENT AND CAME, by the longest run they share: struck
+     through what goes (<del>), marked what comes (<ins>). One copy for both
+     sides of a bio sent for approval — the administrator deciding (admin.js)
+     and the person reading the answer (staff-settings.js). */
+  window.StaffWordDiff = function (a, b) {
+    var A = String(a || '').split(/(\s+)/).filter(Boolean), B = String(b || '').split(/(\s+)/).filter(Boolean);
+    if (A.length * B.length > 600000) return '<del>' + esc(a) + '</del> <ins>' + esc(b) + '</ins>';
+    var n = A.length, m = B.length, L = [];
+    for (var i = 0; i <= n; i++) { L.push(new Array(m + 1).fill(0)); }
+    for (i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    var out = '', del = '', ins = '';
+    var flush = function () { if (del) out += '<del>' + esc(del) + '</del>'; if (ins) out += '<ins>' + esc(ins) + '</ins>'; del = ins = ''; };
+    i = 0; j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) { flush(); out += esc(A[i]); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) del += A[i++];
+      else ins += B[j++];
+    }
+    while (i < n) del += A[i++];
+    while (j < m) ins += B[j++];
+    flush();
+    return out;
+  };
+
   /* Called by any page whose data included an identity block. */
   function rememberIdentity(who, partner) {
     /* Kept for the resource shelf heading, which says whose shelf it is. */

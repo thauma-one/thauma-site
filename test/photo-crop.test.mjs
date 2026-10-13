@@ -208,8 +208,10 @@ check("editing does NOT overwrite the master", () => {
   /* Writing the new crop back over the original would quietly make the NEXT
      edit one-way again — the exact thing the master exists to prevent. */
   const admin = readFileSync("src/js/admin.js", "utf8");
+  /* to the next section: a person's own changes (0058) sit between this
+     and profileSection, and put the master THEY sent in the field, rightly */
   const fn = admin.slice(admin.indexOf("async function editPhoto"),
-                         admin.indexOf("function profileSection"));
+                         admin.indexOf("function proposalFor"));
   assert(fn.length > 200, "editPhoto not found");
   /* The line it must not contain looks like
        slot.querySelector('[data-pf-master="' + kind + '"]').value = body.url;

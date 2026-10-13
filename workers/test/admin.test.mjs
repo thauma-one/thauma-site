@@ -13,7 +13,8 @@ import fs from "node:fs";
 import handler, { STANDARD_SENDERS, orgDomain, senderProblem, syncPartnerRole } from "../src/admin.js";
 import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
-import { notify, noticesFor, noticeEmail } from "../src/lib/notify.js";
+import { notify, notifyPerson, noticesFor, noticeEmail, noticeWords } from "../src/lib/notify.js";
+import { cleanBio as cleanBioLib, outcomes, answerProposal } from "../src/lib/bio.js";
 import { cleanBio } from "../src/staff-settings.js";
 import { hit, isLive, referrerHost } from "../src/analytics.js";
 
@@ -486,8 +487,10 @@ await check("an accepted invitation emails each administrator who has not switch
       if (prefs === null) throw new Error("no such table: notify_prefs");
       return prefs[p.user_id] || [];
     }
+    if (name === "notice_add") { bells.push(p); if (prefs === null) throw new Error("no such table: notices"); return []; }
     throw new Error("unexpected " + name);
   } });
+  const bells = [];
   const sent = [];
   const send = async (env, m) => { sent.push(m); return { ok: true }; };
   const r = await notify({}, db({ u_b: [{ kind: "invite_accepted", is_on: 0 }] }), "invite_accepted",
@@ -496,6 +499,13 @@ await check("an accepted invitation emails each administrator who has not switch
   assert(/pozivnica prihvaćena/.test(sent[0].subject), "not in A's language: " + sent[0].subject);
   assert(sent[0].html.includes("Ana &lt;x&gt;") && !sent[0].html.includes("Ana <x>"), "the name is not escaped");
   assert(sent[0].html.includes("https://dev.thauma.one/admin/users/"), "no link to People");
+  /* the bell (0060): its own switch, starting as the notice does — B's email
+     is off, B's bell is not */
+  eq(bells.map((b) => [b.user_id, b.kind, b.link]), [["u_a", "invite_accepted", "/admin/users/"], ["u_b", "invite_accepted", "/admin/users/"]], "a bell row each");
+  eq(JSON.parse(bells[0].vars), { name: "Ana <x>", email: "ana@x.org" }, "the words' values, kept raw and escaped when shown");
+  bells.length = 0;
+  await notify({}, db({ u_a: [{ kind: "bell:invite_accepted", is_on: 0 }] }), "invite_accepted", { name: "N", email: "e" }, { send });
+  eq(bells.map((b) => b.user_id), ["u_b"], "A switched the bell off");
 
   sent.length = 0;
   await notify({}, db(null), "invite_accepted", { name: "Ana", email: "ana@x.org" }, { send });
@@ -514,8 +524,83 @@ await check("a person's own bio changes: cleaned, only known languages, waiting 
   assert(/profile_proposal_set/.test(set) && !/staff_profile_translation_upsert/.test(set), "Settings writes the live bio, not a proposal");
   assert(/notify\(env, db, "profile_proposed"/.test(set), "administrators are not told");
   const prof = fs.readFileSync(new URL("../src/admin-profile.js", import.meta.url), "utf8");
-  assert(/body\.clear_proposal\) await db\.query\("profile_proposal_delete"/.test(prof), "an approved save does not clear what was waiting");
+  assert(/if \(body\.clear_proposal\) \{[\s\S]{0,700}answerProposal\(env, db, \{ userId,[\s\S]{0,120}was: current \? liveBio\(current\)/.test(prof),
+    "a save does not answer what was waiting against the page as it was before");
+  assert(/decline-proposal[\s\S]{0,600}answerProposal\(env, db, \{ userId,[\s\S]{0,120}was, kept: was/.test(prof), "a decline of everything is not answered");
   assert(/action === "decline-proposal"/.test(prof), "no way to decline");
+});
+
+await check("a whole bio may be sent: email and photos, but only the person's own pictures (0058)", async () => {
+  /* Chase, 2026-10-13: "The partner can edit their whole bio, including the
+     photo and email contact. Since it has to be approved." */
+  const live = { photo: "/img/team/chase.webp", bio_photo: "", photo_master: "", bio_photo_master: "" };
+  const out = cleanBioLib({ public_email: "not an address", photo: "https://evil.example/x.png", bio_photo: "/media/team/me-bio_photo-ab12.webp",
+                            bio_photo_aspect: 9, text: {} }, new Set(["en"]), live);
+  eq([out.public_email, out.photo, out.bio_photo, out.bio_photo_aspect], ["", "/img/team/chase.webp", "/media/team/me-bio_photo-ab12.webp", 2.5],
+     "a bad address dropped, a foreign picture refused (the page's own kept), an upload of theirs kept, the shape clamped");
+  eq(cleanBioLib({ photo: "/img/team/chase.webp" }, new Set(), live).photo, "/img/team/chase.webp", "the photo already there may stay");
+  /* each part's outcome, read from what was sent, what was there, what was saved */
+  const was = { region: "KC", public_email: "a@x.org", photo: "/a", bio_photo: "", text: { en: { role_title: "T", bio: "Five" } } };
+  const sentB = { region: "Zagreb", public_email: "b@x.org", photo: "/b", bio_photo: "", text: { en: { role_title: "T ", bio: "Six" } } };
+  const keptB = { region: "Zagreb, Croatia", public_email: "a@x.org", photo: "/b", bio_photo: "", text: { en: { role_title: "T", bio: "Six" } } };
+  eq(Object.fromEntries(Object.entries(outcomes(sentB, was, keptB)).map(([k, v]) => [k, v.result])),
+     { region: "edited", public_email: "declined", photo: "approved", "text.en.bio": "approved" },
+     "edited, declined and approved told apart; an unchanged part (the title, but for a space) is not a change");
+  eq(Object.keys(outcomes({ region: "X", text: {} }, was, was)), ["region"], "a proposal from before email and photos could be sent has no such parts");
+  const media = fs.readFileSync(new URL("../src/media.js", import.meta.url), "utf8");
+  assert(/owner !== me\.user_id && !roles\.includes\("admin"\)/.test(media), "anybody may upload a team photo for somebody else");
+});
+
+await check("an answer to a bio, part by part, is kept for the person and told to them (0058)", async () => {
+  /* "The admin needs the ability to edit though, then it can be published
+     and notify the changes back to the staff member. Even a notification if
+     it was approved or declined is good." Then: "approve, edit, or decline
+     individual aspects of the staff bio edits, all communicating back to the
+     staff member." */
+  const was = { region: "KC", public_email: "a@x.org", photo: "", bio_photo: "", text: { en: { role_title: "Founder", bio: "Five years." } } };
+  const sent = { region: "Zagreb", public_email: "b@x.org", photo: "", bio_photo: "", text: { en: { role_title: "Founder", bio: "Six years here." } } };
+  const rows = {};
+  const put = () => { rows.u_1 = { user_id: "u_1", payload: JSON.stringify(sent), submitted_at: "2026-10-13T10:00:00Z" }; };
+  const bells = [];
+  const db = { query: async (name, p) => {
+    if (name === "profile_proposal_set") { rows[p.user_id] = { user_id: p.user_id, payload: p.payload, submitted_at: p.now }; return []; }
+    if (name === "notify_prefs_for_user") return [];
+    if (name === "notice_add") { bells.push(p); return []; }
+    throw new Error("unexpected " + name);
+  }, queryOne: async (name, p) => {
+    if (name === "profile_proposal_get") return rows[p.user_id] || null;
+    if (name === "notify_person") return { user_id: p.user_id, email: "ana@x.org", preferred_lang: "en" };
+    throw new Error("unexpected " + name);
+  } };
+  const env = {};   // no mail key: nothing leaves the test
+  const by = "Chase Roush", origin = "https://dev.thauma.one";
+
+  put();
+  const kept = { ...sent, region: "Zagreb, Croatia", public_email: "a@x.org", text: { en: { role_title: "Founder", bio: "Six years here." } } };
+  const r = await answerProposal(env, db, { userId: "u_1", by, note: "Kept your old address", was, kept, origin });
+  eq([r.answered, r.status, r.edited], [true, "partly", true], "some approved, one changed, one not");
+  const d = JSON.parse(rows.u_1.payload).decision;
+  eq(Object.fromEntries(Object.entries(d.parts).map(([k, v]) => [k, v.result])),
+     { region: "edited", public_email: "declined", "text.en.bio": "approved" }, "each part's outcome, kept for them");
+  eq([d.parts.region.kept, d.by, d.note], ["Zagreb, Croatia", by, "Kept your old address"], "what was saved, by whom, the note");
+  eq([bells[0].user_id, bells[0].kind, bells[0].link], ["u_1", "profile_approved", "/staff/settings/#bio"], "told in the bell, linking to Your bio");
+  eq(JSON.parse(bells[0].vars), { by, _v: "partly", note: "Kept your old address" }, "worded as partly answered");
+  eq((await answerProposal(env, db, { userId: "u_1", by, was, kept, origin })).answered, false, "answered twice");
+
+  put(); bells.length = 0;
+  eq((await answerProposal(env, db, { userId: "u_1", by, was, kept: was, origin })).status, "declined", "nothing kept: declined");
+  eq(bells[0].kind, "profile_declined", "told it was declined");
+  put(); bells.length = 0;
+  eq((await answerProposal(env, db, { userId: "u_1", by, was, kept: sent, origin })).status, "approved", "all as sent: approved");
+  eq(JSON.parse(bells[0].vars), { by }, "plain approval, no variant");
+
+  const w = noticeWords("profile_approved", "en", { by: "<Chase>", _v: "edited", note: "Tidied it" });
+  assert(/&lt;Chase&gt;<\/b> approved[\s\S]*changes of their own/.test(w.body) && w.note === "Tidied it", "words: " + JSON.stringify(w));
+  assert(noticeWords("profile_declined", "hr", { by: "C", _v: "nonsense" }).body.startsWith("<b>C</b>: izmjene"), "an unknown wording does not fall back to the plain one");
+  const partly = noticeEmail("profile_approved", { lang: "en", by: "C", _v: "partly", origin, link: "/staff/settings/#bio" });
+  assert(/answered/.test(partly.subject) && /some are approved, some are not/.test(partly.html), "partly is not worded as partly: " + partly.subject);
+  const mail = noticeEmail("profile_declined", { lang: "sr", by: "C", note: "Не сада", origin: "https://thauma.one", link: "/staff/settings/#bio" });
+  assert(/нису одобрене/.test(mail.subject) && /Не сада/.test(mail.html) && /Не сада/.test(mail.text), "the email has no note, or not in Serbian");
 });
 
 await check("a visit is counted without knowing who: thin, real sites told apart, bots and junk ignored (0059)", async () => {
@@ -551,8 +636,9 @@ await check("a visit is counted without knowing who: thin, real sites told apart
 
 await check("Settings offers a notice only to the roles that receive it", async () => {
   const db = { query: async () => [{ kind: "invite_accepted", is_on: 0 }] };
-  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false }, { kind: "profile_proposed", on: true }], "an administrator: one switched off, the other at its start");
+  eq(await noticesFor(db, "u_1", ["admin", "staff"]), [{ kind: "invite_accepted", on: false, bell: true }, { kind: "profile_proposed", on: true, bell: true }], "an administrator: one switched off by email, the bell at its start");
   eq(await noticesFor(db, "u_1", ["staff"]), [], "staff do not get administrators' notices");
+  eq((await noticesFor(db, "u_1", ["staff"], { self: true })).map((n) => n.kind), ["profile_approved", "profile_declined"], "the answers to your own bio, when you have one");
   const words = noticeEmail("invite_accepted", { lang: "sr", name: "N", email: "e" });
   assert(/Позивница/.test(words.html) && !/notify\./.test(words.html + words.subject), "a key showed instead of words");
   const src = fs.readFileSync(new URL("../src/confirm-account.js", import.meta.url), "utf8");

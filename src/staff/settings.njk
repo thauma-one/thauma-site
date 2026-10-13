@@ -72,12 +72,15 @@ staffHeading: Your <b>account</b>
 <!-- ======================================================= NOTIFICATIONS -->
 {#- ITS OWN TAB (2026-10-13, Chase: "I wanted a separate notifications tab,
     not for it to be built into account"). One row per notice this person's
-    roles receive (workers/src/lib/notify.js), under how it arrives — email
-    now; the phone ("the app") will be a second group here. The tab is
-    hidden for anyone who receives none. -#}
+    roles receive (workers/src/lib/notify.js), under how it arrives — the
+    console's bell (0060) and email, each switched on its own; the phone
+    ("the app") will be a third group here. The tab is hidden for anyone
+    who receives none. -#}
 <section class="tab-panel set-you" data-panel="notifications" role="tabpanel" hidden>
+  <h3 class="set-group" data-i18n="set.notify.bell">In the console</h3>
+  <div id="setNotifyBell" data-channel="bell"></div>
   <h3 class="set-group" data-i18n="set.notify.email">By email</h3>
-  <div id="setNotify"></div>
+  <div id="setNotify" data-channel="email"></div>
 </section>
 
 <!-- ============================================================ YOUR BIO -->
@@ -88,6 +91,10 @@ staffHeading: Your <b>account</b>
     who see every change on the People page. Only for somebody who has a
     team page. -#}
 <section class="tab-panel set-bio" data-panel="bio" role="tabpanel" hidden>
+  {#- The last answer to what you sent: approved (and what the administrator
+      changed first, word by word) or not, with their note. Until you send
+      again or put it away. -#}
+  <div class="set-bio-answer" id="setBioAnswer" hidden></div>
   <p class="set-bio-state" id="setBioState"></p>
   <div id="setBioForm"></div>
   <div class="set-bio-actions">

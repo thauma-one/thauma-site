@@ -307,5 +307,47 @@ await check("no style reaches for the role classes on <html>", async () => {
   assert(!hit, `rules named after a role class: ${hit}`);
 });
 
+await check("the bell: a number while something is unread, opening the list reads it (0060)", async () => {
+  /* Chase, 2026-10-13: "Add the in app notifications bell." */
+  const calls = [];
+  const items = [
+    { id: "n_1", kind: "profile_proposed", heading: "A bio is <waiting>", body: "<b>Ana &lt;A&gt;</b> sent changes.", note: "",
+      link: "/admin/users/", at: new Date().toISOString(), read: false },
+    { id: "n_2", kind: "invite_accepted", heading: "An invitation was accepted", body: "<b>Mia</b> confirmed.", note: "",
+      link: null, at: "2026-10-01T10:00:00Z", read: true },
+  ];
+  const dom = new JSDOM(readFileSync(STAFF_PAGE, "utf8"), {
+    runScripts: "dangerously", pretendToBeVisual: true, url: "https://dev.thauma.one/staff/",
+    beforeParse(w) {
+      Object.defineProperty(w, "sessionStorage", { value: { getItem: () => null, setItem: () => {} } });
+      w.fetch = async (u, o) => {
+        calls.push([String(u), (o && o.method) || "GET"]);
+        const body = String(u).startsWith("/api/notices?count") ? { unread: 1 }
+          : String(u) === "/api/notices" && o && o.method === "POST" ? { unread: 0 }
+          : String(u) === "/api/notices" ? { unread: 1, items } : {};
+        return { ok: true, status: 200, json: async () => body };
+      };
+    },
+  });
+  const w = dom.window, d = w.document;
+  w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
+  w.eval(readFileSync("src/js/staff.js", "utf8"));
+  await new Promise((r) => setTimeout(r, 60));
+  const n = d.getElementById("consoleBellN");
+  eq([n.hidden, n.textContent], [false, "1"], "the number");
+  d.getElementById("consoleBellBtn").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  const lis = [...d.querySelectorAll("#consoleBellItems li")];
+  eq(lis.map((li) => li.className), ["is-new", ""], "the unread one is marked while the list is open");
+  eq(lis[0].querySelector(".console-bell-h").textContent, "A bio is <waiting>", "the heading is text, not markup");
+  eq(lis[0].querySelector(".console-bell-b").innerHTML, "<b>Ana &lt;A&gt;</b> sent changes.", "the body as the server built it");
+  eq([lis[0].querySelector("a").getAttribute("href"), !!lis[1].querySelector("a")], ["/admin/users/", false], "a link only where there is one");
+  assert(calls.some(([u, m]) => u === "/api/notices" && m === "POST"), "opening it did not mark it read");
+  assert(n.hidden, "the number stayed after reading");
+  d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  eq(d.getElementById("consoleBellBtn").getAttribute("aria-expanded"), "false", "Escape closes it");
+  w.close();
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

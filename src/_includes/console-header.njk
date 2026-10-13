@@ -23,6 +23,30 @@
        that refused them the moment they clicked their own logo. -#}
     <a class="mark console-mark" id="consoleHome" href="/staff/">THAUMA</a>
 
+    {#- THE BELL (0060; Chase 2026-10-13: "Add the in app notifications
+       bell"). The notices email also sends (workers/src/lib/notify.js), kept
+       here, unread until the list is opened. Outside the folding menu so a
+       phone shows it beside Menu; on a wide screen it sits before the public
+       site and your name (staff.css `order`). Filled by staff.js. -#}
+    <div class="console-bell" id="consoleBell">
+      <button type="button" class="console-bell-btn" id="consoleBellBtn"
+              aria-expanded="false" aria-controls="consoleBellMenu"
+              data-i18n-attr="aria-label:bell.title,title:bell.title" aria-label="Notifications" title="Notifications">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>
+        </svg>
+        <span class="console-bell-n" id="consoleBellN" hidden></span>
+      </button>
+      <div class="console-bell-menu" id="consoleBellMenu">
+        <div class="console-bell-head">
+          <span data-i18n="bell.title">Notifications</span>
+          <a href="/staff/settings/#notifications" data-i18n="bell.settings">Choose what arrives</a>
+        </div>
+        <ol class="console-bell-items" id="consoleBellItems"></ol>
+      </div>
+    </div>
+
     {#- ONE BUTTON ON A PHONE (mockup board 1). Two rows of links do not fit
        390px — five of the eight staff links were off the edge — so on a
        narrow screen the rows and the actions fold behind this, and open as a
