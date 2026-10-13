@@ -575,6 +575,20 @@ main section.cards-open .ccards li{background:none;border:0;border-radius:0;box-
 .reach svg{width:15px;height:15px;fill:currentColor}
 .al-center .reach{width:fit-content;margin-left:auto;margin-right:auto}.al-right .reach{width:fit-content;margin-left:auto}
 .reach + .rule{margin-top:36px}
+/* Tiles: a card each, the symbol above the address. Icons: a row of round
+   symbols only, the address their label. */
+.reach.r-tiles{border:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.reach.r-tiles a{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;height:100%;box-sizing:border-box;transition:border-color .2s,color .2s}
+.reach.r-tiles a:hover{border-color:var(--acc)}
+.reach.r-tiles i{background:var(--bg);color:var(--acc)}
+.reach.r-tiles span{overflow-wrap:anywhere}
+.reach.r-icons{border:0;padding:0;flex-direction:row;flex-wrap:wrap;gap:12px}
+.reach.r-icons i{width:46px;height:46px;transition:border-color .2s,color .2s}
+.reach.r-icons a:hover i{border-color:var(--acc);color:var(--acc)}
+.reach.r-icons svg{width:19px;height:19px}
+.reach.r-icons span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.al-center .reach.r-icons{justify-content:center}.al-right .reach.r-icons{justify-content:flex-end}
+.al-center .reach.r-tiles,.al-right .reach.r-tiles{width:auto}
 /* RESOURCE CARDS (links, Cards; chaseroush.com Resources): Large, Wide, Small. */
 .rcards{list-style:none;margin:0 0 28px;padding:0;display:grid;gap:18px;text-align:left}
 .rcards:last-child{margin-bottom:0}
@@ -603,8 +617,14 @@ main section.cards-open .ccards li{background:none;border:0;border-radius:0;box-
 .rc-small .rc-title{font-size:15px}.rc-small .rc-type{font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
 .rc-small .rc-note{border:0;padding:0;margin-top:2px;font-size:13px}
 .rc-small .rc-go{top:50%;bottom:auto;transform:translateY(-50%)}
+.rc-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rc-tile .rc-pic{height:auto;aspect-ratio:4/3}
+.rc-tile .rc-pic img{padding:0;object-fit:cover}
+.rc-tile .rc-body{padding-bottom:34px}
+.rc-tile .rc-title{font-size:17px}
 main section:is(.raised,.band) .rc a{background:var(--bg)}main section:is(.raised,.band) .rc-pic{background:var(--panel)}
-@media (max-width:820px){.rc-g-big,.rc-g-small{grid-template-columns:1fr}.rc-std .rc-pic{width:84px}}
+@media (max-width:820px){.rc-g-big,.rc-g-small{grid-template-columns:1fr}.rc-std .rc-pic{width:84px}.rc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.rc-tiles{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.rc a{transition:none}.rc a:hover,.rc a:focus-visible{transform:none}}
 .data .lede{margin-bottom:28px}
 .wanted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;
@@ -1085,7 +1105,7 @@ function renderSection(sec, ctx) {
           `<li><a href="${esc(ctx.socialHref(k))}"${k.kind === "email" ? "" : ' target="_blank" rel="noopener"'}><i><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k.kind]}</svg></i><span>${esc(handle(k))}</span></a></li>`) : []),
         ...(sec.reachGive && ctx.giveUrl ? [`<li><a href="${esc(ctx.giveUrl)}"><i><svg viewBox="0 0 24 24" aria-hidden="true">${HEART}</svg></i><span>${esc(word(lang, "supportMission"))}</span></a></li>`] : []),
       ];
-      const reach = reachItems.length ? `<ul class="reach m">${reachItems.join("")}</ul>` : "";
+      const reach = reachItems.length ? `<ul class="reach r-${esc(sec.reachStyle || "line")} m">${reachItems.join("")}</ul>` : "";
       /* "The card is really skinny on a desktop" (Chase, 2026-10-03): Side
          by side gives the form most of the width, as chaseroush.com does;
          Wide widens the card; Open drops the card. Form stays the original. */
@@ -1137,8 +1157,8 @@ function renderSection(sec, ctx) {
       const lw = (it, f) => inline(rich(t(it, f)).replace(/<\/?a\b[^>]*>/g, ""));
       /* Large first, then the section's own style, then Small; each keeps
          the owner's order. Small cards carry no picture. */
-      const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
-        `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>${t(it, "text") ? `<span>${lw(it, "text")}</span>` : ""}</a></li>`;
+      const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${sec.showKind !== false && t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
+        `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>${sec.showDesc !== false && t(it, "text") ? `<span>${lw(it, "text")}</span>` : ""}</a></li>`;
       /* BUTTONS (2026-10-07, Chase: "The list section should also include a
          buttons layout with different coloring options for each individual
          button"): a row of the site's buttons, each its own color — the
@@ -1153,22 +1173,27 @@ function renderSection(sec, ctx) {
          Each: the title, a colored label (what it is · who made it), a few
          words, the owner's own note set apart, and an arrow out. The whole
          card is the link. A card with no picture has no empty frame. */
-      if (sec.variant === "cards") {
+      if (sec.variant === "cards" || sec.variant === "tiles") {
         const OUT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 3H3v10h10V9M9.5 3H13v3.5M13 3 7.5 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         const rc = (it, tier) => {
-          const kind = [t(it, "type"), t(it, "by")].filter(Boolean).map(esc).join(" · ");
+          const kind = sec.showKind === false ? "" : [t(it, "type"), t(it, "by")].filter(Boolean).map(esc).join(" · ");
           return `<li class="rc rc-${tier}"><a href="${esc(it.href)}"${rel(it.href)}>` +
             (it.photo ? `<span class="rc-pic">${img(it.photo)}</span>` : "") +
             `<span class="rc-body"><b class="rc-title">${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>` +
             (kind ? `<span class="rc-type">${kind}</span>` : "") +
-            (tier !== "small" && t(it, "text") ? `<span class="rc-desc">${lw(it, "text")}</span>` : "") +
-            (t(it, "note") ? `<span class="rc-note">${lw(it, "note")}</span>` : "") +
+            (sec.showDesc !== false && tier !== "small" && t(it, "text") ? `<span class="rc-desc">${lw(it, "text")}</span>` : "") +
+            (sec.showNote !== false && t(it, "note") ? `<span class="rc-note">${lw(it, "note")}</span>` : "") +
             `</span><span class="rc-go">${OUT}</span></a></li>`;
         };
         const set = (tier) => {
           const g = items.filter((it) => (it.tier || "std") === tier);
           return g.length ? `<ul class="rcards rc-g-${tier} m">${g.map((it) => rc(it, tier)).join("")}</ul>` : "";
         };
+        /* TILES (2026-10-13): every resource the same size, the picture
+           above, three to a row — a shelf rather than a list. */
+        if (sec.variant === "tiles") {
+          return `<section${cls("links-tiles")}><div class="wrap">${heading(w("heading"))}${sub}<ul class="rcards rc-tiles m">${items.map((it) => rc(it, "tile")).join("")}</ul></div></section>`;
+        }
         return `<section${cls("links-cards")}><div class="wrap">${heading(w("heading"))}${sub}${set("big")}${set("std")}${set("small")}</div></section>`;
       }
       const group = (tier, cls2, pic) => {

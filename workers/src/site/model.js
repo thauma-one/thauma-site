@@ -104,7 +104,7 @@ export const SECTIONS = {
   /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
      line between their numbers, or Detached, side by side. */
   cards:     { variants: ["vertical", "horizontal", "open"], words: ["heading", "text"], items: "cards" },
-  links:     { variants: ["cards", "list", "buttons"], words: ["heading", "text"], items: true, align: true },
+  links:     { variants: ["cards", "tiles", "list", "buttons"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
    section: left, right, center, indent. Buttons must follow their section's
@@ -691,6 +691,18 @@ function cleanSection(raw, langs) {
   if (raw.type === "contact") {
     s.reachLinks = raw.reachLinks === true;
     s.reachGive = raw.reachGive === true;
+    /* how they look (2026-10-13, Chase: "It may be wise to add a couple
+       different styles"): a column on a line, a tile each, or a row of
+       symbols */
+    s.reachStyle = ["tiles", "icons"].includes(raw.reachStyle) ? raw.reachStyle : "line";
+  }
+  /* WHAT A RESOURCE SHOWS (2026-10-13, Chase: "maybe having the ability to
+     toggle on and off the description and personal note options"): each
+     part can be switched off for the whole section; all on to start. */
+  if (raw.type === "links") {
+    s.showKind = raw.showKind !== false;
+    s.showDesc = raw.showDesc !== false;
+    s.showNote = raw.showNote !== false;
   }
   if (spec.items === "cards") {
     /* Written words only. A blank card is kept (it was just added and is

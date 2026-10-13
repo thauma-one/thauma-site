@@ -56,7 +56,7 @@
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
     cards: { variants: ['vertical', 'horizontal', 'open'], words: ['heading', 'text'], items: 'cards' },
-    links: { variants: ['cards', 'list', 'buttons'], words: ['heading', 'text'], items: true, align: true },
+    links: { variants: ['cards', 'tiles', 'list', 'buttons'], words: ['heading', 'text'], items: true, align: true },
   };
   /* On a section of the ministry's data, "text" is the line under the heading;
      on a header it is the small print below the title. */
@@ -1389,6 +1389,13 @@
       /* beside a contact form, the ways to reach you (chaseroush.com Contact) */
       if (s.type === 'contact') {
         lay += lrow(tr('ws.reach'), flag('reachLinks', !!s.reachLinks, tr('ws.reachLinks')) + flag('reachGive', !!s.reachGive, tr('ws.reachGive')));
+        if (s.reachLinks || s.reachGive) lay += lrow(tr('ws.reachStyle'), choice('reachstyle:' + i, ['line', 'tiles', 'icons'], s.reachStyle || 'line', function (v) { return tr('ws.reachStyle.' + v); }));
+      }
+      /* what each resource shows, for the whole section (2026-10-13) */
+      if (s.type === 'links' && s.variant !== 'buttons') {
+        lay += lrow(tr('ws.shows'), flag('showKind', s.showKind !== false, tr('ws.shows.kind')) +
+          flag('showDesc', s.showDesc !== false, tr('ws.shows.desc')) +
+          (s.variant === 'list' ? '' : flag('showNote', s.showNote !== false, tr('ws.shows.note'))));
       }
       html += grp(tr('ws.layout'), lay);
 
@@ -2365,7 +2372,7 @@
       if (fa[1] === 'indent') { if (fsec.align === 'indent') fsec.align = 'left'; fsec.indent = fon; }
       else if (fa[1] === 'bars') fsec.titleBars = fon;
       else if (fa[1] === 'tline') fsec.titleLine = fon;
-      else if (fa[1] === 'numbers' || fa[1] === 'divider' || fa[1] === 'topline' || fa[1] === 'join' || fa[1] === 'reachLinks' || fa[1] === 'reachGive') fsec[fa[1]] = fon;
+      else if (fa[1] === 'numbers' || fa[1] === 'divider' || fa[1] === 'topline' || fa[1] === 'join' || fa[1] === 'reachLinks' || fa[1] === 'reachGive' || fa[1] === 'showKind' || fa[1] === 'showDesc' || fa[1] === 'showNote') fsec[fa[1]] = fon;
       drawSections(); return changed();
     }
     if (d.pageOn) { var pg = state.doc.pages[+d.pageOn]; pg.on = !pg.on; drawPages(); return changed(); }
@@ -2482,6 +2489,7 @@
     else if (name.indexOf('lcolor:') === 0) { var lk = name.slice(7).split(':'); p.sections[+lk[0]].items[+lk[1]].color = val; drawSections(); }
     else if (name.indexOf('tier:') === 0) { var tk = name.slice(5).split(':'); p.sections[+tk[0]].items[+tk[1]].tier = val; drawSections(); }
     else if (name.indexOf('verse:') === 0) { p.sections[+name.slice(6)].verseStyle = val; drawSections(); }
+    else if (name.indexOf('reachstyle:') === 0) { p.sections[+name.slice(11)].reachStyle = val; drawSections(); }
     else if (name.indexOf('align:') === 0) { var as = p.sections[+name.slice(6)]; if (as.align === 'indent') as.indent = true; as.align = val; drawSections(); }
     else if (name.indexOf('linkkind:') === 0) {
       var key = name.slice(9);

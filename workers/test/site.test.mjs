@@ -874,10 +874,33 @@ check("contact: the site's email and social links beside the form, each with its
   assert(!/class="reach/.test(page(d)), "links shown without being chosen");
   Object.assign(sec, { reachLinks: true, reachGive: true });
   const html = page(d, "home", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: "https://give.example/x" } });
-  const list = (html.match(/<ul class="reach m">[^]*?<\/ul>/) || [""])[0];
+  const list = (html.match(/<ul class="reach r-line m">[^]*?<\/ul>/) || [""])[0];
   assert(/href="mailto:contact@chaseroush\.com"><i><svg[^]*?<span>contact@chaseroush\.com<\/span>/.test(list), "the email, with its symbol");
   assert(/<span>@ChaseRoushMissions<\/span>/.test(list), "the channel by its handle");
   assert(/<span>Support this mission<\/span>/.test(list), "a way to give");
+});
+
+check("contact links: a line, a tile each, or a row of symbols; resources: tiles, and what each shows switched per section", () => {
+  /* Chase, 2026-10-13: "add a couple different styles. Like in Resources…
+     the ability to toggle on and off the description and personal note". */
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.links = [{ kind: "email", url: "contact@chaseroush.com" }];
+  const sec = { id: "c1", type: "contact", variant: "form", reachLinks: true, reachStyle: "icons", words: { en: { heading: "Hi" } } };
+  d.pages[0].sections = [sec];
+  assert(/<ul class="reach r-icons m">/.test(page(d)), "icons");
+  sec.reachStyle = "nonsense";
+  assert(/<ul class="reach r-line m">/.test(page(d)), "an unknown style is the line");
+  const it = { url: "https://x.org/a", photo: "https://thauma.one/media/p.jpg", words: { en: { title: "A", type: "Book", by: "H", text: "About", note: "Mine" } } };
+  const links = { id: "l1", type: "links", variant: "tiles", words: { en: {} }, items: [it] };
+  d.pages[0].sections = [links];
+  let html = page(d);
+  assert(/<ul class="rcards rc-tiles m"><li class="rc rc-tile">/.test(html) && /rc-desc/.test(html) && /rc-note/.test(html), "tiles, everything shown");
+  Object.assign(links, { showKind: false, showDesc: false, showNote: false });
+  html = page(d);
+  const card = html.match(/<li class="rc[^]*?<\/li>/)[0];
+  assert(!/rc-type|rc-desc|rc-note/.test(card) && /<b class="rc-title">A<\/b>/.test(card), "only the title: " + card);
+  links.variant = "list";
+  assert(!/class="ltype"|<span>About/.test(page(d)), "the list follows the switches too");
 });
 
 check("Indented: a section at its default alignment is indented too, and a merged section takes the indent of the one it is merged with", () => {
