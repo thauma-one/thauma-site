@@ -87,7 +87,7 @@ export const SECTIONS = {
   timeline:  { variants: ["condensed", "full"], words: ["heading", "text"], align: true },
   goals:     { variants: ["cards"], words: ["heading", "text"], align: true },
   prayer:    { variants: ["list"], words: ["heading", "text"], align: true },
-  videos:    { variants: ["stage"], words: ["heading", "text"], align: true },
+  videos:    { variants: ["stage"], words: ["heading", "text"], align: true , items: true },
   /* latest: the newest one, and a small way to the rest (Chase, 2026-09-29). */
   newsletters: { variants: ["latest", "list", "combined"], words: ["heading", "text"], align: true },
   /* THE FORM AND GIVE STYLES (BACKLOG §3, 2026-10-04): Floating (a card of

@@ -50,7 +50,7 @@
     timeline: { variants: ['condensed', 'full'], words: ['heading', 'text'], data: 'updates/#milestones', align: true },
     goals: { variants: ['cards'], words: ['heading', 'text'], data: 'updates/#goals', align: true },
     prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
-    videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true },
+    videos: { variants: ['stage'], words: ['heading', 'text'], data: 'updates/#videos', align: true , items: true },
     newsletters: { variants: ['latest', 'list', 'combined'], words: ['heading', 'text'], data: 'mail/', align: true },
     signup: { variants: ['band', 'card', 'split', 'open'], words: ['heading', 'text'], data: 'sharing/#signup' },
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
@@ -1213,7 +1213,9 @@
     var w = (s.words || {})[state.langA] || {};
     var src = function (f) { var o = {}; Object.keys(s.words || {}).forEach(function (l) { o[l] = (s.words[l] || {})[f]; }); return o; };
     var html = '<div class="ws-sectabs" role="tablist">' + tabs.map(function (t) {
-        return '<button type="button" role="tab" data-sectab="' + t + '" aria-selected="' + (t === state.sectab) + '">' + esc(tr('ws.tabw.' + t)) + '</button>';
+        /* a Videos section's items are its buttons (2026-10-12) */
+        var tw = s.type === 'videos' && t === 'links' ? 'buttons' : t;
+        return '<button type="button" role="tab" data-sectab="' + t + '" aria-selected="' + (t === state.sectab) + '">' + esc(tr('ws.tabw.' + tw)) + '</button>';
       }).join('') + '</div><div class="ws-panelbody">';
 
     if (state.sectab === 'words') {
@@ -1284,6 +1286,11 @@
     }
 
     if (state.sectab === 'links') {
+      /* A Videos section's items are buttons of its own (2026-10-12): edited
+         like the Links section's Buttons, drawn by the site like every other
+         button, in place of the ones set on Updates › Videos. */
+      var asButtons = s.variant === 'buttons' || s.type === 'videos';
+      if (s.type === 'videos') html += '<p class="ws-note">' + esc(tr('ws.videoButtons')) + '</p>';
       html += '<div class="ws-linkrows ws-sec-items">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
         var jump = it.url && it.url.indexOf('section:') === 0 &&
@@ -1301,14 +1308,14 @@
           /* As a resource card (chaseroush.com Resources, 2026-10-12): what it
              is and who made it on one line, its words, and the owner's own
              note set apart. A button has only its title. */
-          (s.variant === 'buttons' ? '' :
+          (asButtons ? '' :
             '<div class="ws-fields">' +
               '<label class="fld"><span>' + esc(tr('ws.itemType')) + '</span><input type="text" maxlength="40" data-item="' + k + ':type" value="' + esc(t.type || '') + '" lang="' + esc(state.langA) + '"></label>' +
               (s.variant === 'cards' ? '<label class="fld"><span>' + esc(tr('ws.itemBy')) + '</span><input type="text" maxlength="80" data-item="' + k + ':by" value="' + esc(t.by || '') + '" lang="' + esc(state.langA) + '"></label>' : '') +
             '</div>' +
             itemRich(k, 'text', t.text, tr('ws.itemText'), ph('item', 'text'), false) +
             (s.variant === 'cards' ? itemRich(k, 'note', t.note, tr('ws.itemNote'), tr('ws.itemNotePh'), false) : '')) +
-          (s.variant === 'buttons'
+          (asButtons
             /* each button its own color (2026-10-07) */
             ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.lcolor')) + '</span>' +
               chips('lcolor:' + k, ['accent', 'accent2', 'outline'], /^#/.test(it.color || '') ? '' : it.color || 'accent', function (v) { return tr('ws.lcolor.' + v); }) +
@@ -1316,11 +1323,12 @@
             : '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
               choice('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>') +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
-          '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
+          /* a button carries no picture */
+          (asButtons ? '' : '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
             (it.photo ? '<button type="button" class="link-btn" data-item-unphoto="' + k + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
-            '<span class="hint"></span></div></div></div>';
-      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addLink')) + '</button>';
+            '<span class="hint"></span></div>') + '</div></div>';
+      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr(s.type === 'videos' ? 'ws.addButton' : 'ws.addLink')) + '</button>';
     }
 
     if (state.sectab === 'look') {
@@ -1519,7 +1527,8 @@
       return w;
     };
     if (spec.items === 'cards') s.items = [0, 1, 2].map(function () { return { words: itemWords() }; });
-    else if (spec.items) s.items = ['page:about', 'page:mission'].map(function (u) { return { url: u, photo: null, words: itemWords() }; });
+    /* a Videos section starts with no buttons of its own: Updates' show */
+    else if (spec.items && s.type !== 'videos') s.items = ['page:about', 'page:mission'].map(function (u) { return { url: u, photo: null, words: itemWords() }; });
     if (spec.items === 'cards') s.numbers = true;
     if (s.type === 'contact') { s.reachLinks = true; s.reachGive = true; }
     /* Where it was asked for, and straight into it: a new section is one
@@ -1530,7 +1539,7 @@
     var rp = realPage(), ta = activeTab(rp) ? -1 : tabsAt(rp);
     if (ta >= 0) rp.tabs.at = at < ta || (at === ta && !state.insertAfterTabs) ? ta + 1 : ta;
     currentPage().sections.splice(at, 0, s);
-    state.edit = at; state.animate = at; state.sectab = spec.items ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
+    state.edit = at; state.animate = at; state.sectab = spec.items && s.type !== 'videos' ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
     closeAdd(); drawPages(); changed(); refreshFrame();
     var row = $('wsPages').querySelector('.ws-acc[data-si="' + at + '"]');
     if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });

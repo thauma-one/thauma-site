@@ -909,6 +909,17 @@ check("clean links on the page: the Give button, socials and own links are writt
     [doc.give, "https://cal.example/x"], "the short addresses lead where the links went");
 });
 
+check("videos: buttons of the section's own, each its color, in place of the rail from Updates", () => {
+  /* Chase, 2026-10-12: "how can we make formatting the buttons and appearance
+     easier? It's also the only section … that can't be edited directly". */
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections = [{ id: "v1", type: "videos", variant: "stage", align: "center", words: { en: { heading: "Watch" } },
+    items: [{ url: "https://youtube.com/@c", color: "accent2", words: { en: { title: "Subscribe" } } }, { url: "page:give", color: "outline", words: { en: { title: "Support" } } }] }];
+  const html = page(d, "home", "en", { payload: { ...payload, videos: [{ id: "x", title: "V" }] } });
+  assert(/data-widget="videos"[^>]*data-links="none"/.test(html), "the rail from Updates is still drawn");
+  assert(/<div class="btns linkbtns vbtns m"><a class="btn solid lb-accent2" href="[^"]+"[^>]*>Subscribe<\/a><a class="btn lb-outline" href="\/site\/chaseroush\/en\/give\/">Support<\/a><\/div>/.test(html), "its own buttons, each its color");
+});
+
 check("videos: the buttons' style and alignment reach the widget; the newest video may head the section", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
   d.pages[0].sections = [{ id: "v1", type: "videos", variant: "stage", align: "center", linkStyle: "subtle", titleFrom: "latest", words: { en: { heading: "Watch" } } }];

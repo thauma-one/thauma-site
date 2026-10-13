@@ -566,6 +566,7 @@ main section.cards-open .ccards li{background:none;border:0;border-radius:0;box-
 .lt-big a{padding:24px 26px}.lt-big .lpic{height:160px;margin:-24px -26px 20px}.lt-big b{font-size:20px}
 .linklist.lt-small{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:20px}
 .lt-small a{padding:14px 16px}.lt-small b{font-size:15px}.lt-small span{font-size:13px}
+.vbtns{margin-top:24px}.al-center .vbtns{justify-content:center}.al-right .vbtns{justify-content:flex-end}
 /* The ways to reach you, beside a contact form (chaseroush.com Contact). */
 .reach{list-style:none;margin:28px 0 0;padding:4px 0 4px 18px;border-left:2px solid var(--acc);display:flex;flex-direction:column;gap:12px;text-align:left}
 .reach a{display:inline-flex;align-items:center;gap:14px;color:var(--dim);text-decoration:none;font-size:15px;transition:color .2s}
@@ -894,6 +895,13 @@ function renderSection(sec, ctx) {
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
     `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!(sec.raised || sec.tint))}${extra}></div>`;
 
+  /* A button of the owner's own, each its own color — the Links section's
+     Buttons and a Videos section's (2026-10-07, 2026-10-12). */
+  const ownButton = (it, title) => {
+    const c = it.color || "accent", own = /^#[0-9a-f]{6}$/i.test(c);
+    const style = own ? ` style="background:${c};border-color:${c};color:${onColor(c)}"` : "";
+    return `<a class="btn${c === "outline" ? "" : " solid"} lb-${own ? "own" : c}" href="${esc(it.href)}"${rel(it.href)}${style}>${title}</a>`;
+  };
   switch (sec.type) {
     case "hero": {
       const builtIn = (sec.buttons || []).map((b, i) => {
@@ -1009,7 +1017,15 @@ function renderSection(sec, ctx) {
            in UTC here, then re-read in the browser's time zone. */
         head = `${when ? `<p class="kicker m"><time datetime="${esc(v.published_at)}" data-local>${esc(when)}</time></p>` : ""}<h2 class="h m">${esc(v.title)}</h2>`;
       }
-      return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", extra)}</div></section>`;
+      /* ITS OWN BUTTONS (2026-10-12, Chase: "how can we make formatting the
+         buttons and appearance easier?"): set in the Site Creator, in every
+         language, each its own color, drawn by the site like every other
+         button — in place of the rail set on Updates › Videos, which shows
+         only when the section has none. */
+      const vt = (it) => (it.words[lang] && it.words[lang].title) || (it.words[fallback] && it.words[fallback].title) || "";
+      const own = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href && vt(it));
+      const ownRow = own.length ? `<div class="btns linkbtns vbtns m">${own.map((it) => ownButton(it, inline(rich(vt(it)).replace(/<\/?a\b[^>]*>/g, "")))).join("")}</div>` : "";
+      return `<section${cls("data")}><div class="wrap">${head}${sub}${widget("videos", own.length ? ' data-links="none"' : extra)}${ownRow}</div></section>`;
     }
     case "newsletters": {
       const count = sec.count >= 3 && sec.count <= 12 ? sec.count : 5;
@@ -1128,11 +1144,7 @@ function renderSection(sec, ctx) {
          button"): a row of the site's buttons, each its own color — the
          accent, the second color, an outline, or any color picked. */
       if (sec.variant === "buttons") {
-        const b = (it) => {
-          const c = it.color || "accent", own = /^#[0-9a-f]{6}$/i.test(c);
-          const style = own ? ` style="background:${c};border-color:${c};color:${onColor(c)}"` : "";
-          return `<a class="btn${c === "outline" ? "" : " solid"} lb-${own ? "own" : c}" href="${esc(it.href)}"${rel(it.href)}${style}>${t(it, "title") ? lw(it, "title") : esc(it.href)}</a>`;
-        };
+        const b = (it) => ownButton(it, t(it, "title") ? lw(it, "title") : esc(it.href));
         return `<section${cls("links-buttons")}><div class="wrap">${heading(w("heading"))}${sub}<div class="btns linkbtns m">${items.map(b).join("")}</div></div></section>`;
       }
       /* RESOURCE CARDS (2026-10-12, Chase: "work like CR site's Resources

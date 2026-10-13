@@ -1522,7 +1522,9 @@ ${COLOUR_JS}
     } else if (kind === 'videos') {
       body = videoCards(data.videos || [], lang);
       var rs = node.getAttribute('data-links'), ra = node.getAttribute('data-links-align');
-      var rail = linkRail(data.video_links, rs === 'outline' || rs === 'subtle' ? rs : '',
+      /* "none": the page draws buttons of its own (a Site Creator Videos
+         section's, 2026-10-12) */
+      var rail = rs === 'none' ? null : linkRail(data.video_links, rs === 'outline' || rs === 'subtle' ? rs : '',
                           ra === 'center' || ra === 'right' ? ra : '');
       /* The rail shows even with no videos: a channel that has not posted yet
          is exactly when "subscribe" is worth offering. */
