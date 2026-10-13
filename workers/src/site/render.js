@@ -1543,7 +1543,7 @@ ${foot}`}
 ${widgets ? `<script>window.__thaumaPreview=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script><script src="${esc(origin)}/embed/v1/widget.js" async></script>` : ""}
 ${ctx.needs.signup ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/form.js" defer></script>` : ""}
 ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/contact.js" defer></script>` : ""}
-<script>${MOTION_JS}</script>
+<script>${MOTION_JS}</script>${draft || !site.subdomain ? "" : `<script>(${HIT_JS})(${JSON.stringify(String(site.subdomain))})</script>`}
 </body>
 </html>`;
   return newTabs(out, outgoing);
@@ -1603,6 +1603,12 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
 
 /* The motion script: menu, entrances, headings, drift, progress. Small, no
    dependencies, and it does nothing at all for reduced motion. */
+/* A VISIT, COUNTED WITHOUT KNOWING WHO (0059, analytics.js): the page
+   says it was seen, once it has loaded, unless the browser asked not to be
+   tracked. A random id per tab, forgotten when the tab closes; no cookie.
+   Never in the Site Creator's preview. */
+const HIT_JS = `function(x){try{var n=navigator;if(n.doNotTrack==="1"||window.doNotTrack==="1"||n.globalPrivacyControl||n.webdriver)return;var s;try{s=sessionStorage.getItem("th-v")}catch(e){}if(!s){s=Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(12)),function(b){return("0"+b.toString(16)).slice(-2)}).join("");try{sessionStorage.setItem("th-v",s)}catch(e){}}var go=function(){var b=JSON.stringify({p:location.pathname,r:document.referrer,l:(document.documentElement.lang||"").slice(0,2),s:s,w:window.innerWidth,x:x});if(n.sendBeacon)n.sendBeacon("/api/hit",b);else fetch("/api/hit",{method:"POST",body:b,keepalive:true})};if(document.readyState==="complete")setTimeout(go,0);else addEventListener("load",function(){setTimeout(go,0)})}catch(e){}}`;
+
 const MOTION_JS = `(function(){
 var d=document.documentElement,b=document.querySelector('.menubtn');
 [].forEach.call(document.querySelectorAll('time[data-local]'),function(t){try{var x=new Date(t.dateTime);if(!isNaN(x))t.textContent=x.toLocaleDateString(d.lang,{day:'numeric',month:'long',year:'numeric'})}catch(e){}});

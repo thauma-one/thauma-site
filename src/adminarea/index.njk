@@ -4,7 +4,43 @@ adminPage: index
 adminTitle: Overview
 adminHeading: The <b>organization</b>
 permalink: /admin/index.html
+adminScript: /js/admin-analytics.js
 ---
 {#- One row, every tile a way in. There used to be a second row of links that
    repeated People and Partners with the same numbers. -#}
 <div class="tiles" id="admTiles"></div>
+
+{#- VISITS (2026-10-13, Chase: "an analytics section for the site as well?
+    Complete with visit numbers graph and a map that shows where they visited
+    from. … And maybe a few basic filters."). Counted without knowing who —
+    see workers/src/analytics.js. Drawn by admin-analytics.js. -#}
+<section class="an" id="an" aria-labelledby="anTitle">
+  <div class="an-head">
+    <h2 class="an-title" id="anTitle" data-i18n-html="an.title">How the <b>sites</b> are visited</h2>
+    <div class="an-filters">
+      <div class="an-chips" role="group" data-i18n-attr="aria-label:an.period" aria-label="Period">
+        <button type="button" data-an-days="7" data-i18n="an.d7">7 days</button>
+        <button type="button" data-an-days="30" data-i18n="an.d30">30 days</button>
+        <button type="button" data-an-days="90" data-i18n="an.d90">90 days</button>
+        <button type="button" data-an-days="365" data-i18n="an.d365">12 months</button>
+      </div>
+      <select id="anSite" class="lang-pick" data-i18n-attr="aria-label:an.site" aria-label="Site"></select>
+      <label class="an-test"><input type="checkbox" id="anTest"> <span data-i18n="an.test">Include dev and previews</span></label>
+    </div>
+  </div>
+  <p class="an-note" id="anNote" hidden></p>
+  <div class="an-body" id="anBody">
+    <div class="an-nums" id="anNums"></div>
+    <div class="an-chart" id="anChart"></div>
+    <div class="an-geo">
+      <div class="an-map" id="anMap"></div>
+      <div class="an-list" id="anCountries"></div>
+    </div>
+    <div class="an-lists">
+      <div class="an-list" id="anPages"></div>
+      <div class="an-list" id="anRefs"></div>
+      <div class="an-list" id="anDevices"></div>
+      <div class="an-list" id="anLangs"></div>
+    </div>
+  </div>
+</section>

@@ -15,6 +15,7 @@ import { readFileSync } from "node:fs";
 import { QUERIES } from "../src/lib/db.js";
 import { notify, noticesFor, noticeEmail } from "../src/lib/notify.js";
 import { cleanBio } from "../src/staff-settings.js";
+import { hit, isLive, referrerHost } from "../src/analytics.js";
 
 let pass = 0, fail = 0;
 async function check(name, fn) {
@@ -515,6 +516,37 @@ await check("a person's own bio changes: cleaned, only known languages, waiting 
   const prof = fs.readFileSync(new URL("../src/admin-profile.js", import.meta.url), "utf8");
   assert(/body\.clear_proposal\) await db\.query\("profile_proposal_delete"/.test(prof), "an approved save does not clear what was waiting");
   assert(/action === "decline-proposal"/.test(prof), "no way to decline");
+});
+
+await check("a visit is counted without knowing who: thin, real sites told apart, bots and junk ignored (0059)", async () => {
+  const env = { SITE_DOMAIN: "thauma.one" };
+  eq([isLive("thauma.one", env), isLive("www.thauma.one", env), isLive("chaseroush.thauma.one", env),
+      isLive("dev.thauma.one", env), isLive("next.thauma.one", env), isLive("127.0.0.1", env)],
+     [true, true, true, false, false, false], "live or not");
+  eq([referrerHost("https://www.google.com/search?q=x", "thauma.one"), referrerHost("https://thauma.one/en/", "thauma.one"), referrerHost("", "thauma.one")],
+     ["google.com", null, null], "a referrer is a host, never our own, never the full address");
+  const rows = [];
+  const DB = { prepare: (sql) => ({ bind: (...a) => ({ run: async () => { rows.push({ sql, a }); return {}; },
+    all: async () => { rows.push({ sql, a }); return { results: /partner_sites/.test(sql) ? [{ partner_id: "p_1" }] : [] }; } }) }) };
+  const post = (body, ua = "Mozilla/5.0 Safari", host = "thauma.one") => {
+    const r = new Request("https://" + host + "/api/hit", { method: "POST", headers: { "User-Agent": ua }, body: JSON.stringify(body) });
+    Object.defineProperty(r, "cf", { value: { country: "HR" } });
+    return hit.fetch(r, { DB, SITE_DOMAIN: "thauma.one" });
+  };
+  eq((await post({ p: "/en/?q=secret", s: "abcdef0123456789", r: "https://x.org/a?b", l: "en", w: 390 })).status, 204, "answered with nothing");
+  const ins = rows.find((r) => /INSERT INTO page_hits/.test(r.sql));
+  assert(ins && ins.a.includes("thauma") && ins.a.includes("/en/") && ins.a.includes("HR") && ins.a.includes("x.org") && ins.a.includes("phone"),
+    "what was kept: " + JSON.stringify(ins && ins.a));
+  assert(!ins.a.some((v) => /secret|\?b/.test(String(v))), "a query string was kept");
+  rows.length = 0;
+  await post({ p: "/", s: "abcdef0123456789" }, "Googlebot/2.1");
+  await post({ p: "/", s: "short" });
+  await post({ p: "nope", s: "abcdef0123456789" });
+  assert(!rows.some((r) => /INSERT/.test(r.sql)), "a bot, a bad id or a bad path was counted");
+  await post({ p: "/en/", s: "abcdef0123456789", x: "chaseroush" }, undefined, "chaseroush.thauma.one");
+  assert(rows.find((r) => /INSERT/.test(r.sql)).a.includes("p_1"), "a partner site's visit is its own");
+  const page = fs.readFileSync(new URL("../../src/js/main.js", import.meta.url), "utf8");
+  assert(/doNotTrack[\s\S]{0,120}globalPrivacyControl/.test(page) && /sendBeacon\('\/api\/hit'/.test(page), "thauma.one does not count, or does not respect Do Not Track");
 });
 
 await check("Settings offers a notice only to the roles that receive it", async () => {

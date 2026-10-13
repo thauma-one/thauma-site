@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "059b97a57ae1db43";
+export const SOURCE_DIGEST = "5a3b8782c30d4a25";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -350,6 +350,19 @@ WHERE goals.partner_id = :partner_id;`,
 FROM goal_progress
 WHERE partner_id = :partner_id
 ORDER BY kind, label;`,
+  hit_add: `INSERT INTO page_hits (at, day, site, live, path, lang, country, referrer, device, session)
+VALUES (:now, :day, :site, :live, :path, :lang, :country, :referrer, :device, :session);`,
+  hits_breakdown: `SELECT CASE :dim WHEN 'country' THEN country WHEN 'path' THEN path WHEN 'referrer' THEN referrer
+                 WHEN 'device' THEN device WHEN 'lang' THEN lang WHEN 'site' THEN site END AS k,
+       COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY k ORDER BY visits DESC, views DESC LIMIT :limit;`,
+  hits_by_day: `SELECT day, COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY day ORDER BY day;`,
+  hits_prune: `DELETE FROM page_hits WHERE day < :before;`,
   interaction_add: `INSERT INTO interactions (
   id, contact_id, partner_id, type, is_personal, channel,
   occurred_on, note, logged_by, source, created_at

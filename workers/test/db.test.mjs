@@ -328,6 +328,8 @@ await check("every real query converts with its documented params", async () => 
     owner: "p_chase", html: "<strong>x</strong>", // a mail signature (0055)
     is_on: 1, // a notice switch (0056)
     payload: "{}", // a bio proposal (0058)
+    site: "thauma", live: 1, path: "/", referrer: null, device: "phone", session: "abcdef0123456789", // a visit (0059)
+    dim: "country", since: "2026-01-01",
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
     // resources: ownership and sharing
     resource_id: "rs_1", shared_by: "u_1", owner_user_id: null, is_admin: 0,

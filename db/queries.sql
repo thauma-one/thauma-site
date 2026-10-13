@@ -3474,3 +3474,29 @@ ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, submitted_at = ex
 
 -- name: profile_proposal_delete
 DELETE FROM staff_profile_proposals WHERE user_id = :user_id;
+
+-- name: hit_add
+-- One page seen (0059). See the migration for what is kept and why.
+INSERT INTO page_hits (at, day, site, live, path, lang, country, referrer, device, session)
+VALUES (:now, :day, :site, :live, :path, :lang, :country, :referrer, :device, :session);
+
+-- name: hits_prune
+DELETE FROM page_hits WHERE day < :before;
+
+-- name: hits_by_day
+-- The Overview's graph: per day, visits (tabs) and pages seen. :site '' is
+-- every site; :live 1 is the real sites only.
+SELECT day, COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY day ORDER BY day;
+
+-- name: hits_breakdown
+-- The Overview's lists: visits by one dimension (:dim is checked by the
+-- caller against a fixed list, and chooses the column here, never text).
+SELECT CASE :dim WHEN 'country' THEN country WHEN 'path' THEN path WHEN 'referrer' THEN referrer
+                 WHEN 'device' THEN device WHEN 'lang' THEN lang WHEN 'site' THEN site END AS k,
+       COUNT(DISTINCT session) AS visits, COUNT(*) AS views
+  FROM page_hits
+ WHERE day >= :since AND (:site = '' OR site = :site) AND live >= :live
+ GROUP BY k ORDER BY visits DESC, views DESC LIMIT :limit;

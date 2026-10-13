@@ -941,3 +941,32 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
   });
 })();
 
+
+/* A VISIT, COUNTED WITHOUT KNOWING WHO (2026-10-13, for the admin Overview;
+   workers/src/analytics.js, migration 0059). Once the page has loaded it says
+   it was seen — its address, the site it came from, its language, the
+   window's width — with a random id this tab makes and forgets when it
+   closes. No cookie, no address, nothing that follows anyone. A browser that
+   asks not to be tracked (Do Not Track, Global Privacy Control) sends
+   nothing. */
+(function () {
+  try {
+    var n = navigator;
+    if (n.doNotTrack === '1' || window.doNotTrack === '1' || n.globalPrivacyControl || n.webdriver) return;
+    var s;
+    try { s = sessionStorage.getItem('th-v'); } catch (e) {}
+    if (!s) {
+      s = Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(12)), function (b) {
+        return ('0' + b.toString(16)).slice(-2); }).join('');
+      try { sessionStorage.setItem('th-v', s); } catch (e) {}
+    }
+    var go = function () {
+      var b = JSON.stringify({ p: location.pathname, r: document.referrer,
+        l: (document.documentElement.lang || '').slice(0, 2), s: s, w: window.innerWidth });
+      if (n.sendBeacon) n.sendBeacon('/api/hit', b);
+      else fetch('/api/hit', { method: 'POST', body: b, keepalive: true });
+    };
+    if (document.readyState === 'complete') setTimeout(go, 0);
+    else window.addEventListener('load', function () { setTimeout(go, 0); });
+  } catch (e) { /* counting never costs a visitor anything */ }
+})();
