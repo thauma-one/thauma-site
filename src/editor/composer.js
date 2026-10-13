@@ -161,6 +161,55 @@ import { createEditor, applyLink, insertImage, tokensToVariables } from "./edito
     closeRows();
   });
 
+  /* ---- the signature (0055) -------------------------------------------
+     Written here, beside the {{signature}} chip that puts it in a mail; one
+     per sender, so it follows the page's scope switch like everything else.
+     A small editor of its own: bold, italic, underline, links. Enter is a
+     line break in the mail (lib/newsletter.js signatureHtml). */
+  let sig = null;
+  function sigOpen() {
+    if (!sig) {
+      sig = createEditor({ element: $("cpSigBody"), toolbar: $("cpSigTools") }).editor;
+      $("cpSigLinkBtn").addEventListener("click", () => {
+        const row = $("cpSigLinkRow");
+        row.hidden = !row.hidden;
+        if (!row.hidden) { $("cpSigLinkUrl").value = sig.getAttributes("link").href || ""; $("cpSigLinkUrl").focus(); }
+      });
+      const sigLink = () => {
+        let href = $("cpSigLinkUrl").value.trim();
+        if (href && !/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+          href = /^[^\s/@]+@[^\s@]+\.[^\s@]+$/.test(href) ? "mailto:" + href : "https://" + href;
+        }
+        if (href && !/^(https?:\/\/[^\s]+|mailto:[^\s]+)$/i.test(href)) { toast(tr("ml.cpLinkBad"), "bad"); return; }
+        applyLink(sig, href || null);
+        $("cpSigLinkRow").hidden = true;
+        sig.commands.focus();
+      };
+      $("cpSigLinkApply").addEventListener("click", sigLink);
+      $("cpSigLinkUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sigLink(); } });
+    }
+    sig.commands.setContent(cp.signature || "");
+    $("cpSigLinkRow").hidden = true;
+    const back = $("cpSigBack");
+    back.hidden = false; void back.offsetHeight; back.classList.add("in");
+    sig.commands.focus("end");
+  }
+  function sigClose() { $("cpSigBack").hidden = true; $("cpSigBack").classList.remove("in"); }
+  async function sigSave() {
+    const html = sig.isEmpty ? "" : sig.getHTML();
+    const r = await post({ action: "signature", html });
+    if (r.error) { toast(r.error, "bad"); return; }
+    cp.signature = r.signature || "";
+    sigClose();
+    toast(tr("ml.sigKept"), "ok");
+    measureSoon();
+  }
+  $("cpSigEdit").addEventListener("click", sigOpen);
+  $("cpSigCancel").addEventListener("click", sigClose);
+  $("cpSigSave").addEventListener("click", sigSave);
+  $("cpSigBack").addEventListener("click", (e) => { if (e.target === e.currentTarget) sigClose(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("cpSigBack").hidden) sigClose(); });
+
   /* ---- loading -------------------------------------------------------- */
 
   async function load(listId) {
@@ -179,6 +228,7 @@ import { createEditor, applyLink, insertImage, tokensToVariables } from "./edito
     cp.mailings = body.mailings || [];
     cp.you = body.you || null;
     cp.testInbox = body.test_inbox || null;
+    cp.signature = body.signature || "";
     renderPickers();
     renderTestTo();
     /* The page around this shows the drafts waiting and what has gone out;

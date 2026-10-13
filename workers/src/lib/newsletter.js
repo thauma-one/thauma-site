@@ -119,7 +119,7 @@ const HEX = HEX_COLOR;
    A subscriber without a name gets NOTHING there (Chase, 2026-10-03: "just
    remove the variable so it just says Hi"), and neither does the public
    archive. */
-const VARS = new Set(["first_name", "name"]);
+const VARS = new Set(["first_name", "name", "signature"]);
 
 /* Tags whose CONTENT goes too. Script and style carry no prose, and keeping
    the text inside a <style> would paste CSS into the middle of a sentence. */
@@ -397,11 +397,29 @@ const unescapeHtml = (v) => String(v)
  * first word. With no name the span disappears, and so does ONE space before
  * it, so "Hi {first name}," reads "Hi," — never its editor label.
  */
-export function fillVariables(html, name) {
+/* THE SIGNATURE (0055, Chase 2026-10-12: "add another variable for adding an
+   email signature and the ability to create/edit the signature somewhere").
+   One per sender, written in Mail › Signature. It lands wherever the variable
+   sits, which is usually inside a paragraph — so it is kept INLINE: bold,
+   italic, underline, links, and line breaks where its paragraphs were. A <p>
+   inside a <p> is a broken email in half the clients. */
+export function signatureHtml(raw) {
+  return sanitise(String(raw || ""))
+    .replace(/<\/(p|div|h2|h3|li|blockquote)\s*>\s*<(p|div|h2|h3|li|blockquote)\b[^>]*>/gi, "<br>")
+    .replace(/<(?!\/?(?:b|strong|i|em|u|a|br)\b)[^>]+>/gi, "")
+    .replace(/(?:\s*<br\s*\/?>\s*)+$/i, "")
+    .replace(/\{\{\s*signature\s*\}\}/g, "")   // never itself
+    .trim();
+}
+
+export function fillVariables(html, name, signature) {
   const full = String(name || "").replace(/\s+/g, " ").trim();
-  const word = (v) => (!full ? "\u0000" : escapeHtml(v === "first_name" ? full.split(" ")[0] : full));
+  const sig = signatureHtml(signature);
+  const word = (v) => (v === "signature" ? (sig || "\u0000")
+    : !full ? "\u0000" : escapeHtml(v === "first_name" ? full.split(" ")[0] : full));
   return String(html || "").replace(
     /<span\b([^>]*\bdata-var="([a-z_]+)"[^>]*)>[\s\S]*?<\/span>/g, (m, attrs, v) => word(v))
+    .replace(/\{\{\s*signature\s*\}\}/g, () => word("signature"))
     /* AND AS TYPED (2026-10-07): {{first_name}} or {{full_name}} written as
        plain text — the composer turns them into variables as they are
        typed, but a token that arrived some other way still works. */
@@ -416,6 +434,7 @@ export function fillVariables(html, name) {
  * @param opts.unsubscribeUrl  REQUIRED for a real send. See the note below.
  * @param opts.recipientName   the subscriber's name, for variables; null on
  *                             the archive and the size measure (fallbacks).
+ * @param opts.signature       the sender's signature (0055), for {{signature}}.
  * @param opts.layout          "card" (default: the letter on a card, on a soft
  *                             ground) or "integrated" (no card: the letter is
  *                             the page). Chase, 2026-10-05.
@@ -470,7 +489,7 @@ export function render(body, opts = {}) {
   /* Personal words first, so nothing below ever sees a variable: a send
      passes the recipient's name, everything else (the archive, the size
      measure) gets each variable's fallback. */
-  const styled = linkPictures(inlineStyles(fillVariables(body, opts.recipientName), accent, ink, dim, line, dark, accent2)
+  const styled = linkPictures(inlineStyles(fillVariables(body, opts.recipientName, opts.signature), accent, ink, dim, line, dark, accent2)
     .replace(/(<img\b[^>]*\ssrc=")(\/media\/)/gi, `$1${mediaOrigin}$2`), opts.archiveUrl);
   const title = escapeHtml(opts.subject || "");
 

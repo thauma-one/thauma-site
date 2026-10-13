@@ -3398,3 +3398,14 @@ SELECT id, color_mode FROM mailings
 -- the main load works before 0052 is applied.
 SELECT id, layout FROM mailings
  WHERE list_id = :list_id AND partner_id IS :partner_id;
+
+-- name: mail_signature_get
+-- The signature for one sender (0055). :owner is a partner id or '~organisation'.
+SELECT html FROM mail_signatures WHERE owner = :owner;
+
+-- name: mail_signature_set
+-- Written whole; an empty signature is kept as empty rather than deleted, so
+-- "I cleared it" and "never had one" read the same.
+INSERT INTO mail_signatures (owner, html, updated_at, updated_by)
+VALUES (:owner, :html, :now, :user_id)
+ON CONFLICT(owner) DO UPDATE SET html = excluded.html, updated_at = excluded.updated_at, updated_by = excluded.updated_by;

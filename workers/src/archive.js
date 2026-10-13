@@ -26,6 +26,7 @@ import { brandForMail } from "./lib/mail-brand.js";
 import { t } from "./lib/mail-i18n.js";
 import { createDb } from "./lib/db.js";
 import { render, escapeHtml } from "./lib/newsletter.js";
+import { signatureOf } from "./lib/mail-signature.js";
 
 const HEADERS = {
   "Content-Type": "text/html; charset=utf-8",
@@ -120,6 +121,8 @@ export default {
          (lib/mail-brand.js). */
       ...(brand ? { accent: brand.accent, accent2: brand.accent2, palette: brand.palette, mode: brand.mode, credit: t(null, "brand.note") } : {}),
       mode: color,
+      /* the sender's signature as it stands now (0055) */
+      signature: await signatureOf(db, m.partner_id),
     });
     return new Response(html, { headers: HEADERS });
   },

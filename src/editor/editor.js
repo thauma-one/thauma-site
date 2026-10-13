@@ -101,15 +101,17 @@ const Tone = Mark.create({
    typed or pasted, {{first_name}} becomes the variable (input and paste
    rules below), and the legend's buttons insert the same thing. Stored as
    data-var ("name" for the full name, as before) so every saved draft and
-   sent mailing still reads. */
-export const VARIABLES = ["first_name", "name"];
-export const VAR_TOKENS = { first_name: "{{first_name}}", name: "{{full_name}}" };
-const VAR_FROM = { first_name: "first_name", full_name: "name", name: "name" };
+   sent mailing still reads.
+   {{signature}} (2026-10-12): the sender's signature, written in Mail ›
+   Signature and filled in when the mail goes (0055). */
+export const VARIABLES = ["first_name", "name", "signature"];
+export const VAR_TOKENS = { first_name: "{{first_name}}", name: "{{full_name}}", signature: "{{signature}}" };
+const VAR_FROM = { first_name: "first_name", full_name: "name", name: "name", signature: "signature" };
 const tokenVar = (t) => VAR_FROM[/[a-z_]+/.exec(t)[0]];
 /* A token already in saved words (written before, or arrived as text) shown
    as the variable it is. Only in text, never inside a tag's attributes. */
 export function tokensToVariables(html) {
-  return String(html || "").replace(/(<[^>]*>)|\{\{\s*(first_name|full_name|name)\s*\}\}/g,
+  return String(html || "").replace(/(<[^>]*>)|\{\{\s*(first_name|full_name|name|signature)\s*\}\}/g,
     (m, tag, v) => (tag ? tag : `<span data-var="${VAR_FROM[v]}"></span>`));
 }
 /* a picture's width: 10–99 (% of the column), or an old name; else full */
@@ -140,11 +142,11 @@ const Variable = Node.create({
   renderText({ node }) { return VAR_TOKENS[node.attrs.v] || node.attrs.v; },
   addInputRules() {
     /* the whole token is the group: a rule with a group replaces only it */
-    return [nodeInputRule({ find: /(\{\{\s*(?:first_name|full_name|name)\s*\}\})$/, type: this.type,
+    return [nodeInputRule({ find: /(\{\{\s*(?:first_name|full_name|name|signature)\s*\}\})$/, type: this.type,
       getAttributes: (m) => ({ v: tokenVar(m[1]) }) })];
   },
   addPasteRules() {
-    return [nodePasteRule({ find: /(\{\{\s*(?:first_name|full_name|name)\s*\}\})/g, type: this.type,
+    return [nodePasteRule({ find: /(\{\{\s*(?:first_name|full_name|name|signature)\s*\}\})/g, type: this.type,
       getAttributes: (m) => ({ v: tokenVar(m[1]) }) })];
   },
   addCommands() {

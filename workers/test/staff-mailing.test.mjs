@@ -898,5 +898,38 @@ await check("deleting a draft takes its pictures and attachments with it, unless
   eq(deleted.sort(), ["attachments/p_chase/flyer-cccc.pdf", "newsletter/chase-roush/only-here-aaaa.jpg"], "deleted");
 });
 
+/* ------------------------------ the signature ----------------------------- */
+
+await check("a signature is kept per sender, inline; the organization's under its own key (0055)", async () => {
+  const env = envWith("staff");
+  const res = await handler.fetch(req("POST", { body: { action: "signature",
+    html: "<p><strong>Ana</strong></p><p>x</p><script>bad()</script>", owner: "p_mira" } }), env);
+  eq(res.status, 200, "kept");
+  const body = await res.json();
+  eq(body.signature, "<strong>Ana</strong><br>x", "inline, cleaned");
+  const write = env.calls.find((c) => /INSERT INTO mail_signatures/.test(c.sql));
+  assert(write && write.params.includes("p_chase") && !write.params.includes("p_mira"),
+    "kept under the caller's ministry, never the request's: " + JSON.stringify(write && write.params));
+
+  const org = envWith("admin");
+  await handler.fetch(req("POST", { query: "?scope=organization", body: { action: "signature", html: "<p>T</p>" } }), org);
+  const w2 = org.calls.find((c) => /INSERT INTO mail_signatures/.test(c.sql));
+  assert(w2 && w2.params.includes("~organisation"), "the organization's own: " + JSON.stringify(w2 && w2.params));
+});
+
+await check("no signatures table yet: Mail still opens, and keeping one says why it cannot", async () => {
+  const env = envWith("staff");
+  const prep = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    if (/mail_signatures/.test(sql)) throw new Error("no such table: mail_signatures");
+    return prep(sql);
+  };
+  const get = await handler.fetch(req("GET"), env);
+  eq(get.status, 200, "the page loads");
+  eq((await get.json()).signature, "", "no signature");
+  const post = await handler.fetch(req("POST", { body: { action: "signature", html: "x" } }), env);
+  eq(post.status, 409, "refused, with a reason");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

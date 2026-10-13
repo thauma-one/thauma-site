@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "54588d4e9635f439";
+export const SOURCE_DIGEST = "1d5ad43c514c9329";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -402,6 +402,10 @@ ORDER BY (e.occurred_on IS NULL) DESC, e.occurred_on DESC, e.created_at DESC;`,
   JOIN mailing_lists l ON l.id = m.list_id
  WHERE l.partner_id = :partner_id AND r.status = 'bounced'
    AND r.updated_at > COALESCE((SELECT mail_bounces_seen_at FROM partners WHERE id = :partner_id), '');`,
+  mail_signature_get: `SELECT html FROM mail_signatures WHERE owner = :owner;`,
+  mail_signature_set: `INSERT INTO mail_signatures (owner, html, updated_at, updated_by)
+VALUES (:owner, :html, :now, :user_id)
+ON CONFLICT(owner) DO UPDATE SET html = excluded.html, updated_at = excluded.updated_at, updated_by = excluded.updated_by;`,
   mailing_attachment_add: `INSERT INTO mailing_attachments
   (id, mailing_id, filename, content_type, bytes, object_key, sort_order, created_at)
 VALUES (:id, :mailing_id, :filename, :content_type, :bytes, :object_key, :sort_order, :now);`,

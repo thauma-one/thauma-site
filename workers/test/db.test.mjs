@@ -325,6 +325,7 @@ await check("every real query converts with its documented params", async () => 
     // body_md is the SOURCE now; body_html is derived from it and stored.
     subject: "June update", preheader: null, body_md: "# x",
     body_html: "<p>x</p>", body_text: "x",
+    owner: "p_chase", html: "<strong>x</strong>", // a mail signature (0055)
     sent_count: 0, mailing_id: "mg_1", subscriber_id: "sub_1",
     // resources: ownership and sharing
     resource_id: "rs_1", shared_by: "u_1", owner_user_id: null, is_admin: 0,

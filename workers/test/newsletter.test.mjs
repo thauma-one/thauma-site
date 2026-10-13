@@ -476,5 +476,19 @@ check("variables typed as {{first_name}} and {{full_name}} are filled like the e
   eq(NL.fillVariables('<p>Hi <span data-var="first_name">{{first_name}}</span>!</p>', "Ana"), "<p>Hi Ana!</p>", "the editor's own");
 });
 
+check("{{signature}}: the sender's signature, inline, wherever it sits (0055)", () => {
+  const sig = '<p><strong>Ana</strong> Marić</p><p><a href="https://x.org">x.org</a></p><h2>big</h2><img src="https://x/a.jpg">';
+  eq(NL.signatureHtml(sig), '<strong>Ana</strong> Marić<br><a href="https://x.org">x.org</a><br>big',
+    "paragraphs become line breaks, pictures and headings go");
+  const kept = sanitise('<p>Love,<br><span data-var="signature">{{signature}}</span></p>');
+  assert(kept.includes('data-var="signature"'), "the sanitiser kept the variable: " + kept);
+  eq(NL.fillVariables(kept, "Ivo", "<p>Ana</p>"), "<p>Love,<br>Ana</p>", "the editor's variable");
+  eq(NL.fillVariables("<p>Bye {{signature}}</p>", null, "<em>Ana</em>"), "<p>Bye <em>Ana</em></p>", "as typed");
+  eq(NL.fillVariables("<p>Bye {{signature}}</p>", null, ""), "<p>Bye</p>", "no signature: gone, with its space");
+  eq(NL.fillVariables("<p>{{signature}}</p>", "Ivo Ivić", "{{signature}} for {{first_name}}"), "<p>for Ivo</p>",
+    "never itself; its own variables filled");
+  assert(render(kept, { subject: "x", signature: "<em>Ana</em>" }).includes(">Ana</em>"), "render passes it");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
