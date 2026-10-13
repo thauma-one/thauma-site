@@ -67,16 +67,19 @@ await check("Account is the board's five lines, in its order", async () => {
   assert(d.querySelector('[data-panel="account"] a[href*="access/logout"]'), "Sign out signs out");
 });
 
-await check("Email me when: a switch per notice your roles receive, kept by PATCH (0056)", async () => {
-  /* Added to the board's lines on purpose (2026-10-12, Chase: "email
-     notifications … and the ability to toggle certain ones on and off"),
-     and only for somebody who receives a notice. */
+await check("Notifications: its own tab, a row and switch per notice your roles receive, kept by PATCH (0056)", async () => {
+  /* Its own tab (2026-10-13, Chase: "I wanted a separate notifications tab,
+     not for it to be built into account"); Account keeps the board's lines. */
+  const none = await boot();
+  assert(none.d.getElementById("setNotifyTab").hidden, "a tab for somebody who receives nothing");
   ANSWER.you.notices = [{ kind: "invite_accepted", on: true }];
   try {
     const { w, d } = await boot();
-    eq(labels(d, "account"), ["Email", "Console language", "Email me when", "What you can do", "Activity", "Sign out"], "rows");
+    eq(labels(d, "account"), ["Email", "Console language", "What you can do", "Activity", "Sign out"], "Account unchanged");
+    assert(!d.getElementById("setNotifyTab").hidden, "no Notifications tab");
+    eq([...d.querySelectorAll('[data-panel="notifications"] .set-lbl')].map((l) => l.textContent), ["Someone accepts their invitation"], "rows");
     const sw = d.querySelector('[data-notice="invite_accepted"]');
-    eq([sw.getAttribute("aria-checked"), sw.textContent.trim()], ["true", "Onsomeone accepts their invitation"], "the switch");
+    eq(sw.getAttribute("aria-checked"), "true", "on");
     let sent = null;
     w.fetch = async (u, o) => { if (o && o.method === "PATCH") sent = JSON.parse(o.body);
       return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(ANSWER)) }; };

@@ -108,15 +108,16 @@
         esc(langLabel(l)) + '</option>';
     }).join('');
 
-    /* Email me when (0056): a switch per notice these roles receive. */
+    /* Notifications (0056): a row and a switch per notice these roles
+       receive; no notices, no tab. */
     var notices = (state.you && state.you.notices) || [];
-    $('setNotifyRow').hidden = !notices.length;
+    $('setNotifyTab').hidden = !notices.length;
     $('setNotify').innerHTML = notices.map(function (n) {
-      return '<button type="button" class="switch small" role="switch" data-notice="' + esc(n.kind) + '"' +
-        ' aria-checked="' + (n.on ? 'true' : 'false') + '">' +
+      return '<div class="set-r"><span class="set-lbl">' + esc(tr('set.notify.' + n.kind)) + '</span>' +
+        '<div class="set-ctl"><button type="button" class="switch small" role="switch" data-notice="' + esc(n.kind) + '"' +
+        ' aria-checked="' + (n.on ? 'true' : 'false') + '" aria-label="' + esc(tr('set.notify.' + n.kind)) + '">' +
         '<span class="switch-track"><span class="switch-state">' + tr(n.on ? 'switch.on' : 'switch.off') +
-          '</span><span class="switch-knob"></span></span>' +
-        '<span class="switch-label">' + esc(tr('set.notify.' + n.kind)) + '</span></button>';
+          '</span><span class="switch-knob"></span></span></button></div></div>';
     }).join('');
 
     $('setLangList').innerHTML = state.languages.map(function (l) {

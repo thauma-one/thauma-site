@@ -20,6 +20,8 @@ staffHeading: Your <b>account</b>
 <div class="tabs" role="tablist">
   <button type="button" class="tab" role="tab" data-tab="account"
           aria-selected="true" data-i18n="set.account">Account</button>
+  <button type="button" class="tab" role="tab" data-tab="notifications" id="setNotifyTab" hidden
+          aria-selected="false" data-i18n="set.notifications">Notifications</button>
   <button type="button" class="tab" role="tab" data-tab="languages"
           aria-selected="false" data-i18n="set.languages">Languages</button>
   <button type="button" class="tab" role="tab" data-tab="keys"
@@ -49,13 +51,6 @@ staffHeading: Your <b>account</b>
     <div class="set-ctl"><select id="setPrefLang" class="lang-pick"></select></div>
   </div>
 
-  {#- EMAIL ME WHEN (2026-10-12, 0056): one switch per notice this person's
-      roles receive (workers/src/lib/notify.js); hidden when there are none. -#}
-  <div class="set-r" id="setNotifyRow" hidden>
-    <span class="set-lbl" data-i18n="set.notify">Email me when</span>
-    <div class="set-ctl set-notify" id="setNotify"></div>
-  </div>
-
   <div class="set-r">
     <span class="set-lbl" data-i18n="set.canDo">What you can do</span>
     <div class="set-ctl role-tags" id="setRoles"></div>
@@ -70,6 +65,17 @@ staffHeading: Your <b>account</b>
     <span class="set-lbl" data-i18n="nav.signout">Sign out</span>
     <div class="set-ctl"><a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a></div>
   </div>
+</section>
+
+<!-- ======================================================= NOTIFICATIONS -->
+{#- ITS OWN TAB (2026-10-13, Chase: "I wanted a separate notifications tab,
+    not for it to be built into account"). One row per notice this person's
+    roles receive (workers/src/lib/notify.js), under how it arrives — email
+    now; the phone ("the app") will be a second group here. The tab is
+    hidden for anyone who receives none. -#}
+<section class="tab-panel set-you" data-panel="notifications" role="tabpanel" hidden>
+  <h3 class="set-group" data-i18n="set.notify.email">By email</h3>
+  <div id="setNotify"></div>
 </section>
 
 <!-- =========================================================== LANGUAGES -->

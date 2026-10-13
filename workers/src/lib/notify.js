@@ -7,7 +7,7 @@
  *
  * THE LIST IS HERE. Each notice says who may receive it (a role) and whether
  * it starts on. A person's own choice is a row in notify_prefs (0056), set on
- * Settings › Account › "Email me when"; a notice with no row keeps its
+ * Settings › Notifications; a notice with no row keeps its
  * starting value. A new notice is one entry below, its words in
  * src/_data/emailsAndForms.json ("notify" › "<kind>_subject" …) and its switch label in
  * staff-i18n.js ("set.notify.<kind>"), then a call to notify() where it

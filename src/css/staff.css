@@ -2444,6 +2444,11 @@ html.console-menu-open{overflow:hidden}
   padding:22px 0;border-top:1px solid var(--line)}
 .set-you .set-r:last-child{border-bottom:1px solid var(--line)}
 .set-you .set-r:first-child{border-top:0;padding-top:4px}
+/* Settings › Notifications: the rows under how they arrive (email; the
+   phone later) */
+.set-group{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
+  font-weight:var(--w-bold);color:var(--voice-tech);margin:4px 0 6px}
+.set-group+div>.set-r:first-child{border-top:0}
 .set-lbl{font-family:var(--font-display);font-weight:300;font-size:17px;color:var(--text)}
 .set-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
 .set-now{min-width:240px;overflow-wrap:anywhere}
