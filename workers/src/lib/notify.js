@@ -43,6 +43,7 @@
  */
 import { sendMail, shell, h1, p, button } from "./mail.js";
 import { t } from "./mail-i18n.js";
+import { pushToUser, plain } from "./push.js";
 
 export const NOTICES = [
   { kind: "invite_accepted", role: "admin" },
@@ -131,6 +132,14 @@ async function deliver(env, db, who, notice, vars, { origin = "https://thauma.on
       id: "n_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20),
       user_id: who.user_id, kind, vars: JSON.stringify(vars), link, now: new Date().toISOString(),
     }).catch(() => { /* no table yet (0060): email still goes */ });
+    /* THE SAME SWITCH REACHES THE PHONE (0063): Settings' second column is
+       "Web" in a browser and "App" in the installed console — one notice,
+       one switch, in the bell and on every phone this person turned
+       notifications on. The bell's one line is the message; pressing it
+       opens the same place. */
+    await pushToUser(env, db, who.user_id, {
+      title: plain(noticeWords(kind, who.preferred_lang, vars).summary), body: "", link, tag: kind,
+    }).catch(() => {});
   }
   if (!wants(chosen, notice)) return 0;
   const mail = noticeEmail(kind, { ...vars, origin, link, lang: who.preferred_lang });

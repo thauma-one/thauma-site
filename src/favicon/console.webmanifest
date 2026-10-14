@@ -1,0 +1,16 @@
+{
+  "id": "/staff/",
+  "name": "Thauma Console",
+  "short_name": "Console",
+  "description": "Thauma's console: supporters, updates, mail and the site.",
+  "start_url": "/staff/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0B0F15",
+  "background_color": "#0B0F15",
+  "icons": [
+    { "src": "/console-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/console-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/console-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

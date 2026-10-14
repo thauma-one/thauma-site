@@ -88,6 +88,19 @@ staffHeading: Your <b>account</b>
     when the console is open as the installed app (staff-settings.js). The
     tab is hidden for anyone who receives none. -#}
 <section class="tab-panel set-you" data-panel="notifications" role="tabpanel" hidden>
+  {#- THIS DEVICE (0063, docs/APP-PLAN.md): the Web/App column's notices on
+      this phone or computer even when the console is closed — one switch,
+      which asks the browser's permission the first time. -#}
+  <div class="set-device" id="setDevice" hidden>
+    <div class="set-device-t"><b data-i18n="set.device.label">This device</b><span id="setDeviceSay"></span></div>
+    <div class="set-device-acts">
+      <button type="button" class="ghost-btn sm" id="setDeviceTest" hidden data-i18n="set.device.test">Send a test</button>
+      <button type="button" class="switch small" role="switch" id="setDeviceSwitch" aria-checked="false" aria-labelledby="setDeviceLbl">
+        <span class="switch-track"><span class="switch-state" data-i18n="switch.off">Off</span><span class="switch-knob"></span></span>
+      </button>
+      <span class="sr-only" id="setDeviceLbl" data-i18n="set.device.label">This device</span>
+    </div>
+  </div>
   <table class="set-notify">
     <thead><tr>
       <th scope="col"><span class="sr-only" data-i18n="set.notifications">Notifications</span></th>

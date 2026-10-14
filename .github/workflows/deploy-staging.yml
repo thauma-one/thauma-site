@@ -253,6 +253,9 @@ jobs:
       - name: Test · workers/videos
         working-directory: workers
         run: node test/videos.test.mjs
+      - name: Test · workers/webpush
+        working-directory: workers
+        run: node test/webpush.test.mjs
       - name: Test · workers/widgets-run
         working-directory: workers
         run: node test/widgets-run.test.mjs

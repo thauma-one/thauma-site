@@ -3550,6 +3550,43 @@ SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60
 -- Every changelog entry already published, to know what the next Publish adds.
 SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;
 
+-- name: push_sub_save
+-- A phone that turned notifications on (0063). The same phone saving again —
+-- a new key, another person signing in on it, other topics — replaces its row.
+INSERT INTO push_subscriptions (id, endpoint, p256dh, auth, audience, user_id, partner_id, lang, topics, created_at)
+VALUES (:id, :endpoint, :p256dh, :auth, :audience, :user_id, :partner_id, :lang, :topics, :now)
+ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth,
+  audience = excluded.audience, user_id = excluded.user_id, partner_id = excluded.partner_id,
+  lang = excluded.lang, topics = excluded.topics, fails = 0;
+
+-- name: push_sub_forget
+DELETE FROM push_subscriptions WHERE endpoint = :endpoint;
+
+-- name: push_sub_by_endpoint
+SELECT id, audience, user_id, partner_id, topics FROM push_subscriptions WHERE endpoint = :endpoint;
+
+-- name: push_subs_for_user
+-- A person's console app on each of their phones.
+SELECT id, endpoint, p256dh, auth, lang FROM push_subscriptions WHERE user_id = :user_id AND audience = 'staff';
+
+-- name: push_subs_for_partner
+-- Every phone that asked a ministry for news.
+SELECT id, endpoint, p256dh, auth, lang, topics FROM push_subscriptions
+ WHERE partner_id = :partner_id AND audience = 'supporter';
+
+-- name: push_sub_sent
+UPDATE push_subscriptions SET last_sent_at = :now, fails = 0 WHERE id = :id;
+
+-- name: push_sub_failed
+-- A failure that is not "gone": counted, and the row dropped at the fifth.
+UPDATE push_subscriptions SET fails = fails + 1 WHERE id = :id;
+
+-- name: push_subs_drop_failing
+DELETE FROM push_subscriptions WHERE fails >= 5;
+
+-- name: push_sub_gone
+DELETE FROM push_subscriptions WHERE id = :id;
+
 -- name: notices_prune
 -- A year old, whatever: Past keeps everything until then.
 DELETE FROM notices WHERE created_at < :before;

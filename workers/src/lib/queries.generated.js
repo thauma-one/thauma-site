@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "0fa58f1ee814e093";
+export const SOURCE_DIGEST = "213e740b17e862ff";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -1006,6 +1006,20 @@ WHERE t.partner_id = :partner_id
  ORDER BY v.published_at DESC
  LIMIT COALESCE(
    (SELECT max_items FROM video_sources WHERE partner_id IS :partner_id), 0);`,
+  push_sub_by_endpoint: `SELECT id, audience, user_id, partner_id, topics FROM push_subscriptions WHERE endpoint = :endpoint;`,
+  push_sub_failed: `UPDATE push_subscriptions SET fails = fails + 1 WHERE id = :id;`,
+  push_sub_forget: `DELETE FROM push_subscriptions WHERE endpoint = :endpoint;`,
+  push_sub_gone: `DELETE FROM push_subscriptions WHERE id = :id;`,
+  push_sub_save: `INSERT INTO push_subscriptions (id, endpoint, p256dh, auth, audience, user_id, partner_id, lang, topics, created_at)
+VALUES (:id, :endpoint, :p256dh, :auth, :audience, :user_id, :partner_id, :lang, :topics, :now)
+ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth,
+  audience = excluded.audience, user_id = excluded.user_id, partner_id = excluded.partner_id,
+  lang = excluded.lang, topics = excluded.topics, fails = 0;`,
+  push_sub_sent: `UPDATE push_subscriptions SET last_sent_at = :now, fails = 0 WHERE id = :id;`,
+  push_subs_drop_failing: `DELETE FROM push_subscriptions WHERE fails >= 5;`,
+  push_subs_for_partner: `SELECT id, endpoint, p256dh, auth, lang, topics FROM push_subscriptions
+ WHERE partner_id = :partner_id AND audience = 'supporter';`,
+  push_subs_for_user: `SELECT id, endpoint, p256dh, auth, lang FROM push_subscriptions WHERE user_id = :user_id AND audience = 'staff';`,
   recipient_bounced: `UPDATE mailing_recipients SET status = 'bounced', error = :error, updated_at = :now
 WHERE provider_id = :provider_id;`,
   recipient_by_provider: `SELECT mailing_id, subscriber_id, status FROM mailing_recipients WHERE provider_id = :provider_id;`,

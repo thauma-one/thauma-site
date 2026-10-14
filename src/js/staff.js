@@ -1252,6 +1252,8 @@
     var API = '/api/notices', past = false;
 
     function show(count) {
+      /* the same number on the installed app's icon (console-app.js) */
+      if (window.StaffAppBadge) window.StaffAppBadge(count || 0);
       n.hidden = !count;
       n.textContent = count > 99 ? '99+' : String(count || '');
       btn.setAttribute('aria-label', count ? tr('bell.title') + ' · ' + fill('bell.unread', { n: count }) : tr('bell.title'));

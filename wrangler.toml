@@ -87,7 +87,9 @@ run_worker_first = [
   # disk here either: left off this list until 2026-09-29, and the Website
   # tab's Preview button 404'd — the tests call the Worker directly, so only
   # a real deploy could show it.
-  "/site/*"
+  "/site/*",
+  # The apps' service worker (workers/src/sw.js), on every address.
+  "/sw.js",
 ]
 
 [[routes]]
@@ -337,7 +339,7 @@ not_found_handling = "404-page"
 # The same allow-list as staging's, annotated at the top of this file; one
 # line here so the three are easy to compare. test/admin-console.test.mjs
 # checks every route and prefix reaches the Worker in all three.
-run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/confirm-test-inbox", "/unsubscribe", "/archive/*", "/site/*"]
+run_worker_first = ["/", "/api/*", "/.netlify/functions/*", "/staff", "/staff/*", "/admin", "/admin/*", "/embed/v1/*", "/media/*", "/confirm", "/confirm-account", "/confirm-email", "/confirm-test-inbox", "/unsubscribe", "/archive/*", "/site/*", "/sw.js"]
 
 # THE REAL DATABASE, PHOTOS AND KV — `remote = true` on each binding (see
 # ONE DATABASE at the top). `wrangler dev` still runs the Worker on the Pi, so

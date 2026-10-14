@@ -545,6 +545,69 @@
     change({ preferred_lang: code }, e.target, 'toast.langChanged');
   });
 
+  /* ---- this device (0063): push for the Web/App column ----------------
+     Asks the browser once, subscribes with the deploy's public key, and
+     hands the subscription to /api/push. Says plainly why it cannot when it
+     cannot: push not set up yet, an iPhone in Safari (only the installed
+     app may), the browser blocking it, or a browser without push. */
+  var device = { reg: null, sub: null, key: null };
+  function deviceSay(key, on, canTest) {
+    $('setDevice').hidden = false;
+    $('setDeviceSay').textContent = tr(key);
+    var sw = $('setDeviceSwitch');
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    sw.querySelector('.switch-state').textContent = tr(on ? 'switch.on' : 'switch.off');
+    sw.disabled = !canTest;
+    $('setDeviceTest').hidden = !on;
+  }
+  function b64key(s) {
+    var p = String(s).replace(/-/g, '+').replace(/_/g, '/'), raw = atob(p + '==='.slice((p.length + 3) % 4));
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  async function deviceState() {
+    var standalone = window.matchMedia && matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return deviceSay(ios && !standalone ? 'set.device.iosFirst' : 'set.device.unsupported', false, false);
+    }
+    var info = await fetch('/api/push', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return {}; });
+    if (!info.ready) return deviceSay('set.device.notReady', false, false);
+    device.key = info.key;
+    device.reg = await navigator.serviceWorker.register('/sw.js');
+    device.sub = await device.reg.pushManager.getSubscription();
+    if (Notification.permission === 'denied') return deviceSay('set.device.blocked', false, false);
+    deviceSay(device.sub ? 'set.device.on' : 'set.device.off', !!device.sub, true);
+  }
+  $('setDeviceSwitch').addEventListener('click', async function () {
+    var sw = this;
+    sw.disabled = true;
+    try {
+      if (device.sub) {
+        await fetch('/api/push', { method: 'DELETE', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: device.sub.endpoint }) });
+        await device.sub.unsubscribe();
+        device.sub = null;
+      } else {
+        if ((await Notification.requestPermission()) !== 'granted') return deviceState();
+        device.sub = await device.reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64key(device.key) });
+        var res = await fetch('/api/push', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: device.sub.toJSON(), lang: (window.StaffI18n && window.StaffI18n.lang) || 'en' }) });
+        if (!res.ok) { var b = await res.json().catch(function () { return {}; }); await device.sub.unsubscribe(); device.sub = null; throw new Error(b.error || res.status); }
+      }
+      await deviceState();
+    } catch (e) { setStatus(e.message, 'err'); await deviceState(); }
+    finally { sw.disabled = false; }
+  });
+  $('setDeviceTest').addEventListener('click', async function () {
+    this.disabled = true;
+    await fetch('/api/push', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ test: true }) });
+    toastKey('set.device.tested', 'ok');
+    this.disabled = false;
+  });
+  deviceState().catch(function () {});
+
   $('setNotify').addEventListener('click', function (e) {
     var sw = e.target.closest('[data-notice]');
     if (!sw || sw.disabled) return;

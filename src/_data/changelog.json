@@ -300,6 +300,16 @@
         "hr": "Postavke odmah prikazuju sve kartice.",
         "sr": "Подешавања одмах приказују све картице."
       }
+    },
+    {
+      "id": "2026-10-13-consoleapp",
+      "date": "2026-10-13",
+      "page": "console",
+      "text": {
+        "en": "The console can be installed on your phone as an app, with tabs along the bottom, pull to refresh, and notifications on the phone (Settings › Notifications › This device).",
+        "hr": "Konzolu možete instalirati na mobitel kao aplikaciju, s karticama pri dnu, povlačenjem za osvježavanje i obavijestima na mobitelu (Postavke › Obavijesti › Ovaj uređaj).",
+        "sr": "Конзолу можете инсталирати на мобилни као апликацију, са картицама при дну, повлачењем за освежавање и обавештењима на мобилном (Подешавања › Обавештења › Овај уређај)."
+      }
     }
   ]
 }

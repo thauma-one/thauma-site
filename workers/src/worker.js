@@ -42,6 +42,8 @@ import { serveSite, closedSite } from "./site/serve.js";
 import { hit, adminAnalytics } from "./analytics.js";
 import notices from "./notices.js";
 import changesPage from "./changes.js";
+import pushApi from "./push-api.js";
+import { serveSw } from "./sw.js";
 import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
@@ -320,6 +322,8 @@ const ROUTES = {
   "/api/notices": notices,
   /* What's new: what each Publish put live, by page (0062, changes.js) */
   "/api/changes": changesPage,
+  /* a phone turning notifications on or off (0063, push-api.js) */
+  "/api/push": pushApi,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
   // check is done once at the top of the handler and fails closed.
@@ -463,6 +467,12 @@ export default {
       url.hostname = url.hostname.slice(4);
       return Response.redirect(url.toString(), 301);
     }
+
+    /* THE APPS' SERVICE WORKER (docs/APP-PLAN.md, sw.js): the same script
+       at the root of every address — thauma.one (the Thauma and console
+       apps) and every ministry's own (its app). Before the ministry sites,
+       which would otherwise read /sw.js as a page. */
+    if (url.pathname === "/sw.js") return serveSw();
 
     /* PARTNER SITES (0044) — <name>.thauma.one, and /site/<name>/ on any of
        our addresses (the console's preview, and every deploy before the

@@ -29,7 +29,7 @@
 <title>{{ staffTitle }} · Thauma Staff</title>
 <link rel="stylesheet" href="/css/tokens.css?v={{ "/css/tokens.css" | v }}">
 <link rel="stylesheet" href="/css/staff.css?v={{ "/css/staff.css" | v }}">
-{% include "brand-head.njk" %}
+{% set consoleApp = true %}{% include "brand-head.njk" %}
 {% include "console-roles-head.njk" %}
 </head>
 <body class="is-staff" data-staff-page="{{ staffPage }}">
@@ -63,6 +63,7 @@
    visibly correct itself. -#}
 <script src="/js/staff-i18n.js?v={{ "/js/staff-i18n.js" | v }}"></script>
 <script src="/js/staff.js?v={{ "/js/staff.js" | v }}"></script>
+<script src="/js/console-app.js?v={{ "/js/console-app.js" | v }}"></script>
 <script src="/js/console-translate.js?v={{ "/js/console-translate.js" | v }}"></script>
 {#- Only the Milestones page needs this; the script no-ops elsewhere. Kept
    separate from staff.js rather than folded in, because the editor is a

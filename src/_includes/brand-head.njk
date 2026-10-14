@@ -2,10 +2,24 @@
     favicon/head-snippet.html). The tab icon is the FRAME symbol (Chase,
     2026-10-13: "I want to try the thauma-symbol-frame-white.svg as the
     favicon to start"), white in a dark browser and black in a light one so
-    it never disappears into the tab bar; the home-screen icons are the
-    package's own. Files at the site root: src/favicon/. -#}
+    it never disappears into the tab bar. Files at the site root: src/favicon/.
+
+    TWO APPS ON ONE ADDRESS (docs/APP-PLAN.md): the public site installs as
+    "Thauma" (the rounded symbol, site.webmanifest) and the console as
+    "Console" (the frame symbol, console.webmanifest). A console layout sets
+    consoleApp before including this. -#}
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+{%- if consoleApp %}
+<link rel="apple-touch-icon" href="/console-apple-touch-icon.png">
+<link rel="manifest" href="/console.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Console">
+{%- else %}
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Thauma">
+{%- endif %}
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="{{ themeColor or '#0B0F15' }}">
