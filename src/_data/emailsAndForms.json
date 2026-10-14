@@ -165,7 +165,8 @@
       "cardText": "A few words about what this means and why it matters.",
       "tabFill": "Tab",
       "allUpdates": "See All Updates",
-      "getApp": "Get the app"
+      "getApp": "Get the app",
+      "givingLink": "Donate"
     },
     "brand": {
       "note": "A Thauma ministry",
@@ -433,7 +434,8 @@
       "cardText": "Nekoliko riječi o tome što to znači i zašto je važno.",
       "tabFill": "Kartica",
       "allUpdates": "Sva izdanja",
-      "getApp": "Preuzmite aplikaciju"
+      "getApp": "Preuzmite aplikaciju",
+      "givingLink": "Doniraj"
     },
     "brand": {
       "note": "Služba Thaume",
@@ -701,7 +703,8 @@
       "cardText": "Неколико ријечи о томе што то значи и зашто је важно.",
       "tabFill": "Картица",
       "allUpdates": "Сва издања",
-      "getApp": "Преузмите апликацију"
+      "getApp": "Преузмите апликацију",
+      "givingLink": "Донирај"
     },
     "brand": {
       "note": "Служба Тауме",
@@ -969,7 +972,8 @@
       "cardText": "Nekaj besed o tem, kaj to pomeni in zakaj je pomembno.",
       "tabFill": "Zavihek",
       "allUpdates": "Vse novice",
-      "getApp": "Prenesite aplikacijo"
+      "getApp": "Prenesite aplikacijo",
+      "givingLink": "Doniraj"
     },
     "brand": {
       "note": "Služba Thaume",

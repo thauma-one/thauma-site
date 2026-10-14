@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-14-clean-links-all",
+      "date": "2026-10-14",
+      "page": "staff:website",
+      "text": {
+        "en": "Every link on your site that goes somewhere else now has a short address of its own, such as /Paypal. While you have a Give page, your giving link is /Donate. A link keeps its short address once it has one, and it works as soon as you publish.",
+        "hr": "Svaka poveznica na vašoj stranici koja vodi drugamo sada ima vlastitu kratku adresu, npr. /Paypal. Dok imate stranicu Darujte, vaša poveznica za darivanje je /Doniraj. Poveznica zadržava kratku adresu kad je jednom dobije, a radi čim objavite.",
+        "sr": "Свака повезница на вашој страници која води другамо сада има властиту кратку адресу, нпр. /Paypal. Док имате страницу Дарујте, ваша повезница за даривање је /Донирај. Повезница задржава кратку адресу кад је једном добије, а ради чим објавите."
+      }
+    },
+    {
       "id": "2026-10-14-grow-hover",
       "date": "2026-10-14",
       "page": "staff:website",

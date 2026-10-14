@@ -872,7 +872,7 @@ export function cleanDoc(raw, catalog) {
     words: cleanWords(f.words, ["tagline", "small"], langs),
   };
 
-  return {
+  const out = {
     v: 1,
     languages: langs,
     fallback: langs.includes(d.fallback) ? d.fallback : langs[0],
@@ -904,6 +904,9 @@ export function cleanDoc(raw, catalog) {
     footer,
     pages,
   };
+  /* each outside link's clean name, kept from save to save (linkTable) */
+  out.short = linkTable(out, "", d.short).short;
+  return out;
 }
 
 /* ---------------------------------------------------------------------------
@@ -949,5 +952,85 @@ export function cleanLinkTarget(doc, segs, { base, q = "", giving = "" }) {
     }
   }
   if (cleanWord("give") === want && giveTo) return giveTo;
+  /* every other outside address on the site, by the name linkTable gave it */
+  for (const l of langs) if (giveTo && cleanWord(word(l, "givingLink")) === want) return giveTo;
+  for (const [url, slug] of linkTable(doc, giveTo).byUrl) if (cleanWord(slug) === want) return url;
   return null;
 }
+
+/**
+ * EVERY OUTSIDE LINK HAS A CLEAN ADDRESS (Chase, 2026-10-14: "Shouldn't all
+ * links be clean with any external links that get added or created just
+ * updated the redirect? This is happening a lot with the giving link").
+ *
+ * Until now a link was clean only when its NAME happened to lead back to it:
+ * the giving link was named "Give", and with the Give page switched on /Give
+ * opens that page — so the giving link fell back to its full address, and a
+ * section button or link card to anywhere else never had a name at all.
+ *
+ * The table is made from the document itself, so the page (render.js
+ * cleanHref) and the redirect (serve.js, cleanLinkTarget) read the same one
+ * and a link is redirected the moment it is published — nothing to keep in
+ * step. Names:
+ *   - the giving link, while the Give page is on: "Donate" in the site's own
+ *     language (site.givingLink); with the page off it is /Give, as before;
+ *   - any other address: its site's name ("Givebutter", "Paypal"); a second
+ *     address on the same site adds its first path word ("Paypal-chase"),
+ *     so adding a link never renames one already shared;
+ *   - once given, a name is saved with the site (doc.short) and kept.
+ * Page names, socials and the owner's own named links keep their words and
+ * are never taken.
+ */
+export function linkTable(doc, giving = "", kept = doc.short) {
+  const taken = new Set();
+  const take = (w) => { const c = cleanWord(w); if (c) taken.add(c); };
+  for (const p of doc.pages) {
+    take(p.id);
+    for (const l of doc.languages) take((p.label && p.label[l]) || word(l, p.id));
+  }
+  for (const k of doc.links || []) {
+    if (k.kind !== "custom") (SOCIAL_WORDS[k.kind] || [k.kind]).forEach(take);
+    else for (const l of doc.languages) take(k.label && k.label[l]);
+  }
+  for (const l of doc.languages) { take(word(l, "giveBtn")); take(word(l, "givingLink")); }
+  take("give");
+  const byUrl = new Map();
+  const ext = (u) => /^https?:\/\//i.test(String(u || ""));
+  const giveOn = doc.pages.some((p) => p.id === "give" && p.on);
+  if (giving && ext(giving) && giveOn) byUrl.set(giving, word(doc.fallback, "givingLink").trim().replace(/\s+/g, "-"));
+  /* the sections' own: a button's link, a card's, links written in words */
+  const urls = [];
+  const add = (u) => { if (ext(u) && !urls.includes(u) && !byUrl.has(u)) urls.push(u); };
+  const inWords = (o) => JSON.stringify(o || {}).replace(/href=\\"(https?:\/\/[^"\\]+)\\"/g, (m0, u) => { add(u.replace(/&amp;/g, "&")); return m0; });
+  for (const p of doc.pages) {
+    for (const sec of allSections(p)) {
+      add(sec.link);
+      for (const it of sec.items || []) add(it.url);
+      inWords(sec.words);
+      for (const it of sec.items || []) inWords(it.words);
+    }
+  }
+  /* NAMES STAY PUT: one given before (doc.short, kept by cleanDoc on every
+     save) is kept, so a link added later never takes an older one's name */
+  const short = {};
+  const keep = (url, slug) => { taken.add(cleanWord(slug)); byUrl.set(url, slug); short[url] = slug; };
+  for (const u of urls) {
+    const was = kept && typeof kept === "object" ? kept[u] : null;
+    if (typeof was === "string" && SHORT_RE.test(was) && !taken.has(cleanWord(was))) keep(u, was);
+  }
+  for (const u of urls) {
+    if (byUrl.has(u)) continue;
+    let host = "", first = "";
+    try { const x = new URL(u); host = x.hostname.replace(/^www\./, ""); first = (x.pathname.split("/").filter(Boolean)[0] || ""); } catch { continue; }
+    const parts = host.split(".");
+    const name = (parts.length > 1 ? parts[parts.length - 2] : parts[0]).replace(/[^\p{L}\p{N}]+/gu, "");
+    if (!name) continue;
+    const base = name.charAt(0).toUpperCase() + name.slice(1);
+    const tail = first.replace(/[^\p{L}\p{N}]+/gu, "").slice(0, 24);
+    const slug = [base, tail && `${base}-${tail}`, ...[2, 3, 4, 5, 6, 7, 8, 9].map((n) => `${base}-${n}`)]
+      .filter(Boolean).find((t) => !taken.has(cleanWord(t)));
+    if (slug) keep(u, slug);
+  }
+  return { byUrl, short };
+}
+const SHORT_RE = /^[\p{L}\p{N}][\p{L}\p{N}-]{0,40}$/u;

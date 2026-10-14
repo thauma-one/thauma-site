@@ -165,7 +165,7 @@ check("a section's button goes to a page of the site, or anywhere safe; never to
   ]);
   const html = page(d);
   assert(html.includes('href="/site/chaseroush/en/mission/">Read the story →'), "to the Mission page, in the owner's words");
-  assert(/href="https:\/\/blog\.example\.org\/" target="_blank" rel="noopener">Read More →/.test(html), "outward, in a new tab, with the built-in words");
+  assert(/href="\/site\/chaseroush\/Example" target="_blank" rel="noopener">Read More →/.test(html), "outward by its clean address, in a new tab, with the built-in words");
   assert(!html.includes("/en/resources/"), "a hidden page is not linked");
   assert(!html.includes("javascript:"), "an unsafe link is dropped");
   eq(cleanDoc(d, ["en"]).pages[0].sections[3].link, "", "and not even stored");
@@ -181,7 +181,7 @@ check("a photo opens the link when asked; link cards carry their own pictures", 
   ]);
   const html = page(d);
   assert(/<a class="piclink" href="\/site\/chaseroush\/en\/about\/"[^>]*><img src="\/media\/partnersite\/p\/a\.webp"/.test(html), "the photo opens About");
-  assert(/<a class="piclink" href="https:\/\/x\.org\/"/.test(html), "a full-width photo opens its link");
+  assert(/<a class="piclink" href="\/site\/chaseroush\/X[^"]*"/.test(html), "a full-width photo opens its link, by its clean address");
   assert(/<span class="rc-pic"><img src="\/media\/partnersite\/p\/c\.webp"/.test(html), "a card's picture");
   assert(/href="\/site\/chaseroush\/en\/give\/"><span class="rc-body"><b class="rc-title">Give<\/b>/.test(html), "a card can open a page of the site");
   assert(html.includes('<p class="lede m">Worth your time</p>'), "a line under the heading");
@@ -644,7 +644,7 @@ check("the page carries each section's alignment, and its buttons follow it", ()
     { id: "a3", type: "quote", variant: "large", align: "indent", words: { en: { quote: "Q" } } },
   ];
   const html = page(d);
-  assert(/<section[^>]*class="al-right"[^>]*><div class="wrap"><h2 class="h m">H<\/h2>[\s\S]*?<div class="btns m"><a class="btn solid" href="https:\/\/x\.org\/"/.test(html), "text section, right, with its button");
+  assert(/<section[^>]*class="al-right"[^>]*><div class="wrap"><h2 class="h m">H<\/h2>[\s\S]*?<div class="btns m"><a class="btn solid" href="\/site\/chaseroush\/X[^"]*"/.test(html), "text section, right, with its button");
   assert(/<section class="hero hero-behind al-center/.test(html), "the opening");
   assert(/<section[^>]*class="quote quote-large al-left indented"[^>]*>/.test(html), "the quote, indented on the left");
   for (const rule of [".al-right .btns{justify-content:flex-end}", ".al-center .btns{justify-content:center}",
@@ -753,7 +753,7 @@ check("the chosen look reaches the page; hover lifts a name; the phone menu hold
 check("Give goes straight to the giving link only when there is one", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en", give: "https://give.example/chase" });
   d.design.giveTo = "link";
-  assert(/<a class="givebtn" href="https:\/\/give\.example\/chase" target="_blank" rel="noopener">/.test(page(d)), "to the link");
+  assert(/<a class="givebtn" href="\/site\/chaseroush\/(Give|Donate)" target="_blank" rel="noopener">/.test(page(d)), "to the link, by its clean address");
   d.give = "";
   assert(/<a class="givebtn" href="[^"]*give\/?"/.test(page(d)) || !/class="givebtn"[^>]*target=/.test(page(d)), "no link: the Give page");
 });
@@ -1278,6 +1278,29 @@ check("Tell your supporters: each phone is told in its own language, and only ab
   eq(newsFor(site, "goal", "g1").line("en"), "Monthly · 42%", "a goal");
   eq(newsFor(site, "prayer", "not-public"), undefined, "nothing that is not published");
   eq(newsFor(site, "nonsense", "p1"), null, "nothing of another kind");
+});
+
+check("every outside link has a clean address the site also redirects, and adding one never renames another", () => {
+  let d = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
+  const giving = "https://give.example.org/chase";
+  d.pages[0].sections[1].link = "https://www.paypal.com/donate/x";
+  d = cleanDoc(d, ["en", "hr"]);   // saved
+  eq(d.short, { "https://www.paypal.com/donate/x": "Paypal" }, "the name is saved with the site");
+  const opts = { base: "", giving };
+  let t = MODEL.linkTable(d, giving);
+  eq(t.byUrl.get(giving), "Donate", "the giving link, while the Give page is on");
+  eq(t.byUrl.get("https://www.paypal.com/donate/x"), "Paypal", "an address by its site's name");
+  eq(cleanLinkTarget(d, ["Donate"], opts), giving, "/Donate redirects to it");
+  eq(cleanLinkTarget(d, ["hr", "Doniraj"], opts), giving, "in the site's other language too");
+  eq(cleanLinkTarget(d, ["paypal"], opts), "https://www.paypal.com/donate/x", "/Paypal redirects to it");
+  d.pages[0].sections[0].link = "https://paypal.com/other";   // added ABOVE the first
+  d = cleanDoc(d, ["en", "hr"]);
+  t = MODEL.linkTable(d, giving);
+  eq(t.byUrl.get("https://www.paypal.com/donate/x"), "Paypal", "the first keeps its name");
+  eq(t.byUrl.get("https://paypal.com/other"), "Paypal-other", "a second address on the same site adds its path word");
+  const html = page(d, "give", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: giving } });
+  assert(/href="\/site\/chaseroush\/Donate"/.test(html) && !/give\.example\.org/.test(html), "the Give page's button is clean");
+  assert(cleanLinkTarget(d, ["about"], opts) === "/en/about/", "a page keeps its own name");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget } from "./model.js";
+import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget, linkTable } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 import { ICON, SOCIAL_NAME } from "../lib/social-icons.js";
@@ -865,7 +865,9 @@ const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 function renderSection(sec, ctx) {
   const { lang, fallback } = ctx;
   const raw = (f) => wf(sec, lang, fallback, f);
-  const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`));
+  const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`)
+    /* a link written into the words leaves by its clean address too */
+    .replace(/href="(https?:\/\/[^"]+)"/g, (m0, u) => `href="${esc(ctx.linkHref(u.replace(/&amp;/g, "&")))}"`));
   /* Formatted fields come out ready for the page; plain ones are escaped where used. */
   const w = (f) => (f === "heading" || f === "quote" || f === "verse") ? rich(raw(f)).replace(/\n/g, "<br>") : f === "text" ? rich(raw(f)) : raw(f);
   /* A VERSE inside Words or Photo and words (BACKLOG §3), in one of three
@@ -1250,11 +1252,20 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
      place, so a clean link can never be a broken one; otherwise the address
      itself. Email stays a mailto, which a redirect would not open. */
   const outgoing = new Set();     // clean links that leave the site: a new tab, as their addresses would
+  /* Every outside address's own name (model.js linkTable) — the same table
+     serve.js redirects by, so the two cannot disagree. */
+  const giving = doc.give || site.giving_url || "";
+  const table = linkTable(doc, giving);
   const cleanHref = (target, name) => {
-    if (!target || !name || /^mailto:/.test(target)) return target;
-    const slug = String(name).trim().replace(/\s+/g, "-");
-    const got = cleanLinkTarget(doc, [slug], { base, q: draft ? "?draft" : "", giving: doc.give || site.giving_url || "" });
-    if (got !== target) return target;
+    if (!target || /^mailto:/.test(target)) return target;
+    const opts = { base, q: draft ? "?draft" : "", giving };
+    let slug = name ? String(name).trim().replace(/\s+/g, "-") : "";
+    let got = slug ? cleanLinkTarget(doc, [slug], opts) : null;
+    if (got !== target) {
+      slug = table.byUrl.get(target) || "";
+      got = slug ? cleanLinkTarget(doc, [slug], opts) : null;
+      if (got !== target) return target;
+    }
     const clean = `${base}/${encodeURI(slug)}${draft ? "?draft" : ""}`;
     if (/^https?:/.test(target)) outgoing.add(clean);
     return clean;
@@ -1305,7 +1316,9 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
           ` data-look="${esc(JSON.stringify(both))}"`;
       };
     })(),
-    giveUrl: cleanHref(doc.give || site.giving_url || "", "Give"),
+    /* the giving link's clean name: /Give, or — while Give is a page of its
+       own — "Donate" in this page's language (model.js linkTable) */
+    giveUrl: cleanHref(giving, pages.some((p) => p.id === "give") ? word(lang, "givingLink") : "Give"),
     socialHref: (k) => cleanHref(k.url, SOCIAL_NAME[k.kind]),
     pageOn: (id) => pages.some((p) => p.id === id),
     href, label, name: site.display_name || "",
@@ -1315,7 +1328,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       const sec = /^section:([a-z0-9]{2,24})$/i.exec(link);
       if (sec) return allSections(page).some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
       const m = /^page:([a-z]+)$/.exec(link);
-      if (!m) return link;
+      if (!m) return /^https?:/.test(link) ? cleanHref(link, "") : link;
       return pages.some((p) => p.id === m[1]) ? href(m[1]) : "";
     },
   };
