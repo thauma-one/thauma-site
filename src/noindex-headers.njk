@@ -1,7 +1,6 @@
 ---
 eleventyExcludeFromCollections: true
-eleventyComputed:
-  permalink: "{{ '/_headers' if visible.column == 'dev' else false }}"
+isNoindexHeaders: true
 ---
 {#- DEV AND PREVIEW ARE NOT TO BE FOUND BY SEARCH (2026-10-13). Both serve
     the whole site to anyone — dev always has, and the preview has since it
@@ -9,6 +8,10 @@ eleventyComputed:
     unreleased site sits in two places a search engine may index. Cloudflare
     applies a `_headers` file in the built folder to every static file it
     serves. Written only by a build on the dev column — the Pi's dev server
-    and the preview — never by the live build, whose pages must be found. -#}
+    and the preview — never by the live build, whose pages must be found.
+    WHERE IT GOES IS DECIDED IN src/src.11tydata.js, with the rest: the first
+    version computed it here as `{{ … else false }}`, which can only make the
+    WORD "false", and every live-column build stopped on a file called
+    `false` (the dev server's start-up build among them, 2026-10-13). -#}
 /*
   X-Robots-Tag: noindex, nofollow

@@ -88,8 +88,10 @@ check("the preview build uses the DEV column; the live build cannot (Chase, 2026
   if (/THAUMA_SITE_COLUMN/.test(prod)) throw new Error("the production workflow mentions THAUMA_SITE_COLUMN — the live site must build from the live column");
   /* and neither dev nor the preview is for search engines */
   const hdr = readFileSync("src/noindex-headers.njk", "utf8");
-  if (!/permalink: "\{\{ '\/_headers' if visible\.column == 'dev' else false \}\}"/.test(hdr) || !/X-Robots-Tag: noindex/.test(hdr))
-    throw new Error("the noindex _headers file is not limited to dev-column builds");
+  const dir = readFileSync("src/src.11tydata.js", "utf8");
+  if (!/isNoindexHeaders: true/.test(hdr) || !/X-Robots-Tag: noindex/.test(hdr) || /permalink/.test(hdr.split("---")[1])
+      || !/if \(data\.isNoindexHeaders\) return v\.column === "dev" \? "\/_headers" : false;/.test(dir))
+    throw new Error("the noindex _headers file is not limited to dev-column builds, or decides its own address in a template string");
 });
 
 check("the two columns are genuinely independent", () => {

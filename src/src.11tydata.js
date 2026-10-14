@@ -31,6 +31,9 @@ module.exports = {
     permalink: (data) => {
       const v = data.visible;
 
+      /* noindex-headers.njk: dev and the preview only (see that file). */
+      if (data.isNoindexHeaders) return v.column === "dev" ? "/_headers" : false;
+
       // Team bio pages (paginated over teamPages; alias "member"). They belong
       // to the team page, so they follow its switch as well as the site's.
       if (data.member && data.member.slug) {
