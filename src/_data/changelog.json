@@ -2,6 +2,36 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-14-ministry-app",
+      "date": "2026-10-14",
+      "page": "staff:website",
+      "text": {
+        "en": "Every ministry site now has its own app: add /app to the site's address, or press \"Get the app\" at the foot of any page. Supporters can install it on their phone to see prayer, updates and giving in your site's colors.",
+        "hr": "Svaka web-stranica službe sada ima svoju aplikaciju: dodajte /app na adresu stranice ili pritisnite „Preuzmite aplikaciju” na dnu bilo koje stranice. Podržavatelji je mogu instalirati na mobitel i vidjeti molitvu, novosti i darivanje u bojama vaše stranice.",
+        "sr": "Свака веб-страница службе сада има своју апликацију: додајте /app на адресу странице или притисните „Преузмите апликацију” на дну било које странице. Подржаватељи је могу инсталирати на мобител и видјети молитву, новости и даривање у бојама ваше странице."
+      }
+    },
+    {
+      "id": "2026-10-14-prayed-count",
+      "date": "2026-10-14",
+      "page": "staff:updates",
+      "text": {
+        "en": "Prayer requests show how many people pressed \"I prayed\" in your app. It is a number only, never who.",
+        "hr": "Molitvene potrebe pokazuju koliko je ljudi pritisnulo „Molio/la sam” u vašoj aplikaciji. Samo broj, nikad tko.",
+        "sr": "Молитвене потребе показују колико је људи притиснуло „Молио/ла сам” у вашој апликацији. Само број, никад тко."
+      }
+    },
+    {
+      "id": "2026-10-14-tell-supporters",
+      "date": "2026-10-14",
+      "page": "staff:updates",
+      "text": {
+        "en": "After Publish on Updates, the console asks whether to tell your supporters about a new or answered prayer request or a new update. It shows the notice as their phones will see it. It only asks when phones have your app with notifications on.",
+        "hr": "Nakon objave na Novostima konzola pita želite li javiti podržavateljima za novu ili uslišanu molitvenu potrebu ili novost. Pokazuje obavijest kako će je vidjeti njihovi mobiteli. Pita samo kad mobiteli imaju vašu aplikaciju s uključenim obavijestima.",
+        "sr": "Након објаве на Новостима конзола пита желите ли јавити подржаватељима за нову или услишану молитвену потребу или новост. Показује обавијест како ће је видјети њихови мобители. Пита само кад мобители имају вашу апликацију с укљученим обавијестима."
+      }
+    },
+    {
       "id": "2026-10-13-bell",
       "date": "2026-10-13",
       "page": "console",

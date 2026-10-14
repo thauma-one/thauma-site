@@ -99,6 +99,8 @@
           '</div>' +
           '<div class="ms-meta">' +
             (p.answered_on ? '<span>' + esc(p.answered_on) + '</span>' : '') +
+            /* "I prayed" from the ministry's app (0063): how many, never who. */
+            (p.prayed ? '<span class="pr-prayed">' + esc(fill('pr.prayedN', { n: p.prayed })) + '</span>' : '') +
           '</div>' +
         '</div>' +
         /* The published switch on the row, as on every Updates row (Chase). */
@@ -400,6 +402,25 @@
   if (window.StaffUpdates) {
     window.StaffUpdates.register({
       key: 'prayer',
+      /* "Tell your supporters" (staff-updates.js): what was published that a
+         supporter's phone should hear — new, newly public, newly answered. */
+      snapshot: function () {
+        var o = {};
+        Object.keys(state.saved).forEach(function (id) {
+          var p = state.saved[id];
+          if (p) o[id] = { pub: !!p.is_public, done: !!p.is_answered };
+        });
+        return o;
+      },
+      news: function (was) {
+        return Object.keys(state.saved).filter(function (id) {
+          var p = state.saved[id], b = was[id];
+          return p && p.is_public && (!b || !b.pub || (p.is_answered && !b.done));
+        }).map(function (id) {
+          var p = state.saved[id];
+          return { kind: 'prayer', id: id, title: anyTitle(p), answered: !!p.is_answered };
+        });
+      },
       /* The working copy in the public shape, for the preview. */
       preview: function () {
         return state.order.filter(function (id) {

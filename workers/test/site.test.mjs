@@ -6,6 +6,8 @@
 import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES, SECTIONS, plainOf, cleanLinkTarget } from "../src/site/model.js";
 import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
+import { appData, serveApp, renderApp } from "../src/site/app.js";
+import { newsFor } from "../src/staff-push.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
 import * as MODEL from "../src/site/model.js";
@@ -1186,6 +1188,96 @@ check("a page's own description is a title as its language writes one: Title Cas
   /* Chase, 2026-10-08: what the owner writes reads as the language writes a
      description too — English in Title Case. */
   assert(/<meta name="description" content="Written by Me, as I Like It"/.test(page(d)), "what the owner wrote, in Title Case");
+});
+
+/* ------------------------------------------------- the ministry's app -- */
+
+check("every site has an app: the page offers it to a phone and links it in the footer; a preview does not offer it", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const html = page(d);
+  assert(html.includes('<link rel="manifest" href="/site/chaseroush/app/manifest.webmanifest">'), "the manifest");
+  assert(/<footer[\s\S]*<a href="\/site\/chaseroush\/app">Get the app<\/a>[\s\S]*<\/footer>/.test(html), "the footer link");
+  assert(!page(d, "home", "en", { draft: true }).includes('rel="manifest"'), "not in a preview");
+  assert(/<a href="\/site\/chaseroush\/app">Preuzmite aplikaciju<\/a>/.test(page(d, "home", "hr")), "in the page's language");
+});
+
+check("the app shows what the site publishes: open prayer, the road so far newest first, letters, goals, the giving link", () => {
+  const d = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
+  const pay = { languages: [{ code: "en" }, { code: "hr" }],
+    prayer: [{ id: "p1", is_answered: false, text: { en: { title: "Visas" } } }, { id: "p2", is_answered: true, answered_on: "2026-09-01", text: { en: { title: "A home" } } }],
+    goals: [{ id: "g1", label: "Monthly", target_cents: 100000, raised_cents: 25000, currency: "EUR", percent: 25 }],
+    milestones: [{ id: "m1", actual_date: "2026-01-01", status: "complete", text: { en: { title: "Old" } } },
+      { id: "m2", actual_date: "2026-08-01", status: "complete", text: { en: { title: "New" } } },
+      { id: "m3", actual_date: "2027-01-01", status: "upcoming", text: { en: { title: "Later" } } },
+      { id: "m4", actual_date: "2026-05-01", status: "canceled", text: { en: { title: "No" } } }],
+    mailings: [{ subject: "October", sent_at: "2026-10-01", url: "https://thauma.one/archive/x/y/z/" }], videos: [] };
+  const a = appData(pay, d, { display_name: "Chase Roush", giving_url: "https://give.example.org" }, { p1: 14 });
+  eq(a.prayer.map((p) => [p.id, p.answered, p.n]), [["p1", false, 14], ["p2", true, 0]], "prayer with its count");
+  eq(a.milestones.map((m) => m.id), ["m2", "m1"], "happened, newest first");
+  eq(a.goals[0].percent, 25, "the goal");
+  eq(a.give, "https://give.example.org", "the giving link");
+  eq(a.langs, ["en", "hr"], "languages");
+});
+
+check("the app's page wears the site's colors, is never indexed, and carries no script a request can break", () => {
+  const L = { bg: "#0A0D12", panel: "#10161E", fg: "#EDF2F8", dim: "#9AA6B6", line: "rgba(255,255,255,.09)", acc: "#2FD8FF", acc2: "#5CF2C4",
+    ink: "#2FD8FF", onAcc: "#000", scheme: "dark", display: "'Sora'", body: "'Inter'", thin: 100, boldW: 600 };
+  const html = renderApp({ L, design: { look: "night" }, title: "Chase </script> Roush", apple: "/x.png",
+    boot: { base: "", lang: "en", data: { name: "</script><script>alert(1)</script>" }, words: {} } });
+  assert(html.includes("--acc:#2FD8FF"), "the accent");
+  assert(html.includes('<meta name="robots" content="noindex">'), "not indexed");
+  assert(!html.includes("</script><script>alert(1)"), "a name cannot end the script");
+  assert(html.includes('<link rel="manifest" href="/app/manifest.webmanifest">'), "installable");
+});
+
+await checkAsync("I prayed: once per phone, only this ministry's, and the phone is never stored as sent", async () => {
+  const calls = [];
+  const db = { query: async (name, p) => { calls.push([name, p]); return name === "prayer_prayed_counts" ? [{ prayer_id: "p1", n: 3 }] : []; },
+    queryOne: async () => null };
+  const doc = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" }), ["en"]);
+  const row = { partner_id: "pa_1", display_name: "Chase Roush", slug: "chase-roush" };
+  const post = (body, origin = "https://chaseroush.thauma.one") => serveApp(new Request("https://chaseroush.thauma.one/app/prayed",
+    { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify(body) }), {}, { db, row, doc, base: "", rest: "/app/prayed" });
+  const res = await post({ prayer_id: "p1", device: "abcdefabcdefabcdef12" });
+  eq(res.status, 200, "kept");
+  eq((await res.json()).n, 3, "the count back");
+  const add = calls.find((c) => c[0] === "prayer_prayed_add")[1];
+  eq(add.partner_id, "pa_1", "only this ministry's requests");
+  assert(add.device !== "abcdefabcdefabcdef12" && /^[0-9a-f]{32}$/.test(add.device), "a hash, not the phone's id");
+  eq((await post({ prayer_id: "p1", device: "short" })).status, 400, "not a phone id");
+  eq((await post({ prayer_id: "p1", device: "abcdefabcdefabcdef12" }, "https://evil.example")).status, 403, "not from another site");
+  eq(await serveApp(new Request("https://chaseroush.thauma.one/app/nothing"), {}, { db, row, doc, base: "", rest: "/app/nothing" }), null, "not the app's");
+});
+
+await checkAsync("a supporter's phone keeps only the topics there are, in a language the site speaks; another ministry cannot remove it", async () => {
+  const calls = [];
+  const db = { query: async (name, p) => { calls.push([name, p]); return []; },
+    queryOne: async () => ({ audience: "supporter", partner_id: "pa_2" }) };
+  const doc = cleanDoc(starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" }), ["en", "hr"]);
+  const row = { partner_id: "pa_1", display_name: "Chase Roush", slug: "chase-roush" };
+  const env = { VAPID_PUBLIC_KEY: "B" + "A".repeat(86), VAPID_PRIVATE_KEY: "x".repeat(43) };
+  const call = (method, body) => serveApp(new Request("https://chaseroush.thauma.one/app/push", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    env, { db, row, doc, base: "", rest: "/app/push" });
+  const sub = { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: "B" + "A".repeat(86), auth: "A".repeat(22) } };
+  const res = await call("POST", { subscription: sub, topics: ["prayer", "spam"], lang: "xx" });
+  eq(res.status, 200, "saved");
+  const saved = calls.find((c) => c[0] === "push_sub_save")[1];
+  eq([saved.audience, saved.partner_id, saved.user_id, saved.topics, saved.lang], ["supporter", "pa_1", null, '["prayer"]', "en"], "what is kept");
+  await call("DELETE", { endpoint: sub.endpoint });
+  assert(!calls.some((c) => c[0] === "push_sub_forget"), "another ministry's phone stays");
+});
+
+check("Tell your supporters: each phone is told in its own language, and only about what is published", () => {
+  const site = { prayer: [{ id: "p1", is_answered: false, text: { en: { title: "Visas" }, hr: { title: "Vize" } } },
+    { id: "p2", is_answered: true, text: { en: { title: "A home" } } }],
+    milestones: [{ id: "m1", text: { en: { title: "Board formed" } } }], goals: [{ id: "g1", label: "Monthly", percent: 41.6, text: {} }] };
+  const p = newsFor(site, "prayer", "p1");
+  eq([p.topic, p.tab, p.line("en"), p.line("hr")], ["prayer", "prayer", "New prayer request · Visas", "Nova molitvena potreba · Vize"], "a request");
+  eq(newsFor(site, "prayer", "p2").line("sr"), "Молитва услишена · A home", "answered, in English where untranslated");
+  eq([newsFor(site, "milestone", "m1").tab, newsFor(site, "milestone", "m1").line("en")], ["updates", "News · Board formed"], "a milestone");
+  eq(newsFor(site, "goal", "g1").line("en"), "Monthly · 42%", "a goal");
+  eq(newsFor(site, "prayer", "not-public"), undefined, "nothing that is not published");
+  eq(newsFor(site, "nonsense", "p1"), null, "nothing of another kind");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

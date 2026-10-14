@@ -1967,6 +1967,8 @@
         '</div>';
       wrap.querySelector('h3').textContent = opts.title || '';
       wrap.querySelector('.dlg-body').textContent = opts.body || '';
+      /* something to show rather than say — a preview — under the words */
+      if (opts.node) wrap.querySelector('.dlg-body').insertAdjacentElement('afterend', opts.node);
       if (opts.note) {
         var n = wrap.querySelector('.dlg-note');
         n.textContent = opts.note;

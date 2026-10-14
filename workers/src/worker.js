@@ -48,6 +48,7 @@ import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
 import staffGoals from "./staff-goals.js";
 import staffPrayer from "./staff-prayer.js";
+import staffPush from "./staff-push.js";
 import staffStewardship, { stewardshipRefusal } from "./staff-stewardship.js";
 import staffMailing from "./staff-mailing.js";
 import confirmSubscription from "./confirm.js";
@@ -324,6 +325,8 @@ const ROUTES = {
   "/api/changes": changesPage,
   /* a phone turning notifications on or off (0063, push-api.js) */
   "/api/push": pushApi,
+  // "Tell your supporters": the ministry app's phones, after Publish. See staff-push.js.
+  "/api/staff-push": staffPush,
 
   // ORG-WIDE, and the only endpoint that is not partner-scoped. Its role
   // check is done once at the top of the handler and fails closed.

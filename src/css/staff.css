@@ -875,6 +875,15 @@ html.role-communications .console-me-menu.has-mysite .area-public{display:flex !
 .dlg h3{font-family:var(--font-display);font-weight:var(--w-light);
   font-size:var(--fs-lg,20px);color:var(--text);margin:0 0 12px}
 .dlg-body{color:var(--dim);font-size:var(--fs-sm);line-height:1.6;margin:0}
+/* "Tell your supporters" (staff-updates.js): the notification as a phone
+   will show it — the ministry's initial, its name, the line. */
+.tell-preview{display:flex;gap:12px;align-items:center;margin:14px 0 0;padding:12px 14px;
+  border:1px solid var(--line-hard);border-radius:14px;background:var(--bg)}
+.tell-preview .tp-icon{flex:none;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;
+  background:var(--foam);color:var(--bg);font:600 15px/1 'Sora',sans-serif}
+.tell-preview .tp-text{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:var(--fs-sm);line-height:1.4}
+.tell-preview .tp-text b{color:var(--text);font-weight:600}
+.tell-preview .tp-text span{color:var(--dim);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 /* The consequence, set apart — it is the part people skip. */
 .dlg-note{margin:14px 0 0;padding:12px 14px;border-radius:var(--radius);
   background:var(--warn-dim,rgba(245,184,69,.12));

@@ -88,6 +88,7 @@
     var btn = this;
     btn.disabled = true; $('upDiscard').disabled = true;
     var failed = [];
+    var before = sections.map(function (s) { return s.snapshot ? s.snapshot() : null; });
     for (var i = 0; i < sections.length; i++) {
       if (!sections[i].count()) continue;
       try {
@@ -104,7 +105,47 @@
     document.dispatchEvent(new CustomEvent('updates:published'));
     if (failed.length) toast(fill('up.failed', { n: failed.length, first: failed[0] }), 'err');
     else toast(tr('up.published'), 'ok');
+    var news = [];
+    sections.forEach(function (s, k) { if (s.news && before[k]) news = news.concat(s.news(before[k])); });
+    if (news.length) tell(news);
   });
+
+  /* TELL YOUR SUPPORTERS (docs/APP-PLAN.md; workers/src/staff-push.js).
+     After Publish, when something new is public and phones have the
+     ministry's app with notifications on: one question per item (three at
+     most), with the notification as it will look. Nothing is asked when
+     there is nobody to tell. The words are written by the server, in each
+     phone's own language; the preview shows them in yours. */
+  async function tell(news) {
+    var r = await fetch('/api/staff-push', { credentials: 'same-origin' })
+      .then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; });
+    if (!r || !r.ready || !r.phones) return;
+    var items = news.slice(0, 3);
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var n = r.topics[it.kind === 'prayer' ? 'prayer' : 'updates'] || 0;
+      if (!n) continue;
+      var card = document.createElement('div');
+      card.className = 'tell-preview';
+      card.innerHTML = '<span class="tp-icon" aria-hidden="true"></span><span class="tp-text"><b></b><span></span></span>';
+      card.querySelector('.tp-icon').textContent = String(r.name || '').trim().charAt(0).toUpperCase();
+      card.querySelector('b').textContent = r.name || '';
+      card.querySelector('.tp-text span').textContent =
+        fill(it.kind === 'prayer' ? (it.answered ? 'tell.answered' : 'tell.prayer') : 'tell.update', { title: it.title });
+      var ok = await window.StaffConfirm({
+        title: tr('tell.title'), body: tr('tell.body'), node: card,
+        confirm: n === 1 ? tr('tell.send1') : fill('tell.sendN', { n: n }), cancel: tr('tell.later')
+      });
+      if (!ok) continue;
+      try {
+        var res = await fetch('/api/staff-push', { method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: it.kind, id: it.id }) });
+        var j = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(j.error || ('(' + res.status + ')'));
+        toast(j.sent === 1 ? tr('tell.sent1') : fill('tell.sentN', { n: j.sent || 0 }), 'ok');
+      } catch (e) { toast(e.message, 'err'); }
+    }
+  }
 
   $('upDiscard').addEventListener('click', async function () {
     var n = total();

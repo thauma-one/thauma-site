@@ -930,6 +930,24 @@
   if (window.StaffUpdates) {
     window.StaffUpdates.register({
       key: 'milestones',
+      /* "Tell your supporters" (staff-updates.js): new, newly public, or
+         newly complete. */
+      snapshot: function () {
+        var o = {};
+        Object.keys(state.saved).forEach(function (id) {
+          var m = state.saved[id];
+          if (m) o[id] = { pub: !!m.is_public, done: m.status === 'complete' };
+        });
+        return o;
+      },
+      news: function (was) {
+        return Object.keys(state.saved).filter(function (id) {
+          var m = state.saved[id], b = was[id];
+          return m && m.is_public && !m.parent_id && (!b || !b.pub || (m.status === 'complete' && !b.done));
+        }).map(function (id) {
+          return { kind: 'milestone', id: id, title: titleOf(state.saved[id]).replace(/ \([^)]*\)$/, '') };
+        });
+      },
       /* The working copy as the public data would carry it — published rows
          only, Upcoming with no progress — so the preview shows what Publish
          would put on a partner's page. */

@@ -21,6 +21,7 @@ import { createDb } from "../lib/db.js";
 import { requireAccess } from "../lib/access.js";
 import { resolveActor } from "../lib/actas.js";
 import { embedPayload } from "../embed.js";
+import { serveApp } from "./app.js";
 import { assertNoPersonalData } from "../lib/nopii.js";
 import { siteOrigin } from "../lib/origin.js";
 import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget } from "./model.js";
@@ -206,6 +207,12 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
   const doc = cleanDoc(JSON.parse(full), catalog);
 
   const url = new URL(request.url);
+  /* THE MINISTRY'S APP (site/app.js): <site>/app and what it asks for —
+     before the language parsing, which would read "app" as a page. */
+  if (rest === "/app" || rest.startsWith("/app/")) {
+    const app = await serveApp(request, env, { db, row, doc, base, rest });
+    if (app) return app;
+  }
   const q = draft ? "?draft" : "";
   /* FOR SEARCH ENGINES (BACKLOG §3, 2026-10-04): every shown page in every
      language, at the site's real public address, and a robots.txt naming it.

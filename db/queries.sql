@@ -3587,6 +3587,21 @@ DELETE FROM push_subscriptions WHERE fails >= 5;
 -- name: push_sub_gone
 DELETE FROM push_subscriptions WHERE id = :id;
 
+-- name: prayer_prayed_add
+-- "I prayed" (0063), from a ministry's app: once per phone per request, and
+-- only for a request that is published and is this ministry's.
+INSERT INTO prayer_prayed (prayer_id, device, at)
+SELECT :prayer_id, :device, :now
+ WHERE EXISTS (SELECT 1 FROM prayer p WHERE p.id = :prayer_id AND p.partner_id = :partner_id AND p.is_public = 1)
+ON CONFLICT(prayer_id, device) DO NOTHING;
+
+-- name: prayer_prayed_counts
+-- How many prayed for each of a ministry's requests — a number, never who.
+SELECT p.id AS prayer_id, COUNT(pp.device) AS n
+  FROM prayer p LEFT JOIN prayer_prayed pp ON pp.prayer_id = p.id
+ WHERE p.partner_id = :partner_id
+ GROUP BY p.id;
+
 -- name: notices_prune
 -- A year old, whatever: Past keeps everything until then.
 DELETE FROM notices WHERE created_at < :before;

@@ -1447,7 +1447,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const socials = socialIcons + (asWordsF ? "" : inl.map(iconOf).join(""));
   const custom = (asWordsF ? inl.map(wordOf).join("") : "") + apart.filter((k) => k.show !== "icon").map(wordOf).join("");
   const ownIcons = apart.filter((k) => k.show === "icon").map(iconOf).join("");
-  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons, socialHref: ctx.socialHref });
+  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons, socialHref: ctx.socialHref, app: `${base}/app${draft ? "?draft" : ""}` });
 
   const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const seo = thePage.seo || {};
@@ -1525,7 +1525,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
 <title>${esc(title)}</title>
 ${design.faviconStyle === "photo" && design.favicon ? `<link rel="icon" href="${esc(design.favicon)}">` : initialsIcon(name, L, design.faviconStyle) ? `<link rel="icon" type="image/svg+xml" href="${esc(initialsIcon(name, L, design.faviconStyle))}">` : ""}
 ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
-${draft ? '<meta name="robots" content="noindex">' : ""}
+${draft ? '<meta name="robots" content="noindex">' : `<link rel="manifest" href="${esc(base)}/app/manifest.webmanifest">`}
 ${alternates}
 ${social}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1573,7 +1573,7 @@ export function newTabs(html, outgoing = new Set()) {
  * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
  * credit line is in every one of them.
  */
-function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "", socialHref = (k) => k.url }) {
+function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "", socialHref = (k) => k.url, app = "" }) {
   const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
   const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
   const tagline = fw("tagline") ? `<p class="tagline tagline-${esc(F.tagline || "plain")}">${esc(fw("tagline"))}</p>` : "";
@@ -1588,7 +1588,8 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
   const linkRow = (asWords ? socialWords : "") + custom;
   const words = (linkRow ? `<span class="words">${linkRow}</span>` : "") + (ownIcons ? `<span class="socials owns">${ownIcons}</span>` : "");
   const icons = !asWords && socials ? `<span class="socials">${socials}</span>` : "";
-  const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span>`;
+  /* THE MINISTRY'S APP (site/app.js) — every site has one, found here. */
+  const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}${app ? ` · <a href="${esc(app)}">${esc(word(lang, "getApp"))}</a>` : ""}</span>`;
   /* NOT IN THE FOOTER (Chase, 2026-10-01): the name as a brand, and the
      language menu — both are already in the header. */
   let inner;
@@ -1682,3 +1683,5 @@ export function simplePage(title, text, status = 404) {
 }
 
 export { SECTIONS };
+/* for the ministry's app (site/app.js), which wears the site's own look */
+export { looks as siteLook, FONTS as SITE_FONTS, initialsIcon };

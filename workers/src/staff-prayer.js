@@ -115,6 +115,14 @@ async function listWithText(db, partner_id) {
     db.query("prayer_translations_for_staff", { partner_id }),
   ]);
 
+  /* "I prayed" from the ministry's app (0063) — a count beside each request.
+     Before the migration is applied there is no table, and the list simply
+     has no counts. */
+  const prayed = {};
+  try {
+    for (const r of await db.query("prayer_prayed_counts", { partner_id })) prayed[r.prayer_id] = r.n;
+  } catch (err) { /* not applied yet */ }
+
   const byId = {};
   for (const t of tx) {
     (byId[t.prayer_id] ||= {})[t.lang] = {
@@ -131,6 +139,7 @@ async function listWithText(db, partner_id) {
     /* for the editor to send back, so a save from another site since it
        opened this one is caught (lib/fresh.js) */
     updated_at: p.updated_at,
+    prayed: prayed[p.id] || 0,
     text: byId[p.id] || {},
   }));
 }

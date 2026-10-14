@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "213e740b17e862ff";
+export const SOURCE_DIGEST = "53450e015ca529b3";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -844,6 +844,14 @@ ORDER BY p.display_name;`,
 FROM prayer p
 WHERE p.partner_id = :partner_id
 ORDER BY p.sort_order ASC, p.created_at DESC;`,
+  prayer_prayed_add: `INSERT INTO prayer_prayed (prayer_id, device, at)
+SELECT :prayer_id, :device, :now
+ WHERE EXISTS (SELECT 1 FROM prayer p WHERE p.id = :prayer_id AND p.partner_id = :partner_id AND p.is_public = 1)
+ON CONFLICT(prayer_id, device) DO NOTHING;`,
+  prayer_prayed_counts: `SELECT p.id AS prayer_id, COUNT(pp.device) AS n
+  FROM prayer p LEFT JOIN prayer_prayed pp ON pp.prayer_id = p.id
+ WHERE p.partner_id = :partner_id
+ GROUP BY p.id;`,
   prayer_translation_delete: `DELETE FROM prayer_translations
 WHERE prayer_id = :prayer_id AND lang = :lang AND partner_id = :partner_id;`,
   prayer_translation_upsert: `INSERT INTO prayer_translations (

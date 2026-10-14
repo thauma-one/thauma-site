@@ -17,7 +17,8 @@ async function deliverAll(env, db, subs, message, opts = {}) {
   let sent = 0;
   const now = new Date().toISOString();
   for (const sub of subs) {
-    const r = await sendPush(env, sub, message, opts);
+    /* a message may be written per phone, in its own language */
+    const r = await sendPush(env, sub, typeof message === "function" ? message(sub.lang) : message, opts);
     if (r.ok) { sent++; await db.query("push_sub_sent", { id: sub.id, now }).catch(() => {}); }
     else if (r.gone) await db.query("push_sub_gone", { id: sub.id }).catch(() => {});
     else {
