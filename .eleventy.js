@@ -71,6 +71,10 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/js": "js" });
   eleventyConfig.addPassthroughCopy({ "src/img": "img" });
   eleventyConfig.addPassthroughCopy({ "src/fonts": "fonts" });
+  /* THE FAVICON SET, AT THE ROOT (brand/README.md §3): browsers and phones
+     ask for /favicon.ico and /apple-touch-icon.png by name, wherever a page
+     says it is. Included on every page by _includes/brand-head.njk. */
+  eleventyConfig.addPassthroughCopy({ "src/favicon": "/" });
   /* The arcade's physics engine (ARCADE-SPEC.md §4, Load Out): Planck.js, a
      port of Box2D, MIT. Stacked boxes are the hardest thing to simulate
      stably, and Box2D is what stacking games are built on. Copied from the

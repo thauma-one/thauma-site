@@ -1,0 +1,11 @@
+{#- THE TAB ICON AND THE HOME-SCREEN ICONS, on every page (brand/README.md §3,
+    favicon/head-snippet.html). The tab icon is the FRAME symbol (Chase,
+    2026-10-13: "I want to try the thauma-symbol-frame-white.svg as the
+    favicon to start"), white in a dark browser and black in a light one so
+    it never disappears into the tab bar; the home-screen icons are the
+    package's own. Files at the site root: src/favicon/. -#}
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="{{ themeColor or '#0B0F15' }}">

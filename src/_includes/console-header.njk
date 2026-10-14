@@ -21,7 +21,7 @@
     {#- The wordmark is a link to whichever console the person actually has.
        It used to be hardcoded to /staff/, which sent a board member to a page
        that refused them the moment they clicked their own logo. -#}
-    <a class="mark console-mark" id="consoleHome" href="/staff/">THAUMA</a>
+    <a class="mark console-mark" id="consoleHome" href="/staff/" aria-label="Thauma">{% set logoId = "console" %}{% include "brand/logo.njk" %}</a>
 
     {#- THE BELL (0060; Chase 2026-10-13: "Add the in app notifications
        bell"). The notices email also sends (workers/src/lib/notify.js), kept

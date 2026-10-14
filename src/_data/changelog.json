@@ -240,6 +240,16 @@
         "hr": "Pregled (next.thauma.one) sada prikazuje isto što i razvojna stranica — uključujući stranice još skrivene iza naslovne — pa možete provjeriti cijelu stranicu prije objave.",
         "sr": "Преглед (next.thauma.one) сада приказује исто што и развојни сајт — укључујући странице још скривене иза насловне — па можете проверити цео сајт пре објаве."
       }
+    },
+    {
+      "id": "2026-10-13-brand",
+      "date": "2026-10-13",
+      "page": "site",
+      "text": {
+        "en": "The new Thauma logo is on the site and in the console, with a new tab icon.",
+        "hr": "Novi Thauma logotip je na stranici i u konzoli, s novom ikonom kartice.",
+        "sr": "Нови Thauma логотип је на сајту и у конзоли, са новом иконом картице."
+      }
     }
   ]
 }

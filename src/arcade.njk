@@ -12,10 +12,9 @@ eleventyExcludeFromCollections: true
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Thauma Arcade</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#07090E">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
-<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+{% set themeColor = "#07090E" %}{% include "brand-head.njk" %}
 <link rel="stylesheet" href="/css/main.css?v={{ "/css/main.css" | v }}">
 <style>html,body{height:100%;background:#07090E;overflow:hidden}</style>
 <script>

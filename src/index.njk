@@ -10,7 +10,9 @@ pageTitle: home
 {% set t = i18n[lang] %}
 <header class="hero"><div class="wrap">
   <div class="cue rise">{{ t.home.cue | rich("home.cue") }}</div>
-  <div class="wordmark rise-2">THAUMA</div>
+  {#- THE LOGO, THE THREAD VERSION (brand/README.md §6): the lines in the
+      site's blue. Still .wordmark — five taps on it are the arcade's door. -#}
+  <div class="wordmark rise-2">{% set logoId = "hero-" + lang %}{% include "brand/logo-thread.njk" %}</div>
   <h1 class="hero-line rise-3">{{ t.home.h1_thin | rich("home.h1_thin") }} <b>{{ t.home.h1_bold | rich("home.h1_bold") }}</b></h1>
   <p class="hero-sub rise-3">{{ t.home.sub | rich("home.sub") }}</p>
 </div>

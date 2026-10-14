@@ -55,7 +55,7 @@
 <link rel="alternate" hreflang="x-default" href="{{ site.url }}{{ page.url | langSwap(site.defaultLang) }}">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
-<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+{% include "brand-head.njk" %}
 <meta property="og:type" content="website">
 <meta property="og:title" content="{{ fullTitle }}">
 <meta property="og:description" content="{{ metaDesc }}">
@@ -73,7 +73,8 @@
 <body>
 
 <nav><div class="wrap nav-in">
-  <a class="logo" href="/{{ lang }}/"><!-- <img src="/img/logo.svg" alt=""> -->THAUMA</a>
+  {#- THE LOGO (brand/README.md), inline so it takes the nav's text color. -#}
+  <a class="logo" href="/{{ lang }}/" aria-label="Thauma">{% set logoId = "nav" %}{% include "brand/logo.njk" %}</a>
   {#- Every link follows its own switch in Site settings. A link to a page
      that was not built is a 404 with the site's own navigation pointing at
      it, which is worse than the page simply not being offered. -#}

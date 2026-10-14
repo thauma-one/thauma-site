@@ -10,7 +10,7 @@ permalink: /404.html
 <meta name="robots" content="noindex">
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
-<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+{% include "brand-head.njk" %}
 <link rel="stylesheet" href="/css/main.css?v={{ "/css/main.css" | v }}">
 <style>
   /* This single file serves every broken URL regardless of language
@@ -27,7 +27,7 @@ permalink: /404.html
 {% for lang in activeLangs %}
 {% set t = i18n[lang] %}
 <nav data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}><div class="wrap nav-in">
-  <a class="logo" href="/{{ lang }}/">THAUMA</a>
+  <a class="logo" href="/{{ lang }}/" aria-label="Thauma">{% set logoId = "nav-" + lang %}{% include "brand/logo.njk" %}</a>
   <div class="links">
     <a href="/{{ lang }}/about/">{{ t.nav.about | rich("nav.about") }}</a>
     <a href="/{{ lang }}/mission/">{{ t.nav.mission | rich("nav.mission") }}</a>

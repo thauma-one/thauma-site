@@ -1838,8 +1838,9 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
   display:flex;align-items:stretch;gap:20px}
 
 /* Its own column so it sits beside BOTH rows rather than inside the first. */
-.console-mark{display:flex;align-items:center;flex:none;
-  letter-spacing:var(--ls-mark)}
+.console-mark{display:flex;align-items:center;flex:none;color:var(--text)}
+/* the logo (brand/README.md), 15px tall, its T where the text mark began */
+.console-mark .brand-logo{height:15px;width:auto;margin-left:calc(15px * -1450 / 746)}
 
 .console-rows{flex:1;min-width:0;display:flex;flex-direction:column}
 /* The separator exists only when there are two rows to separate, which is why
