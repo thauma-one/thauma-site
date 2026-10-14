@@ -72,6 +72,26 @@ check("the watch server uses the DEV column", () => {
   }
 });
 
+check("the preview build uses the DEV column; the live build cannot (Chase, 2026-10-13)", () => {
+  /* "the Preview site needs to not be hidden behind the landing flag. It
+     actually need to match the dev site's settings" */
+  try {
+    process.env.THAUMA_SITE_COLUMN = "dev";
+    const { visible } = load("build");
+    eq([visible.column, visible.comingSoon], ["dev", readSite().visibility.comingSoon.dev], "the preview: dev's switches, landing flag included");
+    process.env.THAUMA_SITE_COLUMN = "anything else";
+    eq(load("build").visible.column, "live", "only the word dev is honored");
+  } finally { delete process.env.THAUMA_SITE_COLUMN; }
+  const staging = readFileSync(".github/workflows/deploy-staging.yml", "utf8");
+  const prod = readFileSync(".github/workflows/deploy.yml", "utf8");
+  if (!/name: Build\n\s+env:\n\s+THAUMA_SITE_COLUMN: dev\n\s+run: npx @11ty\/eleventy --output=_site_next/.test(staging)) throw new Error("the preview build does not ask for the dev column");
+  if (/THAUMA_SITE_COLUMN/.test(prod)) throw new Error("the production workflow mentions THAUMA_SITE_COLUMN — the live site must build from the live column");
+  /* and neither dev nor the preview is for search engines */
+  const hdr = readFileSync("src/noindex-headers.njk", "utf8");
+  if (!/permalink: "\{\{ '\/_headers' if visible\.column == 'dev' else false \}\}"/.test(hdr) || !/X-Robots-Tag: noindex/.test(hdr))
+    throw new Error("the noindex _headers file is not limited to dev-column builds");
+});
+
 check("the two columns are genuinely independent", () => {
   // The whole point. If these ever resolve the same way regardless of column,
   // the dev site has stopped being able to simulate the live one.

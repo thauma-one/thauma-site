@@ -1,0 +1,14 @@
+---
+eleventyExcludeFromCollections: true
+eleventyComputed:
+  permalink: "{{ '/_headers' if visible.column == 'dev' else false }}"
+---
+{#- DEV AND PREVIEW ARE NOT TO BE FOUND BY SEARCH (2026-10-13). Both serve
+    the whole site to anyone — dev always has, and the preview has since it
+    builds from the dev column (src/_data/visible.js) — so without this, the
+    unreleased site sits in two places a search engine may index. Cloudflare
+    applies a `_headers` file in the built folder to every static file it
+    serves. Written only by a build on the dev column — the Pi's dev server
+    and the preview — never by the live build, whose pages must be found. -#}
+/*
+  X-Robots-Tag: noindex, nofollow

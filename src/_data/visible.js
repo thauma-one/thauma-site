@@ -23,12 +23,17 @@
 // WHICH COLUMN A BUILD USES
 // ---------------------------------------------------------------------------
 //   _site        the Pi's watch output, dev.thauma.one       -> dev
-//   _site_next   the preview build, next.thauma.one          -> live
+//   _site_next   the preview build, next.thauma.one          -> dev
 //   _site_prod   the real thing, thauma.one                  -> live
 //
-// next.thauma.one uses the LIVE column deliberately. It exists to show what is
-// about to be published; a preview that used the dev column would be showing
-// something no visitor will ever see, which is worse than no preview at all.
+// next.thauma.one USES THE DEV COLUMN (Chase, 2026-10-13: "the Preview site
+// needs to not be hidden behind the landing flag. It actually need to match
+// the dev site's settings"). It used the live column until then, on the
+// reasoning that a preview should show what visitors get — which, with the
+// landing page on, meant a preview of the landing page and nothing else. The
+// staging workflow says so by setting THAUMA_SITE_COLUMN=dev on its build;
+// nothing else sets it, and the production deploy refuses a build whose pages
+// do not match the LIVE column (deploy.yml, "Verify the build matches").
 //
 // The signal is Eleventy's own ELEVENTY_RUN_MODE. It is `serve` or `watch`
 // under the dev server and `build` for a real build, and Eleventy sets it
@@ -77,7 +82,9 @@ function resolve(entry, column, fallback) {
 module.exports = () => {
   const site = JSON.parse(fs.readFileSync(SITE_PATH, "utf8"));
   const v = site.visibility || {};
-  const column = isDevServer ? "dev" : "live";
+  /* the preview build asks for the dev column by name; only "dev" is
+     honored, and only that one build sets it */
+  const column = isDevServer || process.env.THAUMA_SITE_COLUMN === "dev" ? "dev" : "live";
 
   // A page listed but not decided: show it. Forgetting to fill one in must
   // not silently delete a page from the site.

@@ -230,6 +230,16 @@
         "hr": "Objava i Pregled prikazuju napredak na svakoj stranici, u maloj kartici. Završena izrada se sama zatvara; neuspjela ostaje dok je ne zatvorite.",
         "sr": "Објава и Преглед приказују напредак на свакој страници, у малој картици. Завршена израда се сама затвара; неуспела остаје док је не затворите."
       }
+    },
+    {
+      "id": "2026-10-13-previewdev",
+      "date": "2026-10-13",
+      "page": "admin:website",
+      "text": {
+        "en": "Preview (next.thauma.one) now shows what dev shows — including pages still hidden behind the landing page — so you can check the whole site before publishing.",
+        "hr": "Pregled (next.thauma.one) sada prikazuje isto što i razvojna stranica — uključujući stranice još skrivene iza naslovne — pa možete provjeriti cijelu stranicu prije objave.",
+        "sr": "Преглед (next.thauma.one) сада приказује исто што и развојни сајт — укључујући странице још скривене иза насловне — па можете проверити цео сајт пре објаве."
+      }
     }
   ]
 }

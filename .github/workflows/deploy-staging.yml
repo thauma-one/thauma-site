@@ -52,7 +52,11 @@ jobs:
       # _site_next, which is what [assets] points at in the top-level config.
       # NOT _site — that is the local dev server's ungated watch output, and
       # pointing a deploy at it once would have published every unreleased page.
+      # THE DEV COLUMN (src/_data/visible.js): the preview shows what dev
+      # shows, landing page switch included, not what visitors get.
       - name: Build
+        env:
+          THAUMA_SITE_COLUMN: dev
         run: npx @11ty/eleventy --output=_site_next
 
       # One step per test file, so the Publish bar can count them as they
