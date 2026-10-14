@@ -764,7 +764,13 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'Intersect
 // images keep their exact framing.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   var pFrames = [];
-  document.querySelectorAll('.frame img, .person-photo img').forEach(function (img) {
+  /* NOT the bio page's own portraits (Chase, 2026-10-13: "the photo on the
+     individual staff bio page cuts off the sides of the photo slightly
+     instead of being the full width"). The drift needs the 1.12 zoom below,
+     and the zoom trims 6% off each side — of a photo whose frame takes the
+     photo's own shape, cropped by the person on purpose. Shown exactly as
+     cropped; the Team grid's square cards keep the drift. */
+  document.querySelectorAll('.frame img, .person-photo:not(.bio-photo) img').forEach(function (img) {
     var m = /scale\(([\d.]+)\)/.exec(img.style.transform || '');
     var base = m ? parseFloat(m[1]) : 1;
     var scale = Math.max(base, 1) * 1.12; // >=1.12 => >=6% overflow each side

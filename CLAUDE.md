@@ -95,7 +95,9 @@ Transitions. The pieces:
   transitioned arrivals, above-fold targets are un-hidden pre-paint
   (they ride the fade); below-fold keep scroll fades.
 - Whisper-parallax: .frame img + .person-photo img drift 4.5% of
-  frame height, using 1.12x extra zoom as edge headroom. The edge
+  frame height, using 1.12x extra zoom as edge headroom. NOT the bio
+  page's portraits (.bio-photo): the zoom trimmed the sides of a photo
+  cropped on purpose (2026-10-13); they show exactly as cropped. The edge
   stays hidden only while the scale's ORIGIN sits inside a band that
   depends on zoom (37.5–62.5% at zoom 100, ~19–81% at 110). Framed
   photos are styled by the `frameStyle` filter (lib/frame.js), which

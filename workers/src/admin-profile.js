@@ -61,6 +61,21 @@ function clean(v, max) {
   return out === "" ? null : out;
 }
 
+/* A BIO KEEPS ITS PARAGRAPHS (Chase, 2026-10-13: "new paragraphs don't seem
+   to save as they should"). clean() above turns every control character into
+   a space — right for a name or a title, and it was also turning the line
+   breaks in a bio into spaces, so a bio of three paragraphs saved as one.
+   Line breaks stay (Windows' \r\n becomes \n, more than one blank line
+   becomes one); every other control character still goes, which also keeps
+   the two separators staff_profiles_all packs translations with (CHAR 30
+   and 31) out of the text. */
+export function cleanBioText(v, max) {
+  if (typeof v !== "string") return null;
+  const out = v.replace(/\r\n?/g, "\n").replace(/[\x00-\x09\x0b-\x1f\x7f]/g, " ")
+    .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+  return out === "" ? null : out;
+}
+
 /* A slug is a public URL. Latin letters, digits and single hyphens — and
    accented characters are FOLDED rather than dropped, so "Mira Petrović"
    becomes mira-petrovic and not mira-petrovi. */
@@ -80,7 +95,10 @@ export function slugify(name) {
    a bio containing a colon, a hash or a leading dash cannot break the file —
    which is exactly what an unquoted scalar would do. */
 function yamlString(v) {
-  return '"' + String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  /* \n WRITTEN AS AN ESCAPE: a real line break inside a double-quoted YAML
+     string is folded into a space when the build reads it back, so a bio's
+     paragraphs would arrive on the page as one. */
+  return '"' + String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n") + '"';
 }
 
 export function toMarkdown(profile, translations) {
@@ -282,7 +300,7 @@ export default {
     for (const l of known) {
       const t = text[l.code] || {};
       const role_title = clean(t.role_title, MAX.role_title);
-      const bio = clean(t.bio, MAX.bio);
+      const bio = cleanBioText(t.bio, MAX.bio);
       if (role_title || bio) {
         await db.query("staff_profile_translation_upsert", {
           user_id: userId, lang: l.code, role_title, bio, now,

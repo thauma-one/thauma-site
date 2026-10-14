@@ -260,6 +260,16 @@
         "hr": "Obavijesti su sada jedan popis: svaka obavijest ima prekidač za e-poštu i za web, jedan uz drugi.",
         "sr": "Обавештења су сада један списак: свако обавештење има прекидач за е-пошту и за веб, један уз други."
       }
+    },
+    {
+      "id": "2026-10-13-bioparas",
+      "date": "2026-10-13",
+      "page": "site",
+      "text": {
+        "en": "Team bios keep their paragraphs, and a team member's photo on their own page shows its full width.",
+        "hr": "Biografije tima čuvaju odlomke, a fotografija člana tima na njegovoj stranici prikazuje se u punoj širini.",
+        "sr": "Биографије тима чувају одломке, а фотографија члана тима на његовој страници приказује се у пуној ширини."
+      }
     }
   ]
 }

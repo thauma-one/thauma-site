@@ -8,8 +8,9 @@
  * leading dash is ordinary writing and must not be able to break the build —
  * which is exactly what an unquoted YAML scalar would do.
  */
-import { slugify, toMarkdown, parseTranslations, writeFile } from "../src/admin-profile.js";
+import { slugify, toMarkdown, parseTranslations, writeFile, cleanBioText } from "../src/admin-profile.js";
 import matter from "../../node_modules/gray-matter/index.js";
+import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
 /* AWAITS. It did not, and every async test in this file therefore reported
@@ -72,6 +73,20 @@ check("punctuation that would break YAML is survivable", () => {
     const { data } = matter(toMarkdown(P, { en: { bio } }));
     eq(data.bio.en, bio, label);
   }
+});
+
+check("a bio keeps its paragraphs, through the save and the file (Chase, 2026-10-13)", () => {
+  /* "new paragraphs don't seem to save as they should": the save turned
+     every line break into a space, and a line break inside a double-quoted
+     YAML string folds into a space when the build reads it. */
+  const bio = cleanBioText("One.\r\n\r\n\r\nTwo \"quoted\".\nStill two.\u001fx", 4000);
+  if (bio !== "One.\n\nTwo \"quoted\".\nStill two. x") throw new Error("cleaned to " + JSON.stringify(bio));
+  const back = matter(toMarkdown({ user_id: "u", name: "N", sort_order: 0 }, { en: { role_title: "T", bio } })).data.bio.en;
+  if (back !== bio) throw new Error("the file gave back " + JSON.stringify(back));
+  /* and on the page each line is a paragraph: one Enter in a plain box means one */
+  const team = readFileSync(new URL("../../src/_data/team.js", import.meta.url), "utf8");
+  if (!/bio: paragraphs\(data\.bio\)/.test(team) || !/replace\(\/\\n\+\/g, "\\n\\n"\)/.test(team))
+    throw new Error("the team page does not make each line of a bio its own paragraph");
 });
 
 check("Croatian and Serbian survive unchanged", () => {

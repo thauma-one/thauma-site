@@ -37,6 +37,16 @@ function resolvePhotoAspect(publicPath) {
   }
 }
 
+/* { en: "a\nb" } -> { en: "a\n\nb" }: each line break a paragraph break. */
+function paragraphs(bio) {
+  if (!bio || typeof bio !== "object") return bio;
+  const out = {};
+  for (const [lang, text] of Object.entries(bio)) {
+    out[lang] = typeof text === "string" ? text.replace(/\r\n?/g, "\n").replace(/\n+/g, "\n\n") : text;
+  }
+  return out;
+}
+
 module.exports = () => {
   const dir = path.join(__dirname, "..", "content", "team");
   if (!fs.existsSync(dir)) return [];
@@ -49,6 +59,11 @@ module.exports = () => {
       return {
         slug: f.replace(/\.md$/, ""),
         ...data,
+        /* EVERY LINE A PARAGRAPH. A bio is typed into a plain box, where one
+           Enter means "new paragraph" — but markdown only starts one after a
+           blank line, so a bio typed that way ran together on the page (Chase,
+           2026-10-13: "new paragraphs don't seem to save as they should"). */
+        bio: paragraphs(data.bio),
         bioPhoto,
         /* STATED BEATS MEASURED. A photo cropped in the console records the
            shape it was cropped to, and that is the answer — the file is in R2
