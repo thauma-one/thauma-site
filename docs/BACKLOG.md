@@ -415,3 +415,35 @@ not recommended.
   website, but not Settings (Settings belongs to a ministry today), so such
   a person has no Notifications tab — and the bell's "Choose what arrives"
   link leads to a page they cannot open.
+
+## 7. Chase's review, 2026-10-13 evening — to build together with the app
+Held until the app is settled ("let's figure out the App thing we wanted to
+make so you can do everything at the same time"). Mockups:
+https://claude.ai/artifact/P72mJWifd8YR1sCtF3YCXm
+
+**The redesign (emails, confirmation pages, landing page, site).**
+- Emails: design **D** (Letterhead) is the one — its margin column and
+  layout. Its action must read as a BUTTON ("so they know they need to press
+  something"), and the margin column must not be easy to overlook.
+- He also likes **F**'s layout — it "feels more like the Thauma website" —
+  but NOT photos in every email, and not those photos (placeholders; "I
+  don't want a big church on the home page").
+- Landing page: **L1** (the line arrives).
+- THE LOGO AND BALANCE: the arriving line left of the T "throws off the
+  balance of the site", and centering may not fix it. Work out how to use
+  the logo and keep the site's balance — hence the hero is back to the text
+  wordmark for now.
+- DON'T OVERUSE THE LOGO: "it's more for the favicon than something to be
+  plastered everywhere. The real logo is the Thauma design."
+
+**Fixes.**
+- Team bio (People › Team page and Settings › Your bio): new paragraphs do
+  not save as they should.
+- A staff member's bio page: the photo is cropped slightly at the sides
+  instead of showing its full width.
+- Resources: a small seafoam dot beside Share when a document is being
+  shared (mainly private resources shared with someone).
+- Site Creator: tabs inside a section need the opposite color so they do not
+  blend into the background.
+- Settings: on load it first shows only Account, Languages and API keys,
+  then the other tabs appear.
