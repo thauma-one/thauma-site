@@ -1,4 +1,4 @@
-# The app — a plan to decide from, not a build yet
+# The app — the plan, and Chase's decisions (bottom of this file)
 
 Chase, 2026-10-13: "I assume that that means it is built similar to an app
 for a phone, but is just a saved URL. I like that idea! We should build it
@@ -108,3 +108,21 @@ update to the app.
    ministry like the site itself?
 4. ~~In-app notification bell with step 1: yes or no?~~ Built 2026-10-13
    (Chase: "Add the in app notifications bell"), migration 0060.
+
+## Chase's decisions (2026-10-13, evening)
+
+1. **Both apps together** — the console app (staff) and a ministry's app
+   (supporters) in one build, on the one push mechanism.
+2. **"I prayed" is a count only** — the ministry sees "14 people prayed",
+   never who; no account or name.
+3. **Every ministry with a site gets its app** — no separate switch: a
+   ministry whose site is on can be installed.
+4. **Bottom tabs, design D inside** — standard app navigation a thumb can
+   reach, with the content laid out like email design D (integrated, no
+   cards, the margin labels as section labels), so the emails, pages and
+   apps read as one thing. Built together with the redesign (BACKLOG §7).
+
+Push needs one key pair (VAPID). The private half is a secret: it is set
+with a command that makes the pair and stores the secret without it ever
+being printed or committed; the public half goes in wrangler.toml.
+
