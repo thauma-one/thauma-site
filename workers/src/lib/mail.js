@@ -32,53 +32,60 @@
 const RESEND = "https://api.resend.com/emails";
 
 import { t } from "./mail-i18n.js";
-import { band } from "./mail-band.js";
+import { readable } from "../embed-colour.js";
 
 const esc = (s) =>
   String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 /**
- * Wrap body rows in the shell every Thauma email shares.
+ * THE FRAME EVERY THAUMA MESSAGE SHARES — design N, "the program" (Chase,
+ * 2026-10-14: "Let's go with N for the design"; the canvas, round 5).
  *
- * `rows` is already-escaped HTML for the inside of the white card — table rows
- * or block elements, each carrying its own inline styles.
+ * ONE CENTER LINE, like a printed order of service: the name at the top in
+ * wide thin capitals with two short lines under it; a cue between two lines;
+ * the heading thin with its last word bold, as the site's headings are; the
+ * button OUTLINED in the accent (round 4: "the text and box border are the
+ * color and the fill is transparent") carrying the same two lines; then a
+ * hairline with a short colored segment at its center, the facts in
+ * columns, and the small print under a rule.
+ *
+ * NO PICTURE, NO LOGO (round 4: "remove the photo … remove the logo"). The
+ * band image is gone: the name is live text, so it reads with images off,
+ * and a ministry's message says its own name in its own color, with Thauma
+ * credited at the foot.
+ *
+ * STILL MAIL, NOT WEB: tables, every style inline, bgcolor as an attribute
+ * wherever there is a color (Word drops a background set only in CSS), and
+ * websafe faces after Sora — Apple Mail may have it; everywhere else
+ * Helvetica keeps the same layout, since nothing depends on the face's width.
+ * Dark only, and both schemes declared, so no client "helpfully" inverts it.
+ *
+ *   accent  the message's color: Thauma's blue, a notice's amber, or the
+ *           ministry's own (brand.accent), made readable on the dark
+ *   cue     a few words above the heading ("Invitation · The console");
+ *           a ministry's `kind` when there is none
+ *   facts   [{ label, value }] — up to three, in columns under the line
  */
-/**
- * The frame every Thauma message shares.
- *
- * DARK, LIKE THE SITE. The earlier version was a white card on gray because
- * that is the safe default — and it looked like every other service. This is
- * the site's own palette: the near-black ground, the two washes, the wordmark
- * in real Sora.
- *
- * THE HEADER IS AN IMAGE, and it has to be. Gmail strips @font-face, so Sora
- * cannot be set as live text in an email by any means. A PNG is the only way
- * the actual wordmark appears — and because images are blocked by default in
- * a good share of inboxes, the cell behind it is the same near-black and the
- * alt text is styled to read as the wordmark when the picture never arrives.
- * Blocked, it degrades to THAUMA in wide letters on the right color.
- *
- * THE WASHES ARE IN THE IMAGE rather than in CSS. Outlook renders through
- * Word, which ignores gradients entirely, and Gmail strips most of them. Baked
- * into the PNG they either arrive or they do not, and what is behind them is
- * the flat color they fade into.
- *
- * bgcolor IS AN ATTRIBUTE EVERYWHERE below, not only a style. Word drops
- * background declarations on divs and honors them on table cells; on a dark
- * design that is the difference between white-on-dark and white-on-white.
- *
- * BOTH SCHEMES ARE DECLARED. Saying "light" on a dark email invites clients to
- * invert it; saying "dark light" tells them it is deliberate and to leave it
- * be. Every text color is set explicitly for the ones that ignore that.
- */
-export function shell({ heading, rows, footer = "", origin, brand = null, kind = "" }) {
-  /* WHERE THE BAND IMAGE IS FETCHED FROM. The sending deployment's own origin,
-     so a message from staging shows staging's copy and one from production
-     shows production's. Falling back to the live site means an environment
-     that has not deployed the asset yet still renders something rather than
-     alt text — and /img is a static asset, not behind Access, on all three. */
-  const base = String(origin || "https://thauma.one").replace(/\/+$/, "");
+const GROUND = "#0B0F15";
+const RULE = "#1A222D";
+const DISPLAY = "Sora,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const FACE = "Helvetica,Arial,sans-serif";
+
+/* the two lines: a long one and a short one centered under it */
+function twoLines(color, w = 64) {
+  const bar = (n) => `<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td bgcolor="${color}" width="${n}" height="1" style="width:${n}px;height:1px;background:${color};font-size:0;line-height:0;">&nbsp;</td></tr></table>`;
+  return `${bar(w)}<div style="height:4px;font-size:0;line-height:0;">&nbsp;</div>${bar(w / 2)}`;
+}
+
+export function shell({ heading, rows, footer = "", origin, brand = null, kind = "", cue = "", accent = null, facts = null }) {
+  const acc = readable(accent || (brand && brand.accent) || "#2FD8FF", GROUND, 4.5);
+  const name = (brand && brand.name) || "Thauma";
+  const said = cue || kind || "";
+  const site = String(origin || "https://thauma.one").replace(/\/+$/, "").replace(/^https?:\/\//, "");
+  const cols = (facts || []).filter((f) => f && f.label && f.value).slice(0, 3);
+  const line = (w) => `<td width="${w}" style="width:${w}px;font-size:0;line-height:0;"><div style="height:1px;background:${acc};font-size:0;line-height:0;">&nbsp;</div></td>`;
   return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -87,70 +94,93 @@ export function shell({ heading, rows, footer = "", origin, brand = null, kind =
 <meta name="supported-color-schemes" content="dark light">
 <title>${esc(heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:#070A10;">
+<body style="margin:0;padding:0;background:${GROUND};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(heading)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       bgcolor="#070A10" style="background:#070A10;padding:32px 12px;">
-  <tr><td align="center">
+       bgcolor="${GROUND}" style="background:${GROUND};">
+  <tr><td align="center" style="padding:44px 16px 36px;">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;">
 
-      ${brand ? band({ name: brand.name, kind, accent: brand.accent, accent2: brand.accent2, ground: "#10161F" }) : `<tr><td bgcolor="#070A10" align="left"
-              style="background:#070A10;font-size:0;line-height:0;">
-        <img src="${base}/img/email-band.png" width="600" alt="THAUMA"
-             style="display:block;width:100%;max-width:600px;height:auto;border:0;
-                    font-family:Helvetica,Arial,sans-serif;font-size:22px;
-                    letter-spacing:10px;color:#EDF2F8;">
-      </td></tr>`}
+      <tr><td align="center" bgcolor="${GROUND}" style="background:${GROUND};padding:0 0 88px;">
+        <p style="margin:0;font-family:${DISPLAY};font-size:15px;line-height:1.2;font-weight:300;
+                  letter-spacing:7px;text-transform:uppercase;color:#EDF2F8;">${esc(name)}</p>
+        <div style="padding-top:14px;">${twoLines(acc)}</div>
+      </td></tr>
 
-      <tr><td bgcolor="#10161F"
-              style="background:#10161F;padding:30px 32px;
-                     font-family:Helvetica,Arial,sans-serif;color:#DCE3EC;
-                     border-left:1px solid #1c2531;border-right:1px solid #1c2531;
-                     border-bottom:1px solid #1c2531;">
-        ${Array.isArray(rows) ? rows.join("") : rows}
+      ${said ? `<tr><td align="center" style="padding:0 0 20px;">
+        <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"><tr>
+          ${line(28)}
+          <td style="padding:0 14px;font-family:${DISPLAY};font-size:10px;line-height:1.4;font-weight:600;
+                     letter-spacing:3px;text-transform:uppercase;color:${acc};white-space:nowrap;">${esc(said)}</td>
+          ${line(28)}
+        </tr></table>
+      </td></tr>` : ""}
+
+      <tr><td align="center" bgcolor="${GROUND}"
+              style="background:${GROUND};padding:0 36px;text-align:center;font-family:${FACE};color:#C3CDD9;">
+        ${(Array.isArray(rows) ? rows.join("") : rows).replace(/\{\{accent\}\}/g, acc)}
+      </td></tr>
+
+      <tr><td style="padding:52px 0 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td width="39%" style="font-size:0;line-height:0;"><div style="height:1px;background:${RULE};font-size:0;line-height:0;">&nbsp;</div></td>
+          <td width="22%" bgcolor="${acc}" height="3" style="height:3px;background:${acc};font-size:0;line-height:0;">&nbsp;</td>
+          <td width="39%" style="font-size:0;line-height:0;"><div style="height:1px;background:${RULE};font-size:0;line-height:0;">&nbsp;</div></td>
+        </tr></table>
+      </td></tr>
+
+      ${cols.length ? `<tr><td style="padding:30px 20px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          ${cols.map((f, i) => `<td align="center" valign="top" width="${Math.floor(100 / cols.length)}%"
+              style="padding:0 12px;${i ? `border-left:1px solid ${RULE};` : ""}text-align:center;">
+            <p style="margin:0 0 6px;font-family:${DISPLAY};font-size:10px;line-height:1.4;font-weight:600;
+                      letter-spacing:2px;text-transform:uppercase;color:${acc};">${esc(f.label)}</p>
+            <p style="margin:0;font-family:${FACE};font-size:14px;line-height:1.5;color:#EDF2F8;word-break:break-word;">${esc(f.value)}</p>
+          </td>`).join("")}
+        </tr></table>
+      </td></tr>` : ""}
+
+      <tr><td align="center" style="padding:48px 20px 0;">
+        <div style="border-top:1px solid ${RULE};padding-top:20px;font-family:${FACE};font-size:12px;
+                    line-height:1.7;color:#7C8898;text-align:center;">
+          ${footer ? `${footer}<br>` : ""}<a href="${esc(String(origin || "https://thauma.one").replace(/\/+$/, ""))}" style="color:#7C8898;text-decoration:none;">${esc(site)}</a>
+        </div>
       </td></tr>
     </table>
-${/* NO FOOTER, NO ROW. A list confirmation passes none, and the template
-     printed the word "undefined" under every one sent. */ footer ? `
-    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
-           style="width:100%;max-width:600px;">
-      <tr><td style="padding:20px 32px 18px 32px;font-family:Helvetica,Arial,sans-serif;
-                     font-size:12px;line-height:1.6;color:#6f7c8c;">
-        ${footer}
-      </td></tr>
-    </table>` : ""}
   </td></tr>
 </table>
 </body></html>`;
 }
 
-/* THE BAND, REBRANDED (lib/mail-band.js; Chase: "change the name Thauma to
-   their First and Last name"). Thauma's band is an image with THAUMA drawn
-   in it; a partner's is the same shape in live text — the name spaced wide
-   and thin over a wash of the ministry's two colors, with what the email is
-   beneath it ("Sign-up confirmation") — so it needs no image per ministry and
-   reads with images off. The newsletter opens with the same band. */
-
-/** A primary action. A table, not an <a> with padding — Outlook ignores the padding. */
-export function button(href, label, color = "#2FD8FF") {
-  const ink = /^#[0-9a-f]{6}$/i.test(color) && (() => { const n = parseInt(color.slice(1), 16);
-    return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; })() ? "#06110c" : "#FFFFFF";
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"
-                 style="margin:22px 0;"><tr>
-    <td align="center" bgcolor="${color}" style="background:${color};border-radius:6px;">
-      <a href="${esc(href)}" style="display:inline-block;padding:14px 28px;
-         font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;
-         color:${ink};text-decoration:none;border-radius:6px;">${esc(label)}</a>
+/**
+ * A primary action, OUTLINED: the accent is the text and the border, the
+ * fill is the page (round 4). A table cell, not a padded link, because
+ * Outlook ignores padding on <a>; bgcolor set on the cell all the same, so a
+ * client that paints buttons gets the ground and not white. The two lines
+ * follow the words, as on the site.
+ */
+export function button(href, label, color = "{{accent}}") {
+  const c = color === "{{accent}}" ? color : readable(color, GROUND, 4.5);
+  return `<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"
+                 style="margin:30px auto 28px;"><tr>
+    <td align="center" bgcolor="${GROUND}" style="background:${GROUND};border:1px solid ${c};">
+      <a href="${esc(href)}" style="display:inline-block;padding:15px 24px;font-family:${DISPLAY};
+         font-size:12px;line-height:1;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+         color:${c};text-decoration:none;">${esc(label)}&nbsp;&nbsp;&nbsp;<span style="display:inline-block;width:26px;vertical-align:middle;line-height:0;font-size:0;"><span style="display:block;height:2px;background:${c};"></span><span style="display:block;height:3px;"></span><span style="display:block;width:13px;height:1px;background:${c};"></span></span></a>
     </td></tr></table>`;
 }
 
 export const p = (text) =>
-  `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.65;color:#DCE3EC;">${text}</p>`;
+  `<p style="margin:0 0 16px 0;font-family:${FACE};font-size:16px;line-height:1.65;color:#C3CDD9;text-align:center;">${text}</p>`;
 
-export const h1 = (text) =>
-  `<h1 style="margin:0 0 18px 0;font-size:22px;line-height:1.3;color:#FFFFFF;
-              font-weight:normal;">${esc(text)}</h1>`;
+/** The heading: thin, its last word bold — the site's own pattern. */
+export const h1 = (text) => {
+  const words = String(text == null ? "" : text).trim().split(/\s+/);
+  const last = words.length > 1 ? words.pop() : null;
+  return `<h1 style="margin:0 0 22px 0;font-family:${DISPLAY};font-size:34px;line-height:1.15;font-weight:300;
+              color:#FFFFFF;text-align:center;">${esc(words.join(" "))}${last ? ` <b style="font-weight:600;">${esc(last)}</b>` : ""}</h1>`;
+};
 
 /**
  * Send one message. Returns { ok } or { ok:false, error } — never throws.
@@ -276,7 +306,8 @@ export function testInboxEmail({ name, origin, signInEmail, confirmUrl }) {
   ].join("\n");
   return {
     subject: "Send your Thauma tests here?",
-    html: shell({ heading: "Send your tests here?", rows, footer, origin }),
+    html: shell({ heading: "Send your tests here?", rows, footer, origin, cue: "Newsletter tests",
+                  facts: [{ label: "Asked by", value: signInEmail }, { label: "Link good for", value: "Seven days" }] }),
     text,
   };
 }
@@ -333,7 +364,8 @@ export function emailChangeEmail({ name, origin, oldEmail, newEmail, confirmUrl 
 
   return {
     subject: "Confirm your new Thauma address",
-    html: shell({ heading: "Confirm your new address", rows, footer, origin }),
+    html: shell({ heading: "Confirm your new address", rows, footer, origin, cue: "Your account · New address",
+                  facts: [{ label: "From", value: oldEmail }, { label: "To", value: newEmail }, { label: "Link good for", value: "Seven days" }] }),
     text,
   };
 }
@@ -349,7 +381,7 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
   const greeting = name ? `Hi ${esc(name)},` : "Hello,";
 
   const rows =
-    h1("You have been added to the Thauma console") +
+    h1("Welcome behind the scenes.") +
     p(greeting) +
     p(`${esc(invitedBy)} has set up an account for you. The console is where ` +
       `you manage your supporters, your goals and the milestones that appear ` +
@@ -391,7 +423,9 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
 
   return {
     subject: "You have been added to the Thauma console",
-    html: shell({ heading: "You have been added to the Thauma console", rows, footer, origin }),
+    html: shell({ heading: "You have been added to the Thauma console", rows, footer, origin, cue: "Invitation · The console",
+                  facts: [{ label: "Invited by", value: invitedBy }, { label: "Signing in", value: "A one-time code, no password" },
+                          ...(confirmUrl ? [{ label: "Link good for", value: "Seven days" }] : [])] }),
     text,
   };
 }
@@ -448,6 +482,8 @@ export function inviteEmail({ name, origin, invitedBy, invitedByEmail, confirmUr
  */
 export function contactNotificationEmail({ name, email, topic, subject, message,
                                            country, lang, origin }) {
+  /* the facts about them, as the frame's columns (shell facts) */
+  const facts = [{ label: "From", value: email }, { label: "Country", value: country }, { label: "Language", value: lang }];
   const detail = (label, value) => value
     ? `<tr>
          <td style="padding:4px 14px 4px 0;font-family:Helvetica,Arial,sans-serif;
@@ -467,7 +503,7 @@ export function contactNotificationEmail({ name, email, topic, subject, message,
        sender and the ministry are looking at the same thing. */
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
             style="margin:18px 0 22px 0;"><tr>
-       <td style="border-left:3px solid #2FD8FF;padding:4px 0 4px 16px;
+       <td style="border:1px solid #1A222D;border-top:2px solid {{accent}};padding:18px 20px;text-align:left;
                   font-family:Helvetica,Arial,sans-serif;font-size:15.5px;
                   line-height:1.7;color:#DCE3EC;white-space:pre-wrap;">${esc(message)}</td>
      </tr></table>` +
@@ -476,15 +512,7 @@ export function contactNotificationEmail({ name, email, topic, subject, message,
            (subject ? `?subject=${encodeURIComponent("Re: " + subject)}` : ""),
            `Reply to ${name}`) +
 
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0"
-            style="margin:20px 0 0 0;border-top:1px solid #1e2a38;
-                   padding-top:14px;width:100%;">
-       ${detail("From", `<a href="mailto:${esc(email)}" style="color:#2FD8FF;text-decoration:none;">${esc(email)}</a>`)}
-       ${detail("About", topic ? esc(topic) : "")}
-       ${detail("Subject", subject ? esc(subject) : "")}
-       ${detail("Country", country ? esc(country) : "")}
-       ${detail("Language", lang ? esc(lang) : "")}
-     </table>`;
+    "";
 
   const text = [
     topic ? topic : "A message from the website",
@@ -505,7 +533,7 @@ export function contactNotificationEmail({ name, email, topic, subject, message,
       heading: topic || "A message from the website",
       rows,
       footer: "Sent from the contact form on thauma.one. Replying reaches the sender.",
-      origin,
+      origin, cue: "Contact form", facts,
     }),
     text,
   };
@@ -524,7 +552,7 @@ export function contactReceiptEmail({ name, ministry, topic, subject, message,
        as a copy of something rather than as more of our text. */
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
             style="margin:6px 0 20px 0;"><tr>
-       <td style="border-left:3px solid #2FD8FF;padding:2px 0 2px 14px;
+       <td style="border:1px solid #1A222D;border-top:2px solid {{accent}};padding:16px 20px;text-align:left;
                   font-family:Helvetica,Arial,sans-serif;font-size:14.5px;
                   line-height:1.6;color:#93a1b2;">` +
       (topic ? `<div style="color:#DCE3EC;"><b>${esc(topic)}</b></div>` : "") +
@@ -555,6 +583,7 @@ export function contactReceiptEmail({ name, ministry, topic, subject, message,
     /* A partner's receipt wears their band, as their sign-up confirmation
        does; Thauma's own keeps the wordmark. */
     html: shell({ heading: T("receipt.heading"), rows, origin, brand, kind: T("brand.contact"),
+                  facts: [{ label: T("receipt.factTo"), value: ministry }, ...(topic ? [{ label: T("receipt.factAbout"), value: topic }] : [])],
                   footer: brand ? `${footer}<br>${esc(T("brand.note"))}` : footer }),
     text,
   };
@@ -584,6 +613,7 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin,
       origin,
       brand,
       kind: T("brand.confirm"),
+      facts: [{ label: T("confirm.factList"), value: listName }, { label: T("confirm.factFrom"), value: fromName }],
       footer: brand ? esc(T("brand.note")) : "",
       /* p() rather than a bare <p>, so the color is stated. On a dark ground
          an inherited color is one client's reset away from black on black,
@@ -601,7 +631,7 @@ export function listConfirmEmail({ name, listName, confirmUrl, fromName, origin,
         /* The refusal path stated plainly. Somebody who did not ask for this
            should not have to do anything, and should be told so — an email
            that only offers a "yes" reads as a trick. */
-        `<p style="margin:0;font-size:14px;line-height:1.6;color:#93a1b2;">` +
+        `<p style="margin:0;font-size:14px;line-height:1.6;color:#93a1b2;text-align:center;">` +
         `${T("confirm.ignore")}</p>`,
       ],
     }),

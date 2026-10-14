@@ -96,7 +96,7 @@ await check("ONE CLICK BACK ON, from the same link that took them off", async ()
   const res = await get(env, `?s=sub_1&t=${await sign(SALT, "sub_1")}&undo=1`);
   const html = await res.text();
   eq(res.status, 200, "status");
-  assert(/back on the list/i.test(html), "it does not say they are back");
+  assert(/back on the list/i.test(html.replace(/<[^>]+>/g, "")), "it does not say they are back");
   assert(env.calls.some((c) => /SET status = 'subscribed'/i.test(c.sql)),
     `no resubscribe was written: ${env.calls.map((c) => c.sql.slice(0, 40))}`);
 });

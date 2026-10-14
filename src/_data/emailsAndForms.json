@@ -7,14 +7,18 @@
       "helloAnon": "Hello,",
       "body": "Please confirm you would like to receive <b>{list}</b> from {from}.",
       "button": "Yes, subscribe me",
-      "ignore": "If you did not ask for this, ignore this message. Nothing will be sent to you unless you confirm."
+      "ignore": "If you did not ask for this, ignore this message. Nothing will be sent to you unless you confirm.",
+      "factList": "List",
+      "factFrom": "From"
     },
     "receipt": {
       "subject": "We have your message",
       "heading": "We have your message",
       "body": "Thank you for writing to {ministry}. This is just to say it arrived — somebody will read it and reply to this address.",
       "noReply": "You do not need to do anything. If you think of something to add, send it through the form again — this address does not receive replies.",
-      "footer": "You are receiving this because this address was used to write to {ministry} through their website. No account was created and you have not been added to any mailing list."
+      "footer": "You are receiving this because this address was used to write to {ministry} through their website. No account was created and you have not been added to any mailing list.",
+      "factTo": "To",
+      "factAbout": "About"
     },
     "unsub": {
       "title": "Unsubscribed",
@@ -213,7 +217,8 @@
       "profile_approved_summary_edited": "<b>{by}</b> approved your bio changes, with edits",
       "profile_approved_summary_partly": "<b>{by}</b> answered your bio changes",
       "profile_declined_summary": "<b>{by}</b> declined your bio changes",
-      "site_published_summary": "<b>{by}</b> published the site — see what's new"
+      "site_published_summary": "<b>{by}</b> published the site — see what's new",
+      "cue": "Notification"
     },
     "app": {
       "tabHome": "Home",
@@ -276,14 +281,18 @@
       "helloAnon": "Poštovani,",
       "body": "Molimo potvrdite da želite primati <b>{list}</b> od {from}.",
       "button": "Da, pretplati me",
-      "ignore": "Ako ovo niste tražili, zanemarite ovu poruku. Ništa vam neće biti poslano ako ne potvrdite."
+      "ignore": "Ako ovo niste tražili, zanemarite ovu poruku. Ništa vam neće biti poslano ako ne potvrdite.",
+      "factList": "Popis",
+      "factFrom": "Šalje"
     },
     "receipt": {
       "subject": "Primili smo vašu poruku",
       "heading": "Primili smo vašu poruku",
       "body": "Hvala što ste pisali {ministry}. Ovo je samo potvrda da je poruka stigla — netko će je pročitati i odgovoriti na ovu adresu.",
       "noReply": "Ne morate ništa poduzimati. Ako se sjetite nečega što biste dodali, pošaljite to ponovno putem obrasca — ova adresa ne prima odgovore.",
-      "footer": "Ovu poruku primate jer je ova adresa upotrijebljena za pisanje {ministry} putem njihove stranice. Nije stvoren nikakav račun i niste dodani ni na jedan popis za slanje."
+      "footer": "Ovu poruku primate jer je ova adresa upotrijebljena za pisanje {ministry} putem njihove stranice. Nije stvoren nikakav račun i niste dodani ni na jedan popis za slanje.",
+      "factTo": "Za",
+      "factAbout": "Tema"
     },
     "unsub": {
       "title": "Odjava",
@@ -482,7 +491,8 @@
       "profile_approved_summary_edited": "<b>{by}</b>: izmjene vaše biografije su odobrene, uz ispravke",
       "profile_approved_summary_partly": "<b>{by}</b>: odgovor na izmjene vaše biografije",
       "profile_declined_summary": "<b>{by}</b>: izmjene vaše biografije nisu odobrene",
-      "site_published_summary": "<b>{by}</b>: stranica je objavljena — pogledajte što je novo"
+      "site_published_summary": "<b>{by}</b>: stranica je objavljena — pogledajte što je novo",
+      "cue": "Obavijest"
     },
     "app": {
       "tabHome": "Početna",
@@ -545,14 +555,18 @@
       "helloAnon": "Поштовани,",
       "body": "Молимо потврдите да желите да примате <b>{list}</b> од {from}.",
       "button": "Да, претплати ме",
-      "ignore": "Ако ово нисте тражили, занемарите ову поруку. Ништа вам неће бити послато ако не потврдите."
+      "ignore": "Ако ово нисте тражили, занемарите ову поруку. Ништа вам неће бити послато ако не потврдите.",
+      "factList": "Списак",
+      "factFrom": "Шаље"
     },
     "receipt": {
       "subject": "Примили смо вашу поруку",
       "heading": "Примили смо вашу поруку",
       "body": "Хвала што сте писали {ministry}. Ово је само потврда да је порука стигла — неко ће је прочитати и одговорити на ову адресу.",
       "noReply": "Не морате ништа да предузимате. Ако се сетите нечега што бисте додали, пошаљите то поново преко обрасца — ова адреса не прима одговоре.",
-      "footer": "Ову поруку примате јер је ова адреса употребљена за писање {ministry} преко њиховог сајта. Није направљен никакав налог и нисте додати ни на једну листу за слање."
+      "footer": "Ову поруку примате јер је ова адреса употребљена за писање {ministry} преко њиховог сајта. Није направљен никакав налог и нисте додати ни на једну листу за слање.",
+      "factTo": "За",
+      "factAbout": "Тема"
     },
     "unsub": {
       "title": "Одјава",
@@ -751,7 +765,8 @@
       "profile_approved_summary_edited": "<b>{by}</b>: измене ваше биографије су одобрене, уз исправке",
       "profile_approved_summary_partly": "<b>{by}</b>: одговор на измене ваше биографије",
       "profile_declined_summary": "<b>{by}</b>: измене ваше биографије нису одобрене",
-      "site_published_summary": "<b>{by}</b>: сајт је објављен — погледајте шта је ново"
+      "site_published_summary": "<b>{by}</b>: сајт је објављен — погледајте шта је ново",
+      "cue": "Обавештење"
     },
     "app": {
       "tabHome": "Почетна",
@@ -814,14 +829,18 @@
       "helloAnon": "Pozdravljeni,",
       "body": "Prosimo, potrdite, da želite od {from} prejemati <b>{list}</b>.",
       "button": "Da, naroči me",
-      "ignore": "Če tega niste zahtevali, to sporočilo prezrite. Brez vaše potrditve vam ne bomo ničesar pošiljali."
+      "ignore": "Če tega niste zahtevali, to sporočilo prezrite. Brez vaše potrditve vam ne bomo ničesar pošiljali.",
+      "factList": "Seznam",
+      "factFrom": "Pošilja"
     },
     "receipt": {
       "subject": "Vaše sporočilo smo prejeli",
       "heading": "Vaše sporočilo smo prejeli",
       "body": "Hvala, ker ste pisali ekipi {ministry}. S tem vam le sporočamo, da je sporočilo prispelo — nekdo ga bo prebral in odgovoril na ta naslov.",
       "noReply": "Ničesar vam ni treba storiti. Če se spomnite še česa, to ponovno pošljite prek obrazca — ta naslov ne sprejema odgovorov.",
-      "footer": "To sporočilo ste prejeli, ker je bil ta naslov uporabljen za pisanje ekipi {ministry} prek njihove spletne strani. Račun ni bil ustvarjen in niste bili dodani na noben poštni seznam."
+      "footer": "To sporočilo ste prejeli, ker je bil ta naslov uporabljen za pisanje ekipi {ministry} prek njihove spletne strani. Račun ni bil ustvarjen in niste bili dodani na noben poštni seznam.",
+      "factTo": "Za",
+      "factAbout": "Tema"
     },
     "unsub": {
       "title": "Odjava",
@@ -1020,7 +1039,8 @@
       "profile_approved_summary_edited": "<b>{by}</b>: spremembe vašega življenjepisa so odobrene, s popravki",
       "profile_approved_summary_partly": "<b>{by}</b>: odgovor na spremembe vašega življenjepisa",
       "profile_declined_summary": "<b>{by}</b>: spremembe vašega življenjepisa niso odobrene",
-      "site_published_summary": "<b>{by}</b>: spletna stran je objavljena — poglejte, kaj je novo"
+      "site_published_summary": "<b>{by}</b>: spletna stran je objavljena — poglejte, kaj je novo",
+      "cue": "Obvestilo"
     },
     "app": {
       "tabHome": "Domov",

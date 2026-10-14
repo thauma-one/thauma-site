@@ -29,28 +29,14 @@ import { createDb } from "./lib/db.js";
 import { verify } from "./lib/signed-link.js";
 import { notify } from "./lib/notify.js";
 import { siteOrigin } from "./lib/origin.js";
+import { page as publicPage } from "./lib/public-page.js";
 
 const PURPOSE = "confirm";
 
+/* Thauma's public page (lib/public-page.js, design N) — the same look as
+   a sign-up confirmed or an unsubscribe. */
 function page(title, body, { ok = false } = {}) {
-  return new Response(`<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>${title} &middot; Thauma</title>
-<style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;
-       justify-content:center;background:#0B0F15;color:#EDF2F8;
-       font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px}
-  .card{max-width:460px;width:100%}
-  h1{font-size:22px;font-weight:600;margin:0 0 12px;
-     color:${ok ? "#5CF2C4" : "#EDF2F8"}}
-  p{margin:0 0 14px;line-height:1.6;color:#9AA6B6;font-size:15px}
-  a.go{display:inline-block;margin-top:8px;padding:11px 20px;border-radius:5px;
-       background:#2FD8FF;color:#06110c;font-weight:600;text-decoration:none}
-</style></head>
-<body><div class="card">${body}</div></body></html>`, {
+  return new Response(publicPage(`${title} &middot; Thauma`, body), {
     status: ok ? 200 : 400,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });

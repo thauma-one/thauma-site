@@ -49,23 +49,22 @@ await check("the confirmation is Thauma's template with the name in the band, th
   const brand = { accent: "#FD5812", accent2: "#FF1854", mode: "light", name: "Chase Roush" };
   const m = listConfirmEmail({ name: "Ana", listName: "Newsletter", fromName: "Chase Roush", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=a", lang: "en", brand });
   assert(!/email-band\.png/.test(m.html), "no THAUMA image");
-  assert(/class="bname"[^>]*letter-spacing:10px;text-transform:uppercase;color:#EDF2F8;">Chase Roush</.test(m.html), "the name, spaced like Thauma's");
-  assert(/class="bkind"[^>]*>Sign-up confirmation</.test(m.html), "what it is, beneath the name");
-  assert(/linear-gradient\(45deg,#[0-9A-F]{6} 0%,#10161F 40%/.test(m.html), "on a wash of their two colors, on the card");
-  assert(/<h1[^>]*>Confirm your subscription</.test(m.html), "the heading in the body");
-  assert(/bgcolor="#FD5812"/.test(m.html), "their color");
+  assert(/letter-spacing:7px;text-transform:uppercase;color:#EDF2F8;">Chase Roush</.test(m.html), "the name, spaced like Thauma's");
+  assert(/white-space:nowrap;">Sign-up confirmation</.test(m.html), "what it is, as the cue above the heading");
+  assert(/<h1[^>]*>Confirm your <b[^>]*>subscription<\/b></.test(m.html), "the heading in the body, its last word bold");
+  assert(/bgcolor="#FD5812"/i.test(m.html) && /border:1px solid #FD5812/i.test(m.html), "their color, on the line and the outlined button");
   assert(/A Thauma ministry/.test(m.html), "the credit");
   const thauma = listConfirmEmail({ name: "Ana", listName: "News", fromName: "Thauma", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=a", lang: "en" });
-  assert(/email-band\.png/.test(thauma.html) && !/A Thauma ministry/.test(thauma.html), "Thauma's own, unchanged");
+  assert(/">Thauma</.test(thauma.html) && !/A Thauma ministry/.test(thauma.html), "Thauma's own: its name, no credit");
 });
 
 await check("a partner's contact receipt wears their band; Thauma's keeps the wordmark", async () => {
   const brand = { accent: "#FD5812", accent2: "#FF1854", mode: "light", name: "Chase Roush" };
   const m = contactReceiptEmail({ name: "Ana", ministry: "Chase Roush", message: "Hello", origin: "https://thauma.one", lang: "en", brand });
-  assert(/class="bname"[^>]*>Chase Roush</.test(m.html) && /class="bkind"[^>]*>Message received</.test(m.html), "name and kind");
+  assert(/">Chase Roush</.test(m.html) && /white-space:nowrap;">Message received</.test(m.html), "name and kind");
   assert(/A Thauma ministry/.test(m.html), "the credit");
   const own = contactReceiptEmail({ name: "Ana", ministry: "Thauma", message: "Hello", origin: "https://thauma.one", lang: "en" });
-  assert(/email-band\.png/.test(own.html) && !/class="bname"/.test(own.html), "Thauma's own, unchanged");
+  assert(/">Thauma</.test(own.html) && !/">Chase Roush</.test(own.html), "Thauma's own name");
 });
 
 await check("the letter's light and dark grounds are the site's, and the band is drawn on them", async () => {
@@ -92,9 +91,10 @@ await check("a newsletter: Thauma's template, the ministry's color, the credit l
 
 await check("the public pages: the ministry's name and credit only when branded", async () => {
   const b = page("Subscribed", "<h1>You are subscribed</h1>", undefined, "en", { accent: "#FD5812", name: "Chase Roush" });
-  assert(/class="who">Chase Roush</.test(b) && /A Thauma ministry/.test(b) && /#FD5812/.test(b), "branded");
+  assert(/class="name">Chase Roush</.test(b) && /A Thauma ministry/.test(b) && /#FD5812/i.test(b), "branded");
   const plain = page("Subscribed", "<h1>You are subscribed</h1>");
-  assert(!/class="who"/.test(plain) && !/A Thauma ministry/.test(plain), "Thauma's plain page");
+  assert(/class="name">Thauma</.test(plain) && !/A Thauma ministry/.test(plain), "Thauma's plain page");
+  assert(/<h1>You are <b>subscribed<\/b><\/h1>/.test(plain), "the heading's last word bold, as the site's are");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

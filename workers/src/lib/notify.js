@@ -187,6 +187,9 @@ export function noticeEmail(kind, { lang, origin, link, ...vars }) {
     html: shell({
       heading: w.heading,
       origin,
+      /* a notice is amber, as on the canvas (round 5, N · Notice) */
+      accent: "#F5B845",
+      cue: t(lang, "notify.cue"),
       footer: esc(off),
       rows: [
         h1(esc(w.heading)),

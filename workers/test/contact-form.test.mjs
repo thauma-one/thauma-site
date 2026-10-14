@@ -178,9 +178,9 @@ await check("the notification is a letter, not a field dump", async () => {
   const m = LETTER();
   assert(m.html, "there is no HTML part at all");
   assert(!/^Name: /m.test(m.html), "the aligned field dump is still in the HTML");
-  assert(/border-left:3px solid #2FD8FF/.test(m.html),
+  assert(/border:1px solid #1A222D;border-top:2px solid #2FD8FF/i.test(m.html),
     "the message is not set apart — it should read as their words, not ours");
-  assert(/email-band\.png/.test(m.html), "not using the branded shell");
+  assert(/white-space:nowrap;">Contact form</.test(m.html), "not using the shared frame");
 });
 
 await check("replying is one tap", async () => {

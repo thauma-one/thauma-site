@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-14-emails-n",
+      "date": "2026-10-14",
+      "page": "console",
+      "text": {
+        "en": "Every email Thauma sends has a new look: dark and centered, with the name at the top, an outlined button and the details in columns. No more picture banner. A ministry's emails show its own name and color. The pages you land on from those emails match, and arrive part by part.",
+        "hr": "Sve e-poruke koje Thauma šalje imaju novi izgled: tamne i centrirane, s imenom na vrhu, obrubljenim gumbom i pojedinostima u stupcima. Nema više slike u zaglavlju. E-poruke službe pokazuju njezino ime i boju. Stranice na koje vode te poruke usklađene su i pojavljuju se dio po dio.",
+        "sr": "Све е-поруке које Thauma шаље имају нови изглед: тамне и центриране, с именом на врху, обрубљеним гумбом и појединостима у ступцима. Нема више слике у заглављу. Е-поруке службе показују њезино име и боју. Странице на које воде те поруке усклађене су и појављују се дио по дио."
+      }
+    },
+    {
       "id": "2026-10-14-clean-links-all",
       "date": "2026-10-14",
       "page": "staff:website",

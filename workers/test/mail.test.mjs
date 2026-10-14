@@ -139,12 +139,10 @@ await check("a name with markup in it cannot inject", () => {
   assert(!m.html.includes(payload), "the name reached the HTML unescaped");
   assert(/&lt;img/.test(m.html), "the name should appear escaped, as text");
 
-  const srcs = [...m.html.matchAll(/<img[^>]*\ssrc="([^"]*)"/g)].map((x) => x[1]);
-  assert(srcs.length >= 1, "the branded header image is missing");
-  for (const src of srcs) {
-    assert(/^https?:\/\/[^/]+\/img\//.test(src),
-      `an image points somewhere unexpected: ${src}`);
-  }
+  /* Design N (2026-10-14) has no pictures at all: the name is live text.
+     So any <img> in the message is one somebody injected. */
+  assert(!/<img[\s>]/i.test(m.html), "an image reached the message");
+  assert(/letter-spacing:7px;text-transform:uppercase;color:#EDF2F8;">Thauma</.test(m.html), "the name, as text, at the top");
 });
 
 /* ---------------------------- sending ---------------------------------- */
