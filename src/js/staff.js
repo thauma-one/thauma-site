@@ -503,9 +503,17 @@
                       ? '<button type="button" class="del" data-delete-resource="' + i + '">' +
                           esc(tr('common.delete')) + '</button>'
                       : '') +
+                    /* A SEAFOAM DOT when it is out to somebody (Chase,
+                       2026-10-13: "a small seafoam dot next to the Share
+                       button indicating that the document is being
+                       shared") — a private resource that isn't private any
+                       more should say so before you open anything. */
                     (sh.key === 'mine'
-                      ? '<button type="button" data-share-resource="' + i + '">' +
-                          esc(tr('res.share')) + '</button>'
+                      ? '<button type="button" class="res-share' + (r.is_shared ? ' is-shared' : '') + '" data-share-resource="' + i + '"' +
+                          (r.is_shared ? ' title="' + esc(tr('res.isShared')) + '"' : '') + '>' +
+                          esc(tr('res.share')) +
+                          (r.is_shared ? '<span class="res-share-dot" aria-hidden="true"></span><span class="sr-only"> · ' + esc(tr('res.isShared')) + '</span>' : '') +
+                        '</button>'
                       : '') +
                   '</div>' +
                   (r.photo ? '<div class="photo"><img src="' + esc(r.photo) +

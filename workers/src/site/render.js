@@ -509,6 +509,13 @@ main section.after-tabs{padding-top:40px}
 .ptabs-underline .ptabs button{border:0;padding:12px 2px;margin-bottom:-1px;border-bottom:2px solid transparent}
 .ptabs-underline .ptabs button[aria-selected="true"]{background:none;color:var(--fg);border-bottom-color:var(--acc)}
 .ptab[hidden]{display:none}
+/* INSIDE A SECTION, the opposite ground (Chase, 2026-10-13: "the tab, when
+   inside the section, need to be the opposite color so it doesn't blend into
+   the background"): a tab not chosen wears the page's ground on a raised or
+   tinted section, and the raised panel on a plain one. The chosen tab keeps
+   the accent; the underline style has no ground to swap. */
+.ptabs-inside:not(.ptabs-underline) .ptabs button:not([aria-selected="true"]){background:var(--panel);border-color:var(--line)}
+.ptabs-inside.raised:not(.ptabs-underline) .ptabs button:not([aria-selected="true"]),.ptabs-inside.band:not(.ptabs-underline) .ptabs button:not([aria-selected="true"]){background:var(--bg)}
 /* CHASEROUSH.COM'S MISSION, closely (2026-10-06): each card a shade apart
    from its section (on a raised band, the page's color), lifting and
    lighting its border under the pointer — or, on a phone, the card nearest

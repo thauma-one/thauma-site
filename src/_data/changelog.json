@@ -270,6 +270,36 @@
         "hr": "Biografije tima čuvaju odlomke, a fotografija člana tima na njegovoj stranici prikazuje se u punoj širini.",
         "sr": "Биографије тима чувају одломке, а фотографија члана тима на његовој страници приказује се у пуној ширини."
       }
+    },
+    {
+      "id": "2026-10-13-resshared",
+      "date": "2026-10-13",
+      "page": "staff:resources",
+      "text": {
+        "en": "A resource of yours that is shared with others shows a small seafoam dot beside Share.",
+        "hr": "Vaš resurs koji je podijeljen s drugima ima malu točku boje mora pokraj gumba Podijeli.",
+        "sr": "Ваш ресурс који је подељен са другима има малу тачку боје мора поред дугмета Подели."
+      }
+    },
+    {
+      "id": "2026-10-13-tabsinside",
+      "date": "2026-10-13",
+      "page": "staff:website",
+      "text": {
+        "en": "Tabs placed inside a section now stand out from the section's background.",
+        "hr": "Kartice smještene unutar odjeljka sada se ističu na pozadini odjeljka.",
+        "sr": "Картице смештене унутар одељка сада се истичу на позадини одељка."
+      }
+    },
+    {
+      "id": "2026-10-13-settingstabs",
+      "date": "2026-10-13",
+      "page": "staff:settings",
+      "text": {
+        "en": "Settings shows all of its tabs straight away.",
+        "hr": "Postavke odmah prikazuju sve kartice.",
+        "sr": "Подешавања одмах приказују све картице."
+      }
     }
   ]
 }

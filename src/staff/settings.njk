@@ -20,7 +20,14 @@ staffHeading: Your <b>account</b>
 <div class="tabs" role="tablist">
   <button type="button" class="tab" role="tab" data-tab="account"
           aria-selected="true" data-i18n="set.account">Account</button>
-  <button type="button" class="tab" role="tab" data-tab="notifications" id="setNotifyTab" hidden
+  {#- SHOWN FROM THE FIRST PAINT (Chase, 2026-10-13: "When the settings
+      for a user is loaded, it first shows only Account, Languages, and API
+      Keys and then loads all the tabs properly"). Notifications applies to
+      everyone — everyone hears when the site is published — so it is not
+      hidden at all. Your bio is only for somebody with a team page: the
+      little script below shows it at once when this browser saw one last
+      time, and staff-settings.js corrects it either way once it knows. -#}
+  <button type="button" class="tab" role="tab" data-tab="notifications" id="setNotifyTab"
           aria-selected="false" data-i18n="set.notifications">Notifications</button>
   <button type="button" class="tab" role="tab" data-tab="bio" id="setBioTab" hidden
           aria-selected="false" data-i18n="set.bio">Your bio</button>
@@ -29,6 +36,7 @@ staffHeading: Your <b>account</b>
   <button type="button" class="tab" role="tab" data-tab="keys"
           aria-selected="false" data-i18n="set.keys">API keys</button>
 </div>
+<script>try { if (localStorage.getItem('thauma.settings.bio') === '1') document.getElementById('setBioTab').hidden = false; } catch (e) {}</script>
 
 <!-- ============================================================= ACCOUNT -->
 <section class="tab-panel set-you" data-panel="account" role="tabpanel">

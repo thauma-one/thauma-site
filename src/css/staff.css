@@ -3278,3 +3278,9 @@ html.build-in-bar .build-card{display:none}
 @keyframes build-pulse{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.build-stages li.is-running::before{animation:none}}
 @media (max-width:640px){.build-card{right:16px;bottom:16px}}
+
+/* Resources: a resource of yours that is out to somebody says so on its
+   Share button, in the ministry voice (2026-10-13) */
+.res-share{display:inline-flex;align-items:center;gap:7px}
+.res-share-dot{width:6px;height:6px;border-radius:50%;background:var(--voice-human);
+  box-shadow:0 0 8px rgba(92,242,196,.55);flex:none}

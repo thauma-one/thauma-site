@@ -384,6 +384,9 @@
   function renderBio() {
     var b = state.you && state.you.bio;
     $('setBioTab').hidden = !b;
+    /* remembered, so the tab is there from the first paint next time
+       (settings.njk) */
+    try { localStorage.setItem('thauma.settings.bio', b ? '1' : '0'); } catch (e) {}
     if (!b) return;
     bioStash();
     if (!bio.draft) {

@@ -824,6 +824,11 @@ check("a page's tabs: the page's own sections, then the bar, then a panel per ta
   const inside = page(d, "give");
   assert(/<section class="ptabs-bar ptabs-pills al-left ptabs-inside band">/.test(inside), "the bar wears the tab section's background");
   assert(/<div class="ptab" id="t-give"[^>]*><section class="[^"]*after-tabs"/.test(inside), "the tab's section starts close under the bar");
+  /* 2026-10-13: "the tab, when inside the section, need to be the opposite
+     color so it doesn't blend into the background" */
+  assert(/\.ptabs-inside\.raised:not\(\.ptabs-underline\) \.ptabs button:not\(\[aria-selected="true"\]\),\.ptabs-inside\.band:not\(\.ptabs-underline\) \.ptabs button:not\(\[aria-selected="true"\]\)\{background:var\(--bg\)\}/.test(inside)
+      && /\.ptabs-inside:not\(\.ptabs-underline\) \.ptabs button:not\(\[aria-selected="true"\]\)\{background:var\(--panel\)/.test(inside),
+    "tabs inside a section do not take the opposite ground");
   delete give.tabs.place; delete give.tabs.items[0].sections[0].tint;
   delete give.tabs.at; give.sections = [txt("top1", "Above")];
   give.tabs.items.pop();

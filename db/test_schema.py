@@ -899,6 +899,23 @@ def t_a_team_share_names_its_team():
             pass
 
 
+def t_your_own_resource_says_whether_it_is_shared():
+    """2026-10-13: a seafoam dot beside Share when a private resource is out
+    to somebody. resources_visible carries is_shared on the 'mine' shelf —
+    by a person, a team or everyone — and 0 everywhere else."""
+    db = _group_world()
+    sql, names = _query("resources_visible")
+    def shared(uid, title):
+        args = {"partner_id": "p_chase", "levels": "staff", "user_id": uid, "is_admin": 0}
+        for row in db.execute(sql, [args[n] for n in names]):
+            if row[2] == title:
+                return row[13]
+    assert shared("u_a", "A's notes") == 0, "unshared, yet marked shared"
+    _group_share(db, "team", "p_one")
+    assert shared("u_a", "A's notes") == 1, "shared with the team, not marked"
+    assert shared("u_b", "A's notes") == 0, "the person it was shared WITH sees the owner's mark"
+
+
 def t_people_find_never_offers_the_asker_or_the_master_account():
     """people_find returns the CANDIDATES; matching the typed letters is the
     worker's (staff-data.js findPeople, tested in workers/test/staff-happy-
@@ -2395,6 +2412,7 @@ if __name__ == "__main__":
         ("a team share reaches the team only",           t_a_team_share_reaches_the_team_and_nobody_else),
         ("everyone + by name is one row, can edit",      t_everyone_and_can_edit_and_one_row_however_it_arrived),
         ("a team share names its team",                  t_a_team_share_names_its_team),
+        ("your own resource says if it is shared",       t_your_own_resource_says_whether_it_is_shared),
         ("people_find skips the asker and master",       t_people_find_never_offers_the_asker_or_the_master_account),
         ("confirming only promotes an invited account", t_confirming_only_ever_promotes_an_invited_account),
         ("the protected account cannot be removed",      t_the_protected_account_cannot_be_removed_or_disabled),

@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "334fc9bbe3123d90";
+export const SOURCE_DIGEST = "0fa58f1ee814e093";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -1071,7 +1071,7 @@ WHERE resources.owner_user_id IS :owner_user_id
        r.owner_user_id, r.created_at, r.updated_at,
        'institutional' AS shelf,
        CASE WHEN :is_admin = 1 THEN 1 ELSE 0 END AS can_edit,
-       NULL AS shared_by_name
+       NULL AS shared_by_name, 0 AS is_shared
   FROM resources r
  WHERE r.owner_user_id IS NULL
    AND (r.partner_id = :partner_id OR r.partner_id IS NULL)
@@ -1081,7 +1081,10 @@ UNION ALL
 
 SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
        r.owner_user_id, r.created_at, r.updated_at,
-       'mine' AS shelf, 1 AS can_edit, NULL AS shared_by_name
+       'mine' AS shelf, 1 AS can_edit, NULL AS shared_by_name,
+       CASE WHEN EXISTS (SELECT 1 FROM resource_shares x WHERE x.resource_id = r.id)
+              OR EXISTS (SELECT 1 FROM resource_group_shares g WHERE g.resource_id = r.id)
+            THEN 1 ELSE 0 END AS is_shared
   FROM resources r
  WHERE r.owner_user_id = :user_id
 
@@ -1090,7 +1093,7 @@ UNION ALL
 SELECT r.id, r.partner_id, r.title, r.description, r.link, r.photo, r.visibility,
        r.owner_user_id, r.created_at, r.updated_at,
        'shared' AS shelf, s.can_edit,
-       (SELECT u.name FROM users u WHERE u.id = r.owner_user_id) AS shared_by_name
+       (SELECT u.name FROM users u WHERE u.id = r.owner_user_id) AS shared_by_name, 0 AS is_shared
   FROM resources r
   JOIN (SELECT resource_id, MAX(can_edit) AS can_edit FROM (
           SELECT sh.resource_id, sh.can_edit FROM resource_shares sh
