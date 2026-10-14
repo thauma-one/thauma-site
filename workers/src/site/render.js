@@ -232,9 +232,9 @@ html[data-navcur="grow"] .nav>a[aria-current]:not(.givebtn){color:var(--fg);posi
    from the left, holds, shrinks to the right, rests) with a soft glow, and
    any other name draws a thin line in from the left on hover. */
 html[data-navcur="grow"] .nav>a:not(.givebtn){position:relative}
+/* no line on hover (Chase, 2026-10-14: "I just want it to highlight") — the
+   link only brightens, as every link in .nav does; the line is the current page's */
 html[data-navcur="grow"] .nav>a[aria-current]:not(.givebtn)::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;background:var(--navtint);box-shadow:0 0 8px color-mix(in srgb,var(--navtint) 70%,transparent);transform-origin:left}
-html[data-navcur="grow"] .nav>a:not(.givebtn):not([aria-current])::before{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;background:var(--navtint);transform:scaleX(0);transform-origin:left;transition:transform .3s cubic-bezier(.16,1,.3,1)}
-html[data-navcur="grow"] .nav>a:not(.givebtn):not([aria-current]):hover::before{transform:scaleX(1)}
 html[data-navcur="pill"] .nav>a[aria-current]:not(.givebtn){color:var(--fg);background:color-mix(in srgb,var(--navtint) 18%,transparent);padding:6px 12px;margin:-6px -12px;border-radius:999px}
 /* "Bold": the current name in heavier type, in the tint. "Dot below": a small
    lit dot under the current name, centered, with a soft glow. */

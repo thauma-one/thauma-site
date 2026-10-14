@@ -2,6 +2,26 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-14-grow-hover",
+      "date": "2026-10-14",
+      "page": "staff:website",
+      "text": {
+        "en": "With the \"growing underline\" menu style, pointing at another page now only brightens its name. The line stays under the page you are on.",
+        "hr": "Uz stil izbornika „rastuća crta” pokazivanje na drugu stranicu sada samo posvijetli njezin naziv. Crta ostaje ispod stranice na kojoj ste.",
+        "sr": "Уз стил изборника „растућа црта” показивање на другу страницу сада само посвијетли њезин назив. Црта остаје испод странице на којој сте."
+      }
+    },
+    {
+      "id": "2026-10-14-no-production-band",
+      "date": "2026-10-14",
+      "page": "console",
+      "text": {
+        "en": "The live console no longer shows the PRODUCTION band across the top. The DEV and STAGING bands stay, so you can still tell those apart.",
+        "hr": "Konzola uživo više ne prikazuje traku PRODUCTION na vrhu. Trake DEV i STAGING ostaju pa ih i dalje možete razlikovati.",
+        "sr": "Конзола уживо више не приказује траку PRODUCTION на врху. Траке DEV и STAGING остају па их и даље можете разликовати."
+      }
+    },
+    {
       "id": "2026-10-14-thauma-app",
       "date": "2026-10-14",
       "page": "site",

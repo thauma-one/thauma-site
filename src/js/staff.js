@@ -2180,6 +2180,11 @@
 
   function showEnvironment() {
     var env = ENVIRONMENTS[location.hostname];
+    /* THE LIVE CONSOLE WEARS NO BAND (Chase, 2026-10-14: "The actual
+       thauma.one staff and admin pages shouldn't have that Production
+       banner. It should just be the site all buttoned up"). The band exists
+       to set dev and staging apart from it; with no band, it is live. */
+    if (env && env.key === 'production') return;
     /* An unknown host is worth saying out loud rather than staying silent:
        localhost, a tunnel, somebody's fork. "I do not know" is information. */
     if (!env) {
