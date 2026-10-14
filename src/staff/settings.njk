@@ -71,16 +71,23 @@ staffHeading: Your <b>account</b>
 
 <!-- ======================================================= NOTIFICATIONS -->
 {#- ITS OWN TAB (2026-10-13, Chase: "I wanted a separate notifications tab,
-    not for it to be built into account"). One row per notice this person's
-    roles receive (workers/src/lib/notify.js), under how it arrives — the
-    console's bell (0060) and email, each switched on its own; the phone
-    ("the app") will be a third group here. The tab is hidden for anyone
-    who receives none. -#}
+    not for it to be built into account"). ONE TABLE: a row per notice this
+    person's roles receive (workers/src/lib/notify.js), a column per way it
+    arrives — Email, and Web (the console's bell, 0060). Chase, the same
+    day: "They are the same type of notification, so just make 2 columns:
+    Email and Web. Then when we get the 'app' going, the Web will be App
+    instead when using the App." So the second column's heading says App
+    when the console is open as the installed app (staff-settings.js). The
+    tab is hidden for anyone who receives none. -#}
 <section class="tab-panel set-you" data-panel="notifications" role="tabpanel" hidden>
-  <h3 class="set-group" data-i18n="set.notify.bell">In the console</h3>
-  <div id="setNotifyBell" data-channel="bell"></div>
-  <h3 class="set-group" data-i18n="set.notify.email">By email</h3>
-  <div id="setNotify" data-channel="email"></div>
+  <table class="set-notify">
+    <thead><tr>
+      <th scope="col"><span class="sr-only" data-i18n="set.notifications">Notifications</span></th>
+      <th scope="col" data-i18n="set.notify.colEmail">Email</th>
+      <th scope="col" id="setNotifyWebCol" data-i18n="set.notify.colWeb">Web</th>
+    </tr></thead>
+    <tbody id="setNotify"></tbody>
+  </table>
 </section>
 
 <!-- ============================================================ YOUR BIO -->

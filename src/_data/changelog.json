@@ -250,6 +250,16 @@
         "hr": "Novi Thauma logotip je na stranici i u konzoli, s novom ikonom kartice.",
         "sr": "Нови Thauma логотип је на сајту и у конзоли, са новом иконом картице."
       }
+    },
+    {
+      "id": "2026-10-13-notifytable",
+      "date": "2026-10-13",
+      "page": "staff:settings",
+      "text": {
+        "en": "Notifications is one list now: each notification has an Email switch and a Web switch side by side.",
+        "hr": "Obavijesti su sada jedan popis: svaka obavijest ima prekidač za e-poštu i za web, jedan uz drugi.",
+        "sr": "Обавештења су сада један списак: свако обавештење има прекидач за е-пошту и за веб, један уз други."
+      }
     }
   ]
 }

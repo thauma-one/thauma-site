@@ -36,11 +36,12 @@ const ANSWER = {
   embed: {}, timeline: {}, api_keys: [],
 };
 
-async function boot() {
+async function boot({ standalone = false } = {}) {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only", pretendToBeVisual: true, url: "https://next.thauma.one/staff/settings/",
   });
   const w = dom.window;
+  w.matchMedia = (q) => ({ matches: standalone && /display-mode: standalone/.test(q), addEventListener() {}, removeEventListener() {} });
   w.fetch = async () => ({ ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(ANSWER)) });
   w.StaffProblem = () => {}; w.StaffProblemClear = () => {};
   w.StaffActing = () => {}; w.StaffIdentity = () => {};
@@ -67,32 +68,34 @@ await check("Account is the board's five lines, in its order", async () => {
   assert(d.querySelector('[data-panel="account"] a[href*="access/logout"]'), "Sign out signs out");
 });
 
-await check("Notifications: its own tab, the bell and email, a switch per notice each, kept by PATCH (0056, 0060)", async () => {
+await check("Notifications: its own tab, one table — a row per notice, Email and Web side by side, kept by PATCH (0056, 0060)", async () => {
   /* Its own tab (2026-10-13, Chase: "I wanted a separate notifications tab,
-     not for it to be built into account"); Account keeps the board's lines.
-     The bell ("Add the in app notifications bell") switches on its own. */
+     not for it to be built into account"); then: "They are the same type of
+     notification, so just make 2 columns: Email and Web. Then when we get the
+     'app' going, the Web will be App instead when using the App". */
   const none = await boot();
   assert(none.d.getElementById("setNotifyTab").hidden, "a tab for somebody who receives nothing");
-  ANSWER.you.notices = [{ kind: "invite_accepted", on: true, bell: false }];
+  ANSWER.you.notices = [{ kind: "invite_accepted", on: true, bell: false }, { kind: "site_published", on: false, bell: true }];
   try {
     const { w, d } = await boot();
     eq(labels(d, "account"), ["Email", "Console language", "What you can do", "Activity", "Sign out"], "Account unchanged");
     assert(!d.getElementById("setNotifyTab").hidden, "no Notifications tab");
-    eq([...d.querySelectorAll('[data-panel="notifications"] .set-group')].map((h) => h.textContent), ["In the console", "By email"], "groups");
-    eq([...d.querySelectorAll('#setNotifyBell .set-lbl, #setNotify .set-lbl')].map((l) => l.textContent),
-       ["Someone accepts their invitation", "Someone accepts their invitation"], "a row in each");
-    const bell = d.querySelector('#setNotifyBell [data-notice="invite_accepted"]');
-    const mail = d.querySelector('#setNotify [data-notice="invite_accepted"]');
-    eq([bell.getAttribute("aria-checked"), mail.getAttribute("aria-checked")], ["false", "true"], "each its own state");
+    eq([...d.querySelectorAll(".set-notify thead th")].slice(1).map((h) => h.textContent), ["Email", "Web"], "two columns");
+    eq([...d.querySelectorAll(".set-notify tbody tr")].map((r) => [r.querySelector("th").textContent,
+        ...[...r.querySelectorAll("[data-notice]")].map((x) => x.dataset.channel + ":" + x.getAttribute("aria-checked"))]),
+       [["Someone accepts their invitation", "email:true", "bell:false"], ["The site is published (What's new)", "email:false", "bell:true"]],
+       "a row per notice, its email and web switches in their columns");
     let sent = [];
     w.fetch = async (u, o) => { if (o && o.method === "PATCH") sent.push(JSON.parse(o.body));
       return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(ANSWER)) }; };
-    mail.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    d.querySelector('[data-notice="invite_accepted"][data-channel="email"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     await settle(100);
-    d.querySelector('#setNotifyBell [data-notice="invite_accepted"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    d.querySelector('[data-notice="invite_accepted"][data-channel="bell"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     await settle(100);
     eq(sent, [{ notify: { kind: "invite_accepted", channel: "email", on: false } },
               { notify: { kind: "invite_accepted", channel: "bell", on: true } }], "switching each");
+    const app = await boot({ standalone: true });
+    eq(app.d.getElementById("setNotifyWebCol").textContent, "App", "in the installed app the column says App");
   } finally { delete ANSWER.you.notices; }
 });
 

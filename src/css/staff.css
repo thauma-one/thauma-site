@@ -2567,7 +2567,6 @@ html.console-menu-open{overflow:hidden}
 .set-bio-answer p{margin:0;color:var(--text)}
 .set-bio-note{font-style:italic;color:var(--dim)}
 .set-bio-answer .ghost-btn{align-self:flex-end}
-div + .set-group{margin-top:30px}
 .set-bio{max-width:760px}
 .set-bio-state{color:var(--dim);margin:0 0 18px;padding:12px 14px;border-left:2px solid var(--line-hard,rgba(255,255,255,.14))}
 .set-bio-state.is-waiting{border-left-color:var(--voice-human);color:var(--text)}
@@ -2575,11 +2574,17 @@ div + .set-group{margin-top:30px}
 #setBioForm textarea{width:100%;resize:vertical;min-height:160px;font-family:inherit;line-height:1.5}
 .set-bio-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
 .set-bio-actions [hidden]{display:none}
-/* Settings › Notifications: the rows under how they arrive (email; the
-   phone later) */
-.set-group{font-size:10px;letter-spacing:var(--ls-label);text-transform:uppercase;
-  font-weight:var(--w-bold);color:var(--voice-tech);margin:4px 0 6px}
-.set-group+div>.set-r:first-child{border-top:0}
+/* Settings › Notifications: one table — a row per notice, a column per way
+   it arrives (Email, Web or App). The headings sit over the switches. */
+.set-notify{width:100%;min-width:0;max-width:720px;border-collapse:collapse}
+.set-notify th,.set-notify td{padding:16px 0;border-top:1px solid var(--line);text-align:left;vertical-align:middle}
+.set-notify thead th{border-top:0;padding:4px 0 12px;background:none;font-size:10px;letter-spacing:var(--ls-label);
+  text-transform:uppercase;font-weight:var(--w-bold);color:var(--voice-tech)}
+.set-notify thead th:not(:first-child),.set-notify td{width:96px;text-align:center}
+.set-notify tbody th{font-weight:400;font-size:var(--fs-sm);color:var(--text);padding-right:16px}
+.set-notify tbody tr:last-child > *{border-bottom:1px solid var(--line)}
+.set-notify .switch{margin:0 auto}
+@media (max-width:640px){.set-notify thead th:not(:first-child),.set-notify td{width:74px}}
 /* What's new: one block per Publish, by page */
 .chg{max-width:760px;display:flex;flex-direction:column;gap:14px}
 .chg-rel{border:1px solid var(--line-hard);border-radius:var(--radius);padding:0 18px;

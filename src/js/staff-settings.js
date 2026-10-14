@@ -67,6 +67,14 @@
     try { history.replaceState(null, '', '#' + name); } catch (e) {}
   }
 
+  /* The second column of Notifications: "Web" in a browser, "App" when the
+     console is open as the installed app (a home-screen icon opens it
+     standalone — docs/APP-PLAN.md). Same switch, same notices. */
+  function webCol() {
+    var app = window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches);
+    return app || window.navigator.standalone ? 'set.notify.colApp' : 'set.notify.colWeb';
+  }
+
   /* ---- rendering ------------------------------------------------------ */
 
   function render() {
@@ -110,21 +118,24 @@
 
     renderBio();
 
-    /* Notifications (0056, the bell 0060): a row and a switch per notice
-       these roles receive, once for the bell and once for email; no
-       notices, no tab. */
+    /* Notifications (0056, the bell 0060): one table, a row per notice
+       these roles receive, a switch for Email and one for Web (the bell);
+       no notices, no tab. Web reads App in the installed app (webCol). */
     var notices = (state.you && state.you.notices) || [];
     $('setNotifyTab').hidden = !notices.length;
-    [['setNotifyBell', 'bell'], ['setNotify', 'on']].forEach(function (g) {
-      $(g[0]).innerHTML = notices.map(function (n) {
-        var on = !!n[g[1]];
-        return '<div class="set-r"><span class="set-lbl">' + esc(tr('set.notify.' + n.kind)) + '</span>' +
-          '<div class="set-ctl"><button type="button" class="switch small" role="switch" data-notice="' + esc(n.kind) + '"' +
-          ' aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(tr('set.notify.' + n.kind)) + '">' +
-          '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
-            '</span><span class="switch-knob"></span></span></button></div></div>';
-      }).join('');
-    });
+    var web = webCol();
+    $('setNotifyWebCol').textContent = tr(web);
+    var cell = function (n, channel, on) {
+      var what = tr('set.notify.' + n.kind);
+      return '<td><button type="button" class="switch small" role="switch" data-notice="' + esc(n.kind) + '" data-channel="' + channel + '"' +
+        ' aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + esc(what + ' · ' + tr(channel === 'bell' ? web : 'set.notify.colEmail')) + '">' +
+        '<span class="switch-track"><span class="switch-state">' + tr(on ? 'switch.on' : 'switch.off') +
+          '</span><span class="switch-knob"></span></span></button></td>';
+    };
+    $('setNotify').innerHTML = notices.map(function (n) {
+      return '<tr><th scope="row">' + esc(tr('set.notify.' + n.kind)) + '</th>' +
+        cell(n, 'email', !!n.on) + cell(n, 'bell', !!n.bell) + '</tr>';
+    }).join('');
 
     $('setLangList').innerHTML = state.languages.map(function (l) {
       var isDefault = l.code === state.partner.default_lang;
@@ -531,13 +542,11 @@
     change({ preferred_lang: code }, e.target, 'toast.langChanged');
   });
 
-  ['setNotify', 'setNotifyBell'].forEach(function (id) {
-    $(id).addEventListener('click', function (e) {
-      var sw = e.target.closest('[data-notice]');
-      if (!sw || sw.disabled) return;
-      change({ notify: { kind: sw.dataset.notice, channel: this.getAttribute('data-channel'),
-                         on: sw.getAttribute('aria-checked') !== 'true' } }, sw);
-    });
+  $('setNotify').addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-notice]');
+    if (!sw || sw.disabled) return;
+    change({ notify: { kind: sw.dataset.notice, channel: sw.getAttribute('data-channel'),
+                       on: sw.getAttribute('aria-checked') !== 'true' } }, sw);
   });
 
   $('setLangList').addEventListener('click', function (e) {
