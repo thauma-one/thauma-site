@@ -21,7 +21,7 @@
  * copy serves every address. VERSION changes when this file does, and the
  * old caches go.
  */
-export const SW_VERSION = "2026-10-13.1";
+export const SW_VERSION = "2026-10-14.1";
 
 export const SW_JS = `/* Thauma — service worker ${SW_VERSION} */
 const STATIC = "static-${SW_VERSION}", PAGES = "pages-${SW_VERSION}";
@@ -66,7 +66,9 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (STATIC_FILE.test(url.pathname) || url.pathname.startsWith("/media/")) { e.respondWith(quick(req)); return; }
-  if (req.mode === "navigate" || url.pathname.endsWith("/data.json")) e.respondWith(fresh(req));
+  /* the arcade's page and words: kept, so a found arcade plays offline in
+     the Thauma app (site-app.js) */
+  if (req.mode === "navigate" || url.pathname.endsWith("/data.json") || url.pathname.startsWith("/arcade/")) e.respondWith(fresh(req));
 });
 
 self.addEventListener("push", (e) => {

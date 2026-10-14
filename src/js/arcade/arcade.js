@@ -225,6 +225,10 @@
   function mount(opts) {
     if (open) return Promise.resolve();
     opts = opts || {};
+    /* FOUND: in the installed Thauma app the arcade is a tab from now on
+       (site-app.js), saved on the phone to play offline. */
+    try { localStorage.setItem('thauma.arcade.found', '1'); } catch (e) {}
+    try { document.dispatchEvent(new CustomEvent('arcade:found')); } catch (e) {}
     return Promise.all([css(), words(), script('sound', '/js/arcade/sound.js').catch(function () {})]).then(function (res) {
       var all = res[1], L = lang(all), W = all[L] || all.en || {};
       var w = function (k) { return W[k] || (all.en && all.en[k]) || ''; };

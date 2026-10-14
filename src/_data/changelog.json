@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-14-thauma-app",
+      "date": "2026-10-14",
+      "page": "site",
+      "text": {
+        "en": "thauma.one can be installed as an app. On a phone, add it to the Home Screen: it opens full screen with tabs at the bottom for Home, About, Events and Give, and keeps working without a connection.",
+        "hr": "thauma.one se može instalirati kao aplikacija. Na mobitelu je dodajte na početni zaslon: otvara se preko cijelog zaslona s karticama na dnu za Početnu, O nama, Događaje i Darivanje te radi i bez veze.",
+        "sr": "thauma.one се може инсталирати као апликација. На мобителу је додајте на почетни заслон: отвара се преко цијелог заслона с картицама на дну за Почетну, О нама, Догађаје и Даривање те ради и без везе."
+      }
+    },
+    {
       "id": "2026-10-14-ministry-app",
       "date": "2026-10-14",
       "page": "staff:website",

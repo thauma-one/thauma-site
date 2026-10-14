@@ -1,0 +1,23 @@
+{#- THE THAUMA APP'S TABS (docs/APP-PLAN.md, Chase 2026-10-13: "bottom tabs
+   with design D"). thauma.one installed IS the Thauma app: these show only
+   when the site runs as an installed app on a phone (js/site-app.js), never
+   in a browser. Home, About, Events (Mission while Events is off), Give —
+   and the Arcade, once it has been found: the arcade stays a secret until
+   then, and after that it is a tab for good, and plays offline. -#}
+{%- set appMid = "events" if visible.pages.events else "mission" %}
+<div class="site-tabs" id="siteTabs" role="navigation" hidden aria-label="{{ t.home.title | plain }}">
+  <a href="/{{ lang }}/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6 8 6v8H4z"/><path d="M10 19v-5h4v5"/></svg>{{ t.home.title | plain }}</a>
+  {%- if visible.pages.about %}
+  <a href="/{{ lang }}/about/"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/></svg>{{ t.nav.about | plain }}</a>
+  {%- endif %}
+  {%- if visible.pages[appMid] %}
+  <a href="/{{ lang }}/{{ appMid }}/"><svg viewBox="0 0 24 24" aria-hidden="true">{% if appMid == "events" %}<rect x="4" y="5.5" width="16" height="14"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>{% else %}<path d="M4 18L12 6l8 12"/><path d="M8.5 12.5h7"/>{% endif %}</svg>{{ t.nav[appMid] | plain }}</a>
+  {%- endif %}
+  {%- if visible.pages.give %}
+  <a href="/{{ lang }}/give/" class="is-give"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>{{ t.nav.give | plain }}</a>
+  {%- endif %}
+  {%- if visible.sections.arcade %}
+  <a href="/arcade/" data-tab="arcade" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18h14l-1.5-4h-11z"/><path d="M12 14V7"/><circle cx="12" cy="5.5" r="2.5"/></svg>{{ (t.arcade and t.arcade.title) | plain }}</a>
+  {%- endif %}
+</div>
+<script src="/js/site-app.js?v={{ "/js/site-app.js" | v }}" defer></script>

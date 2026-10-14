@@ -1132,3 +1132,26 @@ section .cue::before{content:counter(cue,decimal-leading-zero);width:auto;height
    behind it does not scroll (the consoles' rule for every popup, 2026-09-27). */
 html:has(body.menu-open){overflow:hidden}
 .mobile-menu{overscroll-behavior:contain}
+
+/* ---------------------------------------------------------------------
+   THE THAUMA APP'S TABS (site-app-tabs.njk, js/site-app.js): only when
+   thauma.one runs as an installed app. Design D — the current tab lit,
+   with the blue line over it and the short seafoam line under that (Give
+   is the ministry voice: seafoam over blue).
+   --------------------------------------------------------------------- */
+.site-tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:rgba(11,15,21,.97);
+  border-top:1px solid rgba(255,255,255,.08);padding-bottom:env(safe-area-inset-bottom)}
+.site-tabs[hidden]{display:none}
+.site-tabs a{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:60px;
+  padding:10px 4px 8px;color:var(--dim);text-decoration:none;font:600 10px/1 'Sora',sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.site-tabs a[hidden]{display:none}
+.site-tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.site-tabs a[aria-current="page"]{color:var(--text)}
+.site-tabs a[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:50%;width:28px;height:2px;margin-left:-14px;background:var(--blue)}
+.site-tabs a[aria-current="page"]::after{content:"";position:absolute;top:4px;left:50%;width:14px;height:1px;margin-left:-14px;background:var(--foam)}
+.site-tabs a.is-give[aria-current="page"]::before{background:var(--foam)}
+.site-tabs a.is-give[aria-current="page"]::after{background:var(--blue)}
+html.site-app body{padding-bottom:calc(61px + env(safe-area-inset-bottom))}
+body:has(#arcade) .site-tabs{display:none}
+@media (min-width:761px){.site-tabs{display:none}html.site-app body{padding-bottom:0}}
+@media (prefers-reduced-motion:no-preference){.site-tabs a{transition:color .2s}}
