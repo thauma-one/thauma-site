@@ -87,6 +87,11 @@
   ready(function () {
     /* ---- © 2026 → ▶ PLAY, one character per tap ---------------------- */
     Array.prototype.forEach.call(document.querySelectorAll('.foot-legal'), function (legal) {
+      /* THE WORDS SIT INSIDE THE EDITOR'S WRAPPER (<span data-k>, the `rich`
+         filter), so the © is looked for in the innermost first element —
+         the door had silently stopped installing (Chase, 2026-10-15: "the
+         copyright entrance for the arcade isn't working"). */
+      while (legal.firstChild && legal.firstChild.nodeType === 1) legal = legal.firstChild;
       var t = legal.firstChild;
       if (!t || t.nodeType !== 3) return;
       var m = t.nodeValue.match(/^©\s?\d{4}/);
