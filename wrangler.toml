@@ -176,6 +176,9 @@ binding = "AI"
 [vars]
 # Every site binds the same database; nothing is copied between them.
 ONE_DATABASE = "thauma-ops"
+# PHONE NOTIFICATIONS (Web Push): the public half of the one key pair all
+# three sites share — see deploy/vapid-setup.mjs. The private half is a secret.
+VAPID_PUBLIC_KEY = "BPtAD5734XJ9RIUjawIXkbIgBO2v4SbSfXizi6OGJE3W5EkVrmuwO9NQPUYeRVSEXd5H1akwldTfUfU8i2qtOpQ"
 # TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
 # (10,000 Neurons a day for the whole account; translate.js). The three add
 # up to 9,000 — a test holds them there — so all three sites translating
@@ -400,6 +403,9 @@ binding = "AI"
 [env.dev.vars]
 # Every site binds the same database; nothing is copied between them.
 ONE_DATABASE = "thauma-ops"
+# PHONE NOTIFICATIONS (Web Push): the public half of the one key pair all
+# three sites share — see deploy/vapid-setup.mjs. The private half is a secret.
+VAPID_PUBLIC_KEY = "BPtAD5734XJ9RIUjawIXkbIgBO2v4SbSfXizi6OGJE3W5EkVrmuwO9NQPUYeRVSEXd5H1akwldTfUfU8i2qtOpQ"
 # TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
 # (10,000 Neurons a day for the whole account; translate.js). The three add
 # up to 9,000 — a test holds them there — so all three sites translating
@@ -594,6 +600,9 @@ head_sampling_rate = 1
 [env.production.vars]
 # Every site binds the same database; nothing is copied between them.
 ONE_DATABASE = "thauma-ops"
+# PHONE NOTIFICATIONS (Web Push): the public half of the one key pair all
+# three sites share — see deploy/vapid-setup.mjs. The private half is a secret.
+VAPID_PUBLIC_KEY = "BPtAD5734XJ9RIUjawIXkbIgBO2v4SbSfXizi6OGJE3W5EkVrmuwO9NQPUYeRVSEXd5H1akwldTfUfU8i2qtOpQ"
 # TRANSLATION'S DAILY SHARE of the account's free Workers AI allowance
 # (10,000 Neurons a day for the whole account; translate.js). The three add
 # up to 9,000 — a test holds them there — so all three sites translating
