@@ -348,8 +348,8 @@ entrance replays) stutters for 5–10 frames, each character on its own
 start and length (staggered) — colours split red/cyan by a new amount each
 frame, jerks and skews, flashes a wrong glyph or a block (█▓▒░), sometimes
 shows only a slice, sometimes drops out; a third of the time a second bite
-follows. 40% of runs are aimed at the 404 itself, the rest anywhere —
-nav and footer included. Build it on fail.js's own pieces (split + jolt),
+follows. 40% of runs are aimed at the 404 itself, 25% at the nav ("I like
+when it affects items in the nav"), the rest anywhere, footer included. Build it on fail.js's own pieces (split + jolt),
 reduced-motion respected; five taps on the 404 still open the arcade.
 
 ## 4. Arcade
