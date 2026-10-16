@@ -331,13 +331,15 @@ line ("All of me for all of Him.") in WHITE, rolling through every PUBLISHED
 language — read from the site's active languages, never a hard-coded list
 ("SL isn't deployed. Don't build it manually"). Each change cascades DOWN,
 one character after another, slowly (~1.1s per character, ~1.6s across the
-line), holding ~7.5s. The button stays in the visitor's language. The
+line), holding ~7.5s, in Sora 100 (thin). The two glows keep to the corners
+(top-left, bottom-right) so the middle stays easy to read. The button stays in the visitor's language. The
 background keeps the original two drifting glows; a soft brightness passes
 over the logo's blue lines every ~9s.
 
-404: NOT the round-6 boards. Chase wants the "We are experiencing technical
-difficulties" card The Spiffing Brit shows in his YouTube videos — waiting
-on a screenshot or a link with a timestamp. The glitch is to be the arcade's
+404: a TV test card ("Please stand by"), in the style of the classic
+PM5544 card but calmer, with a custom graphic in the circle (Chase's
+reference, 2026-10-15; canvas round 6, boards TC1 Thauma colors / TC2
+classic grey — pick one). The glitch is to be the arcade's
 own degrading effect (js/arcade/fail.js), playing by itself now and then
 on the 404, not a new one. Five taps still open the arcade.
 
