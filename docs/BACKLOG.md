@@ -331,15 +331,19 @@ line ("All of me for all of Him.") in WHITE, rolling through every PUBLISHED
 language — read from the site's active languages, never a hard-coded list
 ("SL isn't deployed. Don't build it manually"). Each change cascades DOWN,
 one character after another, slowly (~1.1s per character, ~1.6s across the
-line), holding ~7.5s, in Sora 100 (thin). The two glows keep to the corners
+line), holding ~7.5s, in Sora 100 (thin). A shimmer — a narrow band of light —
+crosses the WHOLE logo every 9s (not the line's "breathing", which read
+as breathing). The two glows keep to the corners
 (top-left, bottom-right) so the middle stays easy to read. The button stays in the visitor's language. The
 background keeps the original two drifting glows; a soft brightness passes
 over the logo's blue lines every ~9s.
 
-404: a TV test card ("Please stand by"), in the style of the classic
-PM5544 card but calmer, with a custom graphic in the circle (Chase's
-reference, 2026-10-15; canvas round 6, boards TC1 Thauma colors / TC2
-classic grey — pick one). The glitch is to be the arcade's
+404: ON HOLD until Chase finds his reference (2026-10-15: "The 404s aren't
+close at all! I wish I could find it … Maybe we pivot for now until I find
+it later"). It is a "Please stand by" / technical-difficulties card, like
+the one The Spiffing Brit uses on YouTube — calmer than a PM5544 test card,
+with a custom graphic in it. The round-6 test cards (TC1/TC2) missed. When
+it is found: the glitch is fail.js's degrade, playing by itself. The glitch is to be the arcade's
 own degrading effect (js/arcade/fail.js), playing by itself now and then
 on the 404, not a new one. Five taps still open the arcade.
 
