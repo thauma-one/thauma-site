@@ -2,6 +2,26 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-15-favicon-thin",
+      "date": "2026-10-15",
+      "page": "console",
+      "text": {
+        "en": "The Thauma icon in your browser tab and on your phone has a thinner border.",
+        "hr": "Ikona Thauma u kartici preglednika i na mobitelu ima tanji obrub.",
+        "sr": "Икона Thauma у картици прегледника и на мобителу има тањи обруб."
+      }
+    },
+    {
+      "id": "2026-10-15-landing-b",
+      "date": "2026-10-15",
+      "page": "site",
+      "text": {
+        "en": "The thauma.one landing page is new. The THAUMA logo puts itself together as the page opens, then the words and Serve, Train and Resource arrive one by one. A small line keeps moving to show the work goes on.",
+        "hr": "Početna stranica thauma.one je nova. Logotip THAUMA slaže se dok se stranica otvara, a zatim jedno po jedno dolaze riječi te Služiti, Obučavati i Opskrbiti. Mala crta stalno se pomiče i pokazuje da rad traje.",
+        "sr": "Почетна страница thauma.one је нова. Логотип THAUMA слаже се док се страница отвара, а затим једно по једно долазе ријечи те Служити, Обучавати и Опскрбити. Мала црта стално се помиче и показује да рад траје."
+      }
+    },
+    {
       "id": "2026-10-14-emails-n",
       "date": "2026-10-14",
       "page": "console",

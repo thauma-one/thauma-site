@@ -242,7 +242,13 @@
   "coming": {
     "line_thin": "Thauma je",
     "line_bold": "u pripremi.",
-    "text": "Produkcijska služba za crkve u Hrvatskoj i okolnoj regiji — služenje, obuka i opskrba njihovih tehničkih timova. Uskoro."
+    "text": "Produkcijska služba za crkve u Hrvatskoj i okolnoj regiji — služenje, obuka i opskrba njihovih tehničkih timova. Uskoro.",
+    "serve": "Služiti",
+    "serve_text": "Praktična pomoć u stvarnim bogoslužjima.",
+    "train": "Obučavati",
+    "train_text": "Praktična obuka na vlastitom jeziku.",
+    "resource": "Opskrbiti",
+    "resource_text": "Vodiči na hrvatskom i engleskom."
   },
   "team": {
     "title": "Tim",

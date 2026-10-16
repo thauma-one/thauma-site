@@ -242,7 +242,13 @@
   "coming": {
     "line_thin": "Thauma is",
     "line_bold": "in preparation.",
-    "text": "A production ministry for the churches of Croatia and the surrounding region — serving, training, and resourcing their technical teams. Launching soon."
+    "text": "A production ministry for the churches of Croatia and the surrounding region — serving, training, and resourcing their technical teams. Launching soon.",
+    "serve": "Serve",
+    "serve_text": "Hands-on help in real services.",
+    "train": "Train",
+    "train_text": "Practical, in-language training.",
+    "resource": "Resource",
+    "resource_text": "Guides in Croatian and English."
   },
   "team": {
     "title": "Team",

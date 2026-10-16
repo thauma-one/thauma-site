@@ -242,7 +242,13 @@
   "coming": {
     "line_thin": "Thauma je",
     "line_bold": "v pripravi.",
-    "text": "Produkcijska služba za cerkve na Hrvaškem in v okoliški regiji — služimo, usposabljamo in opremljamo njihove tehnične ekipe. Kmalu na spletu."
+    "text": "Produkcijska služba za cerkve na Hrvaškem in v okoliški regiji — služimo, usposabljamo in opremljamo njihove tehnične ekipe. Kmalu na spletu.",
+    "serve": "Služiti",
+    "serve_text": "Praktična pomoč pri resničnih bogoslužjih.",
+    "train": "Usposabljati",
+    "train_text": "Praktično usposabljanje v domačem jeziku.",
+    "resource": "Opremiti",
+    "resource_text": "Vodniki v hrvaščini in angleščini."
   },
   "team": {
     "title": "Ekipa",

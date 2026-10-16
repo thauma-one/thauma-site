@@ -300,6 +300,19 @@ Chase: "the general interface for the Site Creator is really good!"
 - About page shows only the quote. Fill "Who we are" from the Thauma team
   profile? (asked, unanswered).
 
+### Serbian menu wraps to a second line (Chase, 2026-10-15 — next time)
+
+On chaseroush.thauma.one in SR, at a wide desktop window, the menu (Почетна,
+О нама, Мисија, Временска линија, Дарујте, Новости, Останимо повезани,
+Ресурси, Контакт) puts Контакт on a second line instead of folding into the
+menu button. Chase's screenshot, 2026-10-15. NOT reproduced on the local
+copy (older data). Likely cause, unverified: render.js works out where the
+menu folds from an ESTIMATE of the labels' width (`chars(t) * 8.2`), and
+Cyrillic labels are wider than that guess, so the menu wraps before the fold
+starts. Fix: measure the real width in the browser and fold from that, or
+never let `.nav` wrap (nowrap + fold when it overflows). Check every
+language, not only SR.
+
 ## 4. Arcade
 **Round 7 DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** no
 jokes, choices confirmed with Enter, the pause card with the game, score,
