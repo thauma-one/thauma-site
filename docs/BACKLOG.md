@@ -338,14 +338,19 @@ as breathing). The two glows keep to the corners
 background keeps the original two drifting glows; a soft brightness passes
 over the logo's blue lines every ~9s.
 
-404: ON HOLD until Chase finds his reference (2026-10-15: "The 404s aren't
-close at all! I wish I could find it … Maybe we pivot for now until I find
-it later"). It is a "Please stand by" / technical-difficulties card, like
-the one The Spiffing Brit uses on YouTube — calmer than a PM5544 test card,
-with a custom graphic in it. The round-6 test cards (TC1/TC2) missed. When
-it is found: the glitch is fail.js's degrade, playing by itself. The glitch is to be the arcade's
-own degrading effect (js/arcade/fail.js), playing by itself now and then
-on the 404, not a new one. Five taps still open the arcade.
+404: DECIDED (Chase, 2026-10-15; canvas round 6, board "404 · A — CHOSEN").
+The original 404, refreshed: the original layout and words (cue, the big
+404, the pronunciation, the numbered italic definition, the sentence), the
+button OUTLINED with the two-line mark, the site's own nav and footer; no
+breathing line, no "touch here". The glitch plays by itself: every
+1.75–4.5s a run of 3–15 NEIGHBOURING CHARACTERS (never a block, so no
+entrance replays) stutters for 5–10 frames, each character on its own
+start and length (staggered) — colours split red/cyan by a new amount each
+frame, jerks and skews, flashes a wrong glyph or a block (█▓▒░), sometimes
+shows only a slice, sometimes drops out; a third of the time a second bite
+follows. 40% of runs are aimed at the 404 itself, the rest anywhere —
+nav and footer included. Build it on fail.js's own pieces (split + jolt),
+reduced-motion respected; five taps on the 404 still open the arcade.
 
 ## 4. Arcade
 **Round 7 DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** no
