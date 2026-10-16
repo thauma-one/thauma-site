@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-16-landing-serbian",
+      "date": "2026-10-16",
+      "page": "site",
+      "text": {
+        "en": "The landing page now opens like the closed page: the THAUMA logo assembles and shimmers, the background glows drift, and \"All of me for all of Him.\" turns through each language, with the page's words centered underneath. Serbian text is now as thin and light as the rest. The \"page not found\" page has the usual language menu.",
+        "hr": "Početna stranica sada se otvara poput zatvorene stranice: logotip THAUMA se slaže i svjetluca, sjaj u pozadini se pomiče, a „Sve od mene darujem Njemu.” izmjenjuje se na svim jezicima, s riječima stranice centriranima ispod. Srpski tekst sada je jednako tanak i lagan kao ostali. Stranica „stranica nije pronađena” ima uobičajeni izbornik jezika.",
+        "sr": "Почетна страница сада се отвара попут затворене странице: логотип THAUMA се слаже и свјетлуца, сјај у позадини се помиче, а „Све од мене дарујем Њему.” измјењује се на свим језицима, с ријечима странице центриранима испод. Српски текст сада је једнако танак и лаган као остали. Страница „страница није пронађена” има уобичајени изборник језика."
+      }
+    },
+    {
       "id": "2026-10-15-404-closed",
       "date": "2026-10-15",
       "page": "site",
