@@ -345,7 +345,7 @@ button OUTLINED with the two-line mark, the site's own nav and footer; no
 breathing line, no "touch here". The glitch plays by itself: every
 1.75–4.5s a run of 3–15 NEIGHBOURING CHARACTERS (never a block, so no
 entrance replays) stutters for 5–10 frames, each character on its own
-start and length (staggered) — colours split red/cyan by a new amount each
+start and length (staggered) — colors split red/cyan by a new amount each
 frame, jerks and skews, flashes a wrong glyph or a block (█▓▒░), sometimes
 shows only a slice, sometimes drops out; a third of the time a second bite
 follows. 40% of runs are aimed at the 404 itself, 25% at the nav ("I like

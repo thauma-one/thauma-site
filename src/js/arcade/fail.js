@@ -307,6 +307,7 @@
       };
       if (quiet) finish(); else setTimeout(finish, 170);
       level = 0;
+      root.classList.remove('arc-breaking');
       litByLetter = {};
       var cb = onHealed; onHealed = null;
       if (cb) cb(!!quiet);
@@ -452,6 +453,7 @@
        another address (the partner-site closed page); inside enter() for
        the arcade opening in place. */
     function collapse(opts) {
+      root.classList.add('arc-breaking');
       opts = opts || {};
       clearTimeout(healTimer);
       if (reduced) return Promise.resolve();
@@ -465,7 +467,7 @@
       var ramp = [];
       for (var k = level + 1; k <= 4; k++) ramp.push(k);
       return ramp.reduce(function (p, k) {
-        return p.then(function () { level = k; STAGES[k](); return new Promise(function (res) { setTimeout(res, 170); }); });
+        return p.then(function () { level = k; root.classList.add('arc-breaking'); STAGES[k](); return new Promise(function (res) { setTimeout(res, 170); }); });
       }, Promise.resolve()).then(function () {
         torn.forEach(function (el) { el.classList.remove('arc-tear'); }); torn.clear();
         tickers.forEach(clearInterval); tickers = [];
@@ -507,6 +509,7 @@
     /* Back from the arcade: the screen switches on and the debris flies
        home — the collapse, reversed. */
     function restore() {
+      root.classList.remove('arc-breaking');
       busy = true;
       root.classList.remove('arc-off');
       var on = beam(false), body = document.body;

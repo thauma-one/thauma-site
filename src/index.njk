@@ -17,7 +17,7 @@ pageTitle: home
       own shape (brand/logo-split.njk); it assembles as the page opens; the
       arcade's five-tap door is still .wordmark, and fail.js takes the logo
       apart piece by piece. -#}
-  <div class="wordmark hero-logo">{% set logoId = "hero" %}{% include "brand/logo-split.njk" %}</div>
+  <div class="wordmark hero-logo">{% set logoId = "hero" %}{% include "brand/logo-split.njk" %}{% include "brand/logo-sheen.njk" %}</div>
   <h1 class="hero-line rise-3">{{ t.home.h1_thin | rich("home.h1_thin") }} <b>{{ t.home.h1_bold | rich("home.h1_bold") }}</b></h1>
   <p class="hero-sub rise-3">{{ t.home.sub | rich("home.sub") }}</p>
 </div>

@@ -1177,3 +1177,13 @@ body:has(#arcade) .site-tabs{display:none}
   html:not(.vt-came) .hero-logo .lg-close1{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 2.15s both}
   html:not(.vt-came) .hero-logo .lg-close2{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 2.3s both}
 }
+.hero-logo{position:relative}
+.brand-logo-sheen{position:absolute;inset:0;width:100%;height:auto;overflow:visible;pointer-events:none;
+  filter:drop-shadow(0 0 10px rgba(143,235,255,.55))}
+.arc-breaking .brand-logo-sheen{display:none}
+@media (prefers-reduced-motion:reduce){.brand-logo-sheen{display:none}}
+
+/* THE NAV'S LOGO ON A PHONE (Chase, 2026-10-15: "the mobile version of the
+   logo seems to be very big"): 12px tall made it ~40% of a phone's width
+   with its line; 9px on a narrow screen. */
+@media (max-width:600px){.logo .brand-logo{height:9px;margin-left:calc(9px * -1450 / 746)}}
