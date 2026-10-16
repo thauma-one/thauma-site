@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-15-home-logo",
+      "date": "2026-10-15",
+      "page": "site",
+      "text": {
+        "en": "The home page now opens with the THAUMA logo, centered, putting itself together letter by letter.",
+        "hr": "Početna stranica sada se otvara logotipom THAUMA, centriranim, koji se slaže slovo po slovo.",
+        "sr": "Почетна страница сада се отвара логотипом THAUMA, центрираним, који се слаже слово по слово."
+      }
+    },
+    {
       "id": "2026-10-15-favicon-thin",
       "date": "2026-10-15",
       "page": "console",

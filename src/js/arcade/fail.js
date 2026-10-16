@@ -117,6 +117,11 @@
     /* A real element's letters, each its own span. Whitespace stays text so
        the line still wraps where it did. */
     function split(el) {
+      /* THE LOGO IN PIECES (brand/logo-split.njk): its letters and lines are
+         already separate shapes, so they ARE the pieces — never its <title>,
+         which a text walk would find and break. */
+      var logo = el.querySelector('.brand-logo-split');
+      if (logo) return Array.prototype.slice.call(logo.querySelectorAll('.lg-ch,.lg-line'));
       if (el.querySelector('.arc-ch')) return Array.prototype.slice.call(el.querySelectorAll('.arc-ch'));
       if (!saved.has(el)) saved.set(el, el.innerHTML);
       var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), nodes = [], n;
@@ -375,7 +380,7 @@
     function fallAll(first, some) {
       var list = pieces();
       /* The biggest word comes apart letter by letter, as the 404 always did. */
-      var big = list.filter(function (el) { return el.matches('.wordmark,.dict-word,main h1') && plain(el); })[0];
+      var big = list.filter(function (el) { return el.matches('.wordmark,.dict-word,main h1') && (plain(el) || el.querySelector('.brand-logo-split')); })[0];
       var parts = [];
       list.forEach(function (el) {
         if (el === big) split(el).forEach(function (c) { parts.push({ el: c, ch: true }); });

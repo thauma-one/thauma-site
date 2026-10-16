@@ -313,6 +313,16 @@ starts. Fix: measure the real width in the browser and fold from that, or
 never let `.nav` wrap (nowrap + fold when it overflows). Check every
 language, not only SR.
 
+### Newsletter templates in the composer (Chase, 2026-10-15)
+
+"I like the newsletter that you made. Maybe we should implement some
+templates into the mail composer considering I have NO idea how to create
+what you just did." The canvas, round 6: NL1 Integrated (dark) and NL2 Card
+(light sheet) — the N design: name + two lines, cue, thin/bold title, lead
+photo, numbered stories, the meter line, a numbered prayer list, the goal
+bar, an outlined button. Build as starting templates in Mail › new letter
+(blocks the composer already has, pre-arranged), in the ministry's colors.
+
 ## 4. Arcade
 **Round 7 DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** no
 jokes, choices confirmed with Enter, the pause card with the game, score,

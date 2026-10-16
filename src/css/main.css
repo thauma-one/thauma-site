@@ -1155,3 +1155,25 @@ html.site-app body{padding-bottom:calc(61px + env(safe-area-inset-bottom))}
 body:has(#arcade) .site-tabs{display:none}
 @media (min-width:761px){.site-tabs{display:none}html.site-app body{padding-bottom:0}}
 @media (prefers-reduced-motion:no-preference){.site-tabs a{transition:color .2s}}
+
+/* ---------------------------------------------------------------------
+   THE HOME HERO, CENTERED, WITH THE LOGO IN PIECES (index.njk, Chase
+   2026-10-15). It assembles as the page opens — letters, then the arriving
+   line, the H's bar and the two closing lines — and not at all on an
+   arrival by transition, where the fade is the entrance (as .rise).
+   --------------------------------------------------------------------- */
+.hero-center .wrap{display:flex;flex-direction:column;align-items:center;text-align:center}
+.hero-center .hero-sub{margin-left:auto;margin-right:auto}
+.hero-logo{width:min(80vw,1000px);margin:34px 0 12px;font-size:0;line-height:0;letter-spacing:0;text-shadow:none;color:var(--text)}
+.brand-logo-split{display:block;width:100%;height:auto;overflow:visible}
+.brand-logo-split .lg-ch,.brand-logo-split .lg-line{transform-box:fill-box}
+.brand-logo-split .lg-line{transform-origin:left center}
+@keyframes lg-ch{from{opacity:0;transform:translateY(18%)}to{opacity:1;transform:none}}
+@keyframes lg-line{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:no-preference){
+  html:not(.vt-came) .hero-logo .lg-ch{animation:lg-ch .75s cubic-bezier(.55,.05,.45,.95) both;animation-delay:calc(var(--i) * 90ms + 250ms)}
+  html:not(.vt-came) .hero-logo .lg-arrive{animation:lg-line 1.1s cubic-bezier(.16,1,.3,1) 1.05s both}
+  html:not(.vt-came) .hero-logo .lg-bar{animation:lg-line .5s cubic-bezier(.55,.05,.45,.95) 1.75s both}
+  html:not(.vt-came) .hero-logo .lg-close1{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 2.15s both}
+  html:not(.vt-came) .hero-logo .lg-close2{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 2.3s both}
+}
