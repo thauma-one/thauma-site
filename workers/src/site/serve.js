@@ -85,6 +85,8 @@ export async function closedSite(request, env) {
 <style>
 @font-face{font-family:'Sora';font-weight:100 600;font-display:swap;src:url('/fonts/Sora-latin-v2.woff2') format('woff2')}
 @font-face{font-family:'Inter';font-weight:200 600;font-display:swap;src:url('/fonts/Inter-latin-v2.woff2') format('woff2')}
+@font-face{font-family:'Sora';font-weight:100 600;font-display:swap;src:url('/fonts/Inter-cyrillic-v2.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Inter';font-weight:100 600;font-display:swap;src:url('/fonts/Inter-cyrillic-v2.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 :root{--bg:#0B0F15;--text:#EDF2F8;--dim:#8A96A6;--blue:#2FD8FF;--blue-hi:#8FEBFF;--blue-dim:rgba(47,216,255,.14);
   --blue-glow:0 0 26px rgba(47,216,255,.35);--foam:#5CF2C4;--foam-hi:#B2FFE6;--foam-dim:rgba(92,242,196,.14);--foam-glow:0 0 26px rgba(92,242,196,.35)}
 *{box-sizing:border-box}
@@ -106,7 +108,7 @@ main{position:relative;display:flex;flex-direction:column;align-items:center}
 .brand-logo-split,.brand-logo-sheen{display:block;width:100%;height:auto;overflow:visible}
 .brand-logo-split .lg-ch,.brand-logo-split .lg-line{transform-box:fill-box}
 .brand-logo-split .lg-line{transform-origin:left center}
-.brand-logo-sheen{position:absolute;inset:0;pointer-events:none;filter:drop-shadow(0 0 10px rgba(143,235,255,.55))}
+.brand-logo-sheen{position:absolute;inset:0;pointer-events:none;filter:drop-shadow(0 0 6px rgba(255,255,255,.7)) drop-shadow(0 0 16px rgba(143,235,255,.8))}
 .arc-breaking .brand-logo-sheen{display:none}
 @keyframes ch-in{from{opacity:0;transform:translateY(18%)}to{opacity:1;transform:none}}
 @keyframes line-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}

@@ -1,6 +1,15 @@
 ---
 permalink: /404.html
 ---
+{#- WHILE THE LANDING PAGE IS THE WHOLE SITE (visible.comingSoon), a
+    mistyped address goes to it rather than to a page of a site nobody can
+    see yet (Chase, 2026-10-16: "the 404 page should not be accessible since
+    the landing page is active"). -#}
+{%- if visible.comingSoon %}<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0;url=/"><title>Thauma</title>
+<script>location.replace('/');</script></head><body style="background:#0B0F15"></body></html>
+{%- else %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,8 +67,21 @@ permalink: /404.html
     {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events | rich("nav.events") }}</a>{% endif %}
   </div>
   <div class="nav-actions">
-    {%- for l in activeLangs %}{% if l != lang %}
-    <button class="lang-toggle" data-lang="{{ l }}" lang="{{ l }}" aria-label="{{ i18n[l].name or l }}" title="{{ i18n[l].name or l }}">{{ l | upper }}</button>{% endif %}{% endfor %}
+    {#- THE SITE'S OWN LANGUAGE MENU (Chase, 2026-10-16: "The 404 page doesn't
+        have the language dropdown"): the same markup and look; choosing a
+        language here switches this page in place (the script below), since
+        a 404 has no other-language address to go to. -#}
+    <div class="lang-dropdown">
+      <button type="button" class="lang-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="lang-dropdown-label" data-code="{{ lang | upper }}">{{ lang | upper }}</span></button>
+      <ul class="lang-dropdown-list" role="listbox">
+        {%- for l in activeLangs %}
+        <li role="option" aria-selected="{{ 'true' if l == lang else 'false' }}">
+          {%- if l == lang %}<span class="lang-dropdown-current" lang="{{ l }}">{{ i18n[l].name or (l | upper) }}</span>
+          {%- else %}<button type="button" class="g4-lang" data-lang="{{ l }}" lang="{{ l }}">{{ i18n[l].name or (l | upper) }}</button>{% endif %}
+        </li>
+        {%- endfor %}
+      </ul>
+    </div>
     <a class="give-btn" href="/{{ lang }}/give/">{{ t.nav.give | rich("nav.give") }}</a>
   </div>
 </div></nav>
@@ -114,9 +136,25 @@ permalink: /404.html
   }
   setLang(initial);
 
-  document.querySelectorAll('.lang-toggle').forEach(function (btn) {
-    btn.addEventListener('click', function () { setLang(btn.dataset.lang); });
+  document.querySelectorAll('.g4-lang').forEach(function (btn) {
+    btn.addEventListener('click', function () { setLang(btn.dataset.lang); closeAll(); });
   });
+  /* the menu's open and close, as main.js does it on every other page */
+  function closeAll() {
+    document.querySelectorAll('.lang-dropdown.open').forEach(function (dd) {
+      dd.classList.remove('open'); dd.querySelector('.lang-dropdown-trigger').setAttribute('aria-expanded', 'false');
+    });
+  }
+  document.querySelectorAll('.lang-dropdown').forEach(function (dd) {
+    var t = dd.querySelector('.lang-dropdown-trigger');
+    t.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = !dd.classList.contains('open'); closeAll();
+      if (open) { dd.classList.add('open'); t.setAttribute('aria-expanded', 'true'); }
+    });
+  });
+  document.addEventListener('click', closeAll);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
 </script>
 <script>
 /* THE 404'S GLITCH (Chase, 2026-10-15, canvas round 6 "404 · A — CHOSEN"):
@@ -194,3 +232,4 @@ permalink: /404.html
 {% include "arcade-doors.njk" %}
 </body>
 </html>
+{%- endif %}
