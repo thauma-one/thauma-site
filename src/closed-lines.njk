@@ -1,0 +1,10 @@
+---
+permalink: /js/closed-lines.json
+eleventyExcludeFromCollections: true
+---
+{#- THE CLOSED PAGE'S LINE IN EVERY PUBLISHED LANGUAGE (Chase, 2026-10-15:
+    "The languages should grow automatically as languages are deployed").
+    activeLangs is what this build publishes (the dev or live column), so a
+    language switched on joins the rotation by itself. workers/src/site/
+    serve.js closedSite reads this from the deploy's own files. -#}
+[{% for l in activeLangs %}{"lang":{{ l | dump | safe }},"line":{{ (i18n[l].footer.tagline or i18n.en.footer.tagline) | plain | dump | safe }}}{% if not loop.last %},{% endif %}{% endfor %}]

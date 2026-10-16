@@ -313,6 +313,45 @@ starts. Fix: measure the real width in the browser and fold from that, or
 never let `.nav` wrap (nowrap + fold when it overflows). Check every
 language, not only SR.
 
+### Newsletter templates in the composer (Chase, 2026-10-15)
+
+"I like the newsletter that you made. Maybe we should implement some
+templates into the mail composer considering I have NO idea how to create
+what you just did." The canvas, round 6: NL1 Integrated (dark) and NL2 Card
+(light sheet) — the N design: name + two lines, cue, thin/bold title, lead
+photo, numbered stories, the meter line, a numbered prayer list, the goal
+bar, an outlined button. Build as starting templates in Mail › new letter
+(blocks the composer already has, pre-arranged), in the ministry's colors.
+
+### The closed page and the 404 (Chase, 2026-10-15) — canvas round 6
+
+CLOSED PAGE (workers/src/site/serve.js closedSite), approved direction, board
+C1: the logo at the old wordmark's size, assembling; under it the footer
+line ("All of me for all of Him.") in WHITE, rolling through every PUBLISHED
+language — read from the site's active languages, never a hard-coded list
+("SL isn't deployed. Don't build it manually"). Each change cascades DOWN,
+one character after another, slowly (~1.1s per character, ~1.6s across the
+line), holding ~7.5s, in Sora 100 (thin). A shimmer — a narrow band of light —
+crosses the WHOLE logo every 9s (not the line's "breathing", which read
+as breathing). The two glows keep to the corners
+(top-left, bottom-right) so the middle stays easy to read. The button stays in the visitor's language. The
+background keeps the original two drifting glows; a soft brightness passes
+over the logo's blue lines every ~9s.
+
+404: DECIDED (Chase, 2026-10-15; canvas round 6, board "404 · A — CHOSEN").
+The original 404, refreshed: the original layout and words (cue, the big
+404, the pronunciation, the numbered italic definition, the sentence), the
+button OUTLINED with the two-line mark, the site's own nav and footer; no
+breathing line, no "touch here". The glitch plays by itself: every
+1.75–4.5s a run of 3–15 NEIGHBOURING CHARACTERS (never a block, so no
+entrance replays) stutters for 5–10 frames, each character on its own
+start and length (staggered) — colors split red/cyan by a new amount each
+frame, jerks and skews, flashes a wrong glyph or a block (█▓▒░), sometimes
+shows only a slice, sometimes drops out; a third of the time a second bite
+follows. 40% of runs are aimed at the 404 itself, 25% at the nav ("I like
+when it affects items in the nav"), the rest anywhere, footer included. Build it on fail.js's own pieces (split + jolt),
+reduced-motion respected; five taps on the 404 still open the arcade.
+
 ## 4. Arcade
 **Round 7 DONE on dev (2026-10-05, see ARCADE-SPEC.md revision log):** no
 jokes, choices confirmed with Enter, the pause card with the game, score,

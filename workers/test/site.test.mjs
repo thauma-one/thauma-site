@@ -8,6 +8,7 @@ import { renderPage, esc } from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { appData, serveApp, renderApp } from "../src/site/app.js";
 import { newsFor } from "../src/staff-push.js";
+import * as LOGO from "../src/site/logo.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
 import * as MODEL from "../src/site/model.js";
@@ -1301,6 +1302,14 @@ check("every outside link has a clean address the site also redirects, and addin
   const html = page(d, "give", "en", { site: { slug: "chase-roush", display_name: "Chase Roush", giving_url: giving } });
   assert(/href="\/site\/chaseroush\/Donate"/.test(html) && !/give\.example\.org/.test(html), "the Give page's button is clean");
   assert(cleanLinkTarget(d, ["about"], opts) === "/en/about/", "a page keeps its own name");
+});
+
+check("the closed page's logo is the site's own, in pieces, with its shimmer parked until it starts", () => {
+  const body = (f) => readFileSync(new URL("../../src/_includes/brand/" + f, import.meta.url), "utf8").replace(/\{#-[\s\S]*?-#\}\s*/g, "").trim();
+  eq(LOGO.LOGO_SPLIT, body("logo-split.njk"), "logo-split.njk and site/logo.js agree");
+  eq(LOGO.LOGO_SHEEN, body("logo-sheen.njk"), "logo-sheen.njk and site/logo.js agree");
+  assert(LOGO.sheenLogo("cl").includes('gradientTransform="translate(-3600 0)"'), "the light waits off to the left");
+  assert(!LOGO.splitLogo("cl").includes("{{"), "ids filled in");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

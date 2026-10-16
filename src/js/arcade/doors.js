@@ -87,6 +87,11 @@
   ready(function () {
     /* ---- © 2026 → ▶ PLAY, one character per tap ---------------------- */
     Array.prototype.forEach.call(document.querySelectorAll('.foot-legal'), function (legal) {
+      /* THE WORDS SIT INSIDE THE EDITOR'S WRAPPER (<span data-k>, the `rich`
+         filter), so the © is looked for in the innermost first element —
+         the door had silently stopped installing (Chase, 2026-10-15: "the
+         copyright entrance for the arcade isn't working"). */
+      while (legal.firstChild && legal.firstChild.nodeType === 1) legal = legal.firstChild;
       var t = legal.firstChild;
       if (!t || t.nodeType !== 3) return;
       var m = t.nodeValue.match(/^©\s?\d{4}/);
@@ -168,7 +173,10 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-arcade-door="404"]'), function (word) {
       word.style.cursor = 'pointer';
       word.addEventListener('click', function () { enter('404', { first: word }); });
-      if (still || !word.animate) return;
+      /* THE 404 HAS ITS OWN GLITCH NOW (404.njk, 2026-10-15), character by
+         character across the whole page; this older hint rewrote the
+         number every 5s and would undo those characters. */
+      if (still || !word.animate || word.querySelector('.g4-c')) return;
       setInterval(function () {
         if (entering || word.closest('[hidden]') || document.getElementById('arcade')) return;
         var text = word.textContent, i = Math.floor(Math.random() * text.length);

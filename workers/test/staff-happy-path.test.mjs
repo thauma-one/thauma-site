@@ -1024,7 +1024,7 @@ await check("a site that is switched off shows Thauma's closed page — nothing 
     const res = await serveSite(new Request("https://mirapetrovic.thauma.one/en/"), e, { sub: "mirapetrovic", rest: "/en/", base: "" });
     eq(res.status, 404, "not found");
     const html = await res.text();
-    assert(/class="wordmark">THAUMA</.test(html), "Thauma's wordmark");
+    assert(/class="wordmark"><svg class="brand-logo brand-logo-split"[^>]*aria-label="Thauma"/.test(html), "Thauma's logo, in pieces (the arcade's door)");
     assert(html.includes('href="https://thauma.one/">Go to thauma.one<'), "one way on, to thauma.one");
     assert(!/Mira/.test(html), "nothing of the ministry");
     assert(!html.includes("fail.js"), "no arcade door while the arcade is not out");
@@ -1053,7 +1053,7 @@ async function withFetch(fake, fn) {
 await check("a name nobody has gets the closed page; Thauma's own names pass through untouched", async () => {
   const res = await worker.fetch(new Request("https://nobody.thauma.one/"), LIVE(makeDb()));
   eq(res.status, 404, "not found");
-  assert((await res.text()).includes("THAUMA"), "Thauma's page, not Cloudflare's error for an address with no origin");
+  assert(/aria-label="Thauma"/.test(await res.text()), "Thauma's page, not Cloudflare's error for an address with no origin");
   const passed = [];
   await withFetch((url) => { if (url.startsWith("https://dev.thauma.one/")) { passed.push(url); return new Response("the Pi"); } }, async () => {
     const pi = await worker.fetch(new Request("https://dev.thauma.one/en/"), LIVE(makeDb()));

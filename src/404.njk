@@ -18,7 +18,27 @@ permalink: /404.html
      toggle, not a build-time pagination. Both languages render; JS
      shows one. */
   [data-lang-block][hidden]{display:none}
-  main{display:flex;flex-direction:column;justify-content:center}
+  main{display:flex;flex-direction:column;justify-content:center;position:relative;isolation:isolate}
+  /* THE REFRESH (Chase, 2026-10-15; canvas round 6, "404 · A — CHOSEN"):
+     the original page, its button outlined with the two lines, a glow in
+     each corner, and a glitch that plays by itself (the script below). */
+  .btn.lined{border:1px solid var(--foam);color:var(--foam);background:transparent;display:inline-flex;align-items:center;gap:14px;padding:15px 24px}
+  .btn.lined::after{content:"";width:30px;height:7px;
+    background:linear-gradient(currentColor,currentColor) left top/30px 1.8px no-repeat,
+               linear-gradient(currentColor,currentColor) left bottom/15px 1.2px no-repeat}
+  .btn.lined:hover{background:var(--foam-dim)}
+  .g4-glow{position:absolute;inset:0;z-index:-1;pointer-events:none}
+  .g4-top{background:radial-gradient(1100px 520px at 85% -8%,rgba(92,242,196,.07),transparent 60%)}
+  .g4-low{background:radial-gradient(900px 480px at -4% 100%,rgba(47,216,255,.09),transparent 62%)}
+  .g4-w{display:inline-block;white-space:nowrap}
+  .g4-c{display:inline-block;white-space:pre;font-kerning:none}
+  @keyframes g4-glow{0%{transform:none;filter:none;clip-path:inset(0)}
+    20%{transform:translate(-70px,14px);filter:brightness(2.4) saturate(1.8) hue-rotate(45deg);clip-path:inset(18% 0 46% 0)}
+    40%{transform:translate(50px,-8px);filter:brightness(.4);clip-path:inset(0)}
+    60%{transform:translate(-24px,0) scaleX(1.2);filter:brightness(2) hue-rotate(-60deg);clip-path:inset(52% 0 12% 0)}
+    80%{transform:translate(12px,6px);filter:brightness(1.5);clip-path:inset(0 0 70% 0)}
+    100%{transform:none;filter:none;clip-path:inset(0)}}
+  .g4-glow.hit{animation:g4-glow .42s steps(1) both}
 
 </style>
 </head>
@@ -46,6 +66,7 @@ permalink: /404.html
 {% endfor %}
 
 <main>
+<div class="g4-glow g4-top" aria-hidden="true"></div><div class="g4-glow g4-low" aria-hidden="true"></div>
 {% for lang in activeLangs %}
 {% set t = i18n[lang] %}
 <div data-lang-block="{{ lang }}"{% if not loop.first %} hidden{% endif %}>
@@ -55,7 +76,7 @@ permalink: /404.html
     <div class="dict-ipa">{{ t.notFound.dict_ipa | rich("notFound.dict_ipa") }}</div>
     <div class="dict-defs"><p>{{ t.notFound.dict_def | rich("notFound.dict_def") }}</p></div>
     <p class="lede">{{ t.notFound.lede | rich("notFound.lede") }}</p>
-    <p class="btn-row"><a class="btn solid" href="/{{ lang }}/">{{ t.notFound.cta | rich("notFound.cta") }}</a></p>
+    <p class="btn-row"><a class="btn lined" href="/{{ lang }}/">{{ t.notFound.cta | rich("notFound.cta") }}</a></p>
   </div></div>
 </div>
 {% endfor %}
@@ -96,6 +117,76 @@ permalink: /404.html
   document.querySelectorAll('.lang-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () { setLang(btn.dataset.lang); });
   });
+</script>
+<script>
+/* THE 404'S GLITCH (Chase, 2026-10-15, canvas round 6 "404 · A — CHOSEN"):
+   the arcade's degrade, playing by itself — but only ever on CHARACTERS,
+   never a block (a block re-ran its entrance and looked like it reloaded).
+   Every 1.75–4.5s a run of 3–15 neighbouring characters stutters for a few
+   frames, each on its own start and length: colors split red/cyan by a
+   new amount each frame, a jerk and a skew, a wrong glyph or a block, a
+   slice, a drop-out; a third of the time a second bite follows. 40% of
+   runs are aimed at the 404, 25% at the nav, the rest anywhere (footer
+   included). One burst in eight also catches ONE of the two glows. Still
+   for reduced motion, and quiet while the arcade itself is at work. */
+(function () {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var G = '#%&@$*?!/<>[]=+~^\u2588\u2593\u2592\u2591';
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  /* each character its own box; each word an unbreakable run, so lines
+     still wrap where they did */
+  function split(root) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [], n;
+    while ((n = walker.nextNode())) if (/\S/.test(n.nodeValue) && !n.parentNode.closest('script,style,svg')) nodes.push(n);
+    nodes.forEach(function (t) {
+      var frag = document.createDocumentFragment();
+      t.nodeValue.split(/(\s+)/).forEach(function (part) {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+        var w = document.createElement('span'); w.className = 'g4-w';
+        Array.from(part).forEach(function (c) { var s = document.createElement('span'); s.className = 'g4-c'; s.textContent = c; s.dataset.c = c; w.appendChild(s); });
+        frag.appendChild(w);
+      });
+      t.parentNode.replaceChild(frag, t);
+    });
+  }
+  document.querySelectorAll('nav .links, nav .nav-actions, main .dict, footer').forEach(split);
+  function shown(sel) { return Array.prototype.filter.call(document.querySelectorAll(sel), function (c) { return c.offsetParent !== null; }); }
+  function frame(c) {
+    var r = Math.random();
+    if (r < .12) { c.style.cssText = 'opacity:0'; return; }
+    var sp = rnd(2, 9).toFixed(1), top = rnd(0, 70), h = rnd(12, 40);
+    c.textContent = Math.random() < .4 ? G[Math.floor(Math.random() * G.length)] : c.dataset.c;
+    c.style.cssText = (Math.random() < .45 ? 'clip-path:inset(' + top.toFixed(0) + '% 0 ' + Math.max(0, 100 - top - h).toFixed(0) + '% 0);' : '') +
+      'transform:translate(' + rnd(-10, 10).toFixed(1) + 'px,' + rnd(-3, 3).toFixed(1) + 'px) skewX(' + rnd(-20, 20).toFixed(0) + 'deg);' +
+      'text-shadow:' + sp + 'px 0 rgba(255,40,90,.9),-' + sp + 'px 0 rgba(0,230,255,.9);' + (Math.random() < .25 ? 'color:var(--blue)' : '');
+  }
+  function heal(c) { c.style.cssText = ''; c.textContent = c.dataset.c; }
+  function busy() { var d = document.documentElement; return d.classList.contains('arc-breaking') || document.getElementById('arcade'); }
+  function burst() {
+    if (busy() || document.hidden) return;
+    var all = shown('.g4-c'); if (!all.length) return;
+    var n = 3 + Math.floor(Math.random() * 13), pool = all, roll = Math.random();
+    if (roll < .4) pool = shown('main .dict-word .g4-c'); else if (roll < .65) pool = shown('nav .g4-c');
+    if (!pool.length) pool = all;
+    var at = all.indexOf(pool[Math.floor(Math.random() * pool.length)]);
+    var run = all.slice(at, at + n);
+    run.forEach(function (c) {
+      var d = Math.floor(Math.random() * 5), len = 3 + Math.floor(Math.random() * 6), f = 0;
+      (function step() {
+        if (f >= d + len) { heal(c); return; }
+        if (f >= d) frame(c);
+        f++; setTimeout(step, 40 + Math.random() * 50);
+      })();
+    });
+    if (Math.random() < .125) {
+      var glows = document.querySelectorAll('.g4-glow'), g = glows[Math.floor(Math.random() * glows.length)];
+      if (g) { g.classList.remove('hit'); void g.offsetWidth; g.classList.add('hit'); }
+    }
+    if (Math.random() < .3) setTimeout(burst, 260 + Math.random() * 400);
+  }
+  (function go() { setTimeout(function () { burst(); go(); }, 1750 + Math.random() * 2750); })();
+})();
 </script>
 {#- The numeral is the arcade's first door, and still one of them: one press
    and this page falls apart (ARCADE-SPEC.md). Nothing is sent while the
