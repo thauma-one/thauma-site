@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-15-404-closed",
+      "date": "2026-10-15",
+      "page": "site",
+      "text": {
+        "en": "The \"page not found\" page has a fresh look, with a quiet glitch that plays now and then. The page shown for a ministry site that is switched off now shows the THAUMA logo and the line \"All of me for all of Him.\" in each of the site's languages in turn.",
+        "hr": "Stranica „stranica nije pronađena” ima novi izgled, s tihim treperenjem koje se pojavi s vremena na vrijeme. Stranica koja se prikazuje za isključenu stranicu službe sada pokazuje logotip THAUMA i redak „Sve od mene darujem Njemu.” redom na svim jezicima stranice.",
+        "sr": "Страница „страница није пронађена” има нови изглед, с тихим треперењем које се појави с времена на вријеме. Страница која се приказује за искључену страницу службе сада показује логотип THAUMA и редак „Све од мене дарујем Њему.” редом на свим језицима странице."
+      }
+    },
+    {
       "id": "2026-10-15-hero-shimmer",
       "date": "2026-10-15",
       "page": "site",

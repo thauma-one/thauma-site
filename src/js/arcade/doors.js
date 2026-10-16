@@ -173,7 +173,10 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-arcade-door="404"]'), function (word) {
       word.style.cursor = 'pointer';
       word.addEventListener('click', function () { enter('404', { first: word }); });
-      if (still || !word.animate) return;
+      /* THE 404 HAS ITS OWN GLITCH NOW (404.njk, 2026-10-15), character by
+         character across the whole page; this older hint rewrote the
+         number every 5s and would undo those characters. */
+      if (still || !word.animate || word.querySelector('.g4-c')) return;
       setInterval(function () {
         if (entering || word.closest('[hidden]') || document.getElementById('arcade')) return;
         var text = word.textContent, i = Math.floor(Math.random() * text.length);
