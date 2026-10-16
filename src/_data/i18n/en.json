@@ -17,22 +17,22 @@
     "cue": "θαῦμα · Greek for wonder",
     "h1_thin": "On-site,",
     "h1_bold": "behind the scenes.",
-    "sub": "Churches across Croatia and the surrounding region carry a real technical need — sound, lighting, video, streaming, and the people who run them, often with no one to learn from. Thauma exists to meet that need.",
+    "sub": "Churches across Europe carry a real technical need. Technology in church is on the rise and churches are learning how to utilize it, but often need help to do so effectively. Thauma exists to partner with churches in their local regions to help them use technology to meet the needs of their community.",
     "who_cue": "The need",
     "who_h2_thin": "Real churches,",
     "who_h2_bold": "real\ntechnical need.",
-    "who_lede": "Aging equipment without anyone trained on it. Volunteers running complex systems alone. No training pipeline, no peer network. The need is practical, and it's this Sunday's — so that's where we start.",
+    "who_lede": "Aging equipment without anyone trained on it. Volunteers or pastors designing production systems alone. No training pipeline, limited peer network. The need is practical, and it's this Sunday's. So that's where we start.",
     "who_img_tag": "Photo — a Sunday production in full swing",
     "who_placeholder": "No photo yet — add one at /admin/website/photos/.",
     "values_cue": "How we help",
     "values_h2_thin": "Three forms of\n",
     "values_h2_bold": "the same work.",
     "value1_title": "Serve",
-    "value1_text": "Hands-on help in real services — fixing what's broken, improving what's struggling, working alongside the team that's already there.",
+    "value1_text": "Hands-on help in real services: fixing what's broken, improving what's struggling, working alongside the team that's already there.",
     "value2_title": "Train",
     "value2_text": "Practical, in-language training: signal flow, mixing, troubleshooting, and stewarding the equipment a church already owns.",
     "value3_title": "Resource",
-    "value3_text": "Wise, affordable equipment decisions and access to knowledge that's hard to reach — guides and materials in Croatian and English.",
+    "value3_text": "Wise, affordable equipment decisions and access to knowledge that's hard to reach, all in the local tongue.",
     "values_link": "What we hold to →",
     "cta_cue": "Partner with us",
     "cta_h2_thin": "The work is carried\n",
@@ -53,12 +53,12 @@
     "who_cue": "Who we are",
     "who_h2_thin": "Servants of the Church,\n",
     "who_h2_bold": "not its authority.",
-    "body1": "Thauma is a production ministry for the Protestant churches of Croatia and the broader Balkans. The need is simple to state: churches need help with production — audio, video, lighting, streaming, and the people who run them — and no organization exists to meet that need on the ground in this region.",
-    "body2": "These churches are small, scattered, and largely volunteer-run — and the people carrying that work often do it without much support: unfamiliar equipment, few people nearby who've solved the same problems, little chance to learn from someone who has. The need is real, and so is the isolation that comes with meeting it alone. That's what we're here to change.",
+    "body1": "Thauma is a production ministry for the Protestant churches of Europe. The need is simple to state: churches need help with production — audio, video, lighting, streaming, and the people who run them — and no organization exists to meet that need on the ground in this region.",
+    "body2": "These churches are small, scattered, and largely volunteer-run and the people carrying that work often do it without much support. Unfamiliar equipment, few people nearby who've solved the same problems, and little chance to learn from someone who has are real challenges that churches face. The need is real, and so is the isolation that comes with meeting it alone. That's what we're here to change.",
     "posture_cue": "Our posture",
     "posture_h2_thin": "Students of the culture,\n",
     "posture_h2_bold": "never reformers of it.",
-    "body3": "We go as learners and participants of the cultures where we serve. We are not there to recreate churches in the image of any outside model — we come alongside what the local church has already established, meeting needs as those churches define them. That is why language and cultural learning come first, dominate the early years, and never fully end.",
+    "body3": "We go as learners and participants of the cultures where we serve. We are not there to recreate churches in the image of any outside model. Rather, we come alongside what the local church has already established, meeting needs as those churches define them. That is why language and cultural learning come first, dominate the early years, and never fully end.",
     "posture_img_tag": "Photo — learning the culture, before anything else",
     "posture_placeholder": "No photo yet — add one at /admin/website/photos/.",
     "status_note": "Thauma is a Missouri nonprofit in formation, serving the whole Protestant church across denominations.",
@@ -70,7 +70,7 @@
     "cue": "The work",
     "h2_thin": "Three expressions\nof",
     "h2_bold": "one ministry.",
-    "lede": "These are not stages to complete but ongoing expressions of the same calling — each grows out of the last, and in time all three run together.",
+    "lede": "These are not stages to complete but ongoing expressions of the same calling. Each grows out of the last, and in time all three run together.",
     "work1_label": "Serve",
     "work1_title": "Hands-on serving",
     "work1_text": "Embedding with local churches for extended periods — serving alongside their volunteers in real services, fixing what is broken, improving what is struggling, and demonstrating care through competent work. This is the front door of the ministry.",
@@ -79,11 +79,11 @@
     "work2_text": "Practical, in-language training for volunteers and teams: from signal flow and mixing fundamentals to troubleshooting and stewardship of limited equipment. Helping churches make wise, affordable decisions and connecting them to knowledge they lack access to.",
     "work3_label": "Gather",
     "work3_title": "Community & leadership",
-    "work3_text": "Regional gatherings that bring production people together across congregations and denominations — and investing in faithful local people as leaders who can train others. This is the fruit and the long game.",
+    "work3_text": "Regional gatherings that bring production people together across congregations and denominations — and investing in faithful local people as leaders who can train others. This is the heart of Thauma and why we do what we do.",
     "horizon_cue": "The horizon",
     "horizon_h2_thin": "We measure in\nyears,",
     "horizon_h2_bold": "not events.",
-    "horizon_text": "The horizon is honest: meaningful fruit is expected on a five-to-ten-year timeline, not a two-year one. Serving grows out of the language-and-culture foundation; training grows out of serving; community and leaders grow out of both. We commit to the whole arc and refuse to rush it — the slow foundation is what makes the later fruit possible.",
+    "horizon_text": "The horizon is honest. Meaningful fruit is expected on a <i>five-to-ten-year timeline</i>, not a two-year one. Serving grows out of the language-and-culture foundation; training grows out of serving; community and leaders grow out of both. We commit to the whole arc and refuse to rush it. The slow foundation is what makes the later fruit possible.",
     "success_text": "Success looks like a community of church production people — techs, worship leaders, pastors — existing where it did not before, meeting and helping one another without us driving every connection.",
     "horizon_img_tag": "Photo — years down the road, together",
     "horizon_placeholder": "No photo yet — add one at /admin/website/photos/.",
@@ -98,31 +98,31 @@
     "items": [
       {
         "title": "People over projects",
-        "text": "It would be simpler to measure success by equipment fixed or services covered. We don't, on purpose: the volunteer running the board matters more than the board they're running, and that has to survive contact with a broken deadline or a frustrating rehearsal. It's the standard behind the visit, not the pitch in front of it."
+        "text": "It would be simpler to measure success by equipment fixed or services covered. We don't, on purpose: the volunteer running the board matters more than the board they are running, and that has to survive a broken deadline or a frustrating rehearsal. It's the standard behind the visit, not the pitch in front of it."
       },
       {
         "title": "Service is the door",
-        "text": "We could frame the technical work as a means to something else, but that would be dishonest — the need is real on its own terms, and treating it as a pretext for \"the real ministry\" would insult the people asking for help. So the console gets fixed because it needs fixing. What grows from being there long enough to do that well is a separate gift, not the hidden agenda."
+        "text": "We could frame the technical work as a means to something else, but that would be dishonest. The need is real on its own terms, and treating it as a pretext for \"the real ministry\" would insult the people asking for help. So the console gets fixed because it needs fixing. What grows from being there long enough to do that well is a separate gift, not the hidden agenda."
       },
       {
         "title": "Community is the harvest",
-        "text": "A well-run sound system says nothing about whether the people running it know each other, or anyone else doing the same work three towns over. We could call the technical work finished and leave. Instead we count it unfinished until something relational exists that didn't before — technicians, worship leaders, and pastors in contact, across churches that would otherwise never have met."
+        "text": "A well-run sound system says nothing about whether the people running it know each other, or anyone else doing the same work three towns over. We could call the technical work finished and leave. Instead we count it unfinished until something relational exists that didn't before. Technicians, worship leaders, and pastors in contact, across churches that would otherwise never have met."
       },
       {
         "title": "Built to multiply",
-        "text": "Every hour spent training someone is an hour we're betting they'll spend training someone else. That bet doesn't always pay off immediately, and it means real patience with people still learning. But an organization whose center never shrinks isn't multiplying — it's building dependency, and that's a fruit we're actively trying not to grow."
+        "text": "Every hour spent training someone is an hour we're betting they'll spend training someone else. That bet doesn't always pay off immediately, and it means real patience with people still learning. But an organization whose center never shrinks isn't multiplying. It's building dependency, and that's a fruit we're actively trying not to grow."
       },
       {
         "title": "One church, no owners",
-        "text": "Neutrality is easy to claim and hard to practice, especially when one denomination is easier to reach than another, or better funded, or simply already in the room. We don't get to have a favorite. Independence from any single church body isn't a nice sentiment here — it's structural, because the moment we're seen as belonging to one tradition, we stop being useful to the rest."
+        "text": "Neutrality is easy to claim and hard to practice, especially when one denomination is easier to reach than another, or better funded, or simply already in the room. We don't have a favorite. Independence from any single church body isn't a nice sentiment here, it's structural, because the moment we're seen as belonging to one tradition, we stop being useful to the rest."
       },
       {
         "title": "Guests, not reformers",
-        "text": "The instinct to arrive with answers is strong, especially for anyone who's already done this work somewhere else. We resist it on purpose: language and culture come before relationship, and relationship comes before any opinion about how a church should run its production. Years spent as a student, not a consultant — because the alternative is importing a model nobody here asked for."
+        "text": "The instinct to arrive with answers is strong, especially for anyone who's already done this work somewhere else. We resist it on purpose: language and culture come before relationship, and relationship comes before any opinion about how a church should run its production. Years are spent as a student, not a consultant, because the alternative is importing a model nobody asked for."
       },
       {
         "title": "We plant, God grows",
-        "text": "Everything above describes effort, and effort alone has a ceiling. We can open a door, show up consistently, and serve competently — we cannot manufacture the community or the multiplication that follows. Saying that plainly isn't false modesty; it's the reason the first six convictions never collapse into pressure to perform."
+        "text": "Everything above describes effort, and effort alone has a ceiling. We can open a door, show up consistently, and serve competently. We cannot manufacture the community or the multiplication that follows. Saying that plainly isn't false modesty, it's the reason the first six convictions never collapse into pressure to perform."
       }
     ],
     "seo_title": "Thauma | Values",
