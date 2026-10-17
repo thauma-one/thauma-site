@@ -45,7 +45,7 @@
         "dev": true
       },
       "resources": {
-        "live": true,
+        "live": false,
         "dev": true
       },
       "events": {
