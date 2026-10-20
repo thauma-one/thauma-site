@@ -66,7 +66,8 @@
   }
   var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'cards', 'links'];
   var MOTION = {
-    entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
+    entrance: ['rise', 'fade', 'slide', 'zoom', 'blur', 'reveal', 'layered', 'none'], speed: ['slow', 'medium', 'fast'],
+    photos: ['drift', 'zoom', 'still'],
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
     pages: ['fade', 'cut'], progress: ['on', 'off'], cue: ['line', 'arrow', 'mouse', 'none'],
   };

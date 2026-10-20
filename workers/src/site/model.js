@@ -204,7 +204,10 @@ export const GIVE_TO = ["page", "link"];
    one choice, each respected only where the visitor has not asked their
    device for less motion. */
 export const MOTION = {
-  entrance: ["rise", "fade", "slide", "zoom", "none"],   // how sections arrive as you scroll
+  entrance: ["rise", "fade", "slide", "zoom", "blur", "reveal", "layered", "none"],   // how sections arrive as you scroll
+  /* Chase, 2026-10-19: "I want the transition slowed down some more as the
+     middle default value" — medium is the slower pace, and it is the default */
+  speed:    ["medium", "slow", "fast"],                  // how long arriving takes
   photos:   ["drift", "zoom", "still"],                  // how photos move: parallax, slow zoom, still
   headings: ["letters", "words", "plain"],               // how headings appear
   buttons:  ["lift", "glow", "plain"],                   // what buttons do under the pointer

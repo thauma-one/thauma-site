@@ -746,28 +746,62 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .powered{font-size:12px;opacity:.7}
 body.only-foot .foot{border-top:0}
 /* motion */
-.progress{position:fixed;left:0;top:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--acc),var(--acc2));z-index:40}
+.progress{position:fixed;left:0;top:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--acc),var(--acc2));z-index:40;will-change:transform}
+/* THE LINE, DRAWN BY THE BROWSER where it can (Chase, 2026-10-19: "the line
+   at the very top that follows where the page scroll is can be very
+   stuttery"): a scroll-linked animation runs with the scroll itself, not a
+   frame behind it. Elsewhere the script eases it (MOTION_JS). */
+@keyframes progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@supports (animation-timeline:scroll()){.progress{animation:progress linear both;animation-timeline:scroll(root block)}}
 html[data-progress="off"] .progress{display:none}
-.m{transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1)}
+/* HOW LONG THINGS TAKE TO ARRIVE (Chase, 2026-10-19: "We should add the
+   ability to have some custom timing … I want the transition slowed down
+   some more as the middle default value"): Slow, Medium (the default, slower
+   than before) and Fast; --mstep is the stagger between things arriving
+   together. */
+html{--mt:1.25s;--mstep:110ms;--cstep:42ms}
+html[data-speed="slow"]{--mt:1.7s;--mstep:150ms;--cstep:58ms}
+html[data-speed="fast"]{--mt:.8s;--mstep:70ms;--cstep:26ms}
+.m{transition:opacity var(--mt) cubic-bezier(.16,1,.3,1),transform var(--mt) cubic-bezier(.16,1,.3,1),filter var(--mt) cubic-bezier(.16,1,.3,1),clip-path var(--mt) cubic-bezier(.16,1,.3,1)}
 html[data-entrance="fade"] .m:not(.in){opacity:0}
 html[data-entrance="rise"] .m:not(.in){opacity:0;transform:translateY(36px)}
 html[data-entrance="slide"] .m:not(.in){opacity:0;transform:translateX(-40px)}
 html[data-entrance="zoom"] .m:not(.in){opacity:0;transform:scale(.94)}
+/* THREE MORE (2026-10-19): out of a soft focus; wiped up into place; and
+   Layered — each kind of thing its own way: words rise, photos settle from a
+   little larger, buttons simply appear last */
+html[data-entrance="blur"] .m:not(.in){opacity:0;filter:blur(12px)}
+html[data-entrance="reveal"] .m:not(.in){opacity:0;clip-path:inset(0 0 100% 0);transform:translateY(14px)}
+html[data-entrance="layered"] .m:not(.in){opacity:0;transform:translateY(30px)}
+html[data-entrance="layered"] .pic.m:not(.in),html[data-entrance="layered"] .hero-media.m:not(.in){transform:scale(1.04)}
+html[data-entrance="layered"] .btns.m:not(.in){transform:none}
+/* a photo fades in where it will sit, as it arrives — never a jump */
+.pic img,.hero-media img,.frame img,.ccards img,.vtile img{transition:opacity .7s ease}
+img.ldg{opacity:0}
 /* A frame's own motion, whatever the site's Photos setting says (2026-10-12:
    a full-width photo set to Slow zoom or Drift did nothing unless the whole
    site was set the same way). The site's setting decides the frames that
    have none of their own: the opening and photo-and-words. */
 .kb img{animation:kb 18s ease-in-out infinite alternate}
 .pic[data-drift] img{scale:1.12}
+/* THE DRIFT, BY THE BROWSER where it can (Chase, 2026-10-19: "the
+   parallaxing is very extreme and doesn't follow the scroll of the page
+   well" on a phone): a view-linked animation moves with the scroll itself,
+   gentler on a phone. Elsewhere the script moves it (MOTION_JS). */
+@keyframes drift{from{translate:0 var(--da)}to{translate:0 calc(var(--da) * -1)}}
+html{--da:4.5%}
+@media (hover:none),(max-width:820px){html{--da:2%}}
+@supports (animation-timeline:view()){html:not(.calm) [data-drift] img{animation:drift linear both;animation-timeline:view();animation-range:cover}}
 @keyframes kb{from{transform:scale(1)}to{transform:scale(1.12)}}
-.h .ch{display:inline-block;opacity:0;transform:translateY(.4em);transition:opacity .5s ease,transform .5s cubic-bezier(.16,1,.3,1)}
+.h .ch{display:inline-block;opacity:0;transform:translateY(.4em);transition:opacity calc(var(--mt) * .7) ease,transform calc(var(--mt) * .7) cubic-bezier(.16,1,.3,1)}
 .h.in .ch{opacity:1;transform:none}
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
 /* A preview redrawn after a change arrives as it was, not arriving again
    (?settled, from the Site Creator; staff-site.js refreshFrame). */
-html.settled .m,html.settled .h .ch{opacity:1!important;transform:none!important;transition:none!important}
-@media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;transition:none!important}
+html.settled .m,html.settled .h .ch{opacity:1!important;transform:none!important;filter:none!important;clip-path:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){.m,.h .ch{opacity:1!important;transform:none!important;filter:none!important;clip-path:none!important;transition:none!important}
+ [data-drift] img{animation:none!important}img.ldg{opacity:1}
  .scrollcue,.cue-mouse em{animation:none}
  .kb img{animation:none!important}.progress{display:none}.btn{transition:none}}
 @media (max-width:820px){.split,.gsplit{grid-template-columns:1fr;gap:28px}.al-right .split{direction:ltr}.givecard,.spot{padding:36px 26px}}
@@ -1543,7 +1577,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
 
   const out = `<!doctype html>
-<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-navcur="${esc(navOpt.current || "lit")}" data-navtint="${esc(navOpt.tint || "white")}" data-navline="${esc(navOpt.line || "subtle")}" data-navphone="${esc(navOpt.phone || "drop")}" data-entrance="${esc(m.entrance)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
+<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-navcur="${esc(navOpt.current || "lit")}" data-navtint="${esc(navOpt.tint || "white")}" data-navline="${esc(navOpt.line || "subtle")}" data-navphone="${esc(navOpt.phone || "drop")}" data-entrance="${esc(m.entrance)}" data-speed="${esc(m.speed || "medium")}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1553,6 +1587,7 @@ ${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 ${draft ? '<meta name="robots" content="noindex">' : `<link rel="manifest" href="${esc(base)}/app/manifest.webmanifest">`}
 ${alternates}
 ${social}
+${draft ? "" : `<script type="speculationrules">${JSON.stringify({ prerender: [{ where: { and: [{ href_matches: `${base}/*` }, { not: { selector_matches: "[target=_blank]" } }] }, eagerness: "moderate" }] })}</script>`}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${FONTS[design.look]}&display=swap">
 <style>${css(L, design)}
@@ -1578,7 +1613,15 @@ ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/co
 <script>${MOTION_JS}</script>${draft || !site.subdomain ? "" : `<script>(${HIT_JS})(${JSON.stringify(String(site.subdomain))})</script>`}
 </body>
 </html>`;
-  return newTabs(out, outgoing);
+  /* THE OPENING'S PHOTO AT ONCE (Chase, 2026-10-19: "the photos don't show
+     up immediately"): the first picture on the page is fetched first, not
+     lazily; every picture decodes off the main thread. */
+  let firstPic = true;
+  const withPics = out.replace(/<img src=("[^"]*") alt=("[^"]*") loading="lazy"/g, (m0, src, alt) => {
+    if (firstPic && !/\/embed\/v1\/icon/.test(src)) { firstPic = false; return `<img src=${src} alt=${alt} loading="eager" fetchpriority="high" decoding="async"`; }
+    return `<img src=${src} alt=${alt} loading="lazy" decoding="async"`;
+  });
+  return newTabs(withPics, outgoing);
 }
 
 /* EVERY LINK THAT LEAVES THE SITE OPENS A NEW TAB (Chase, 2026-10-01:
@@ -1647,24 +1690,33 @@ var d=document.documentElement,b=document.querySelector('.menubtn');
 [].forEach.call(document.querySelectorAll('time[data-local]'),function(t){try{var x=new Date(t.dateTime);if(!isNaN(x))t.textContent=x.toLocaleDateString(d.lang,{day:'numeric',month:'long',year:'numeric'})}catch(e){}});
 if(b)b.addEventListener('click',function(){var o=d.classList.toggle('menu-open');b.setAttribute('aria-expanded',o)});
 var settled=/[?&]settled(&|$)/.test(location.search);if(settled)d.classList.add('settled');
-var calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches,still=settled||calm;
+var calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches,still=settled||calm;if(calm)d.classList.add('calm');
+if(!still)[].forEach.call(document.querySelectorAll('.pic img,.hero-media img,.frame img,.ccards img,.vtile img'),function(i){if(i.complete)return;i.classList.add('ldg');var f=function(){i.classList.remove('ldg')};i.addEventListener('load',f);i.addEventListener('error',f)});
+addEventListener('pagereveal',function(e){if(!e.viewTransition)return;[].forEach.call(document.querySelectorAll('.m,.h'),function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){el.style.transition='none';[].forEach.call(el.querySelectorAll('.ch'),function(c){c.style.transition='none'});el.classList.add('in');requestAnimationFrame(function(){requestAnimationFrame(function(){el.style.transition='';[].forEach.call(el.querySelectorAll('.ch'),function(c){c.style.transition=''})})})}})});
 var hs=d.getAttribute('data-headings');
 if(!still&&hs!=='plain'){[].forEach.call(document.querySelectorAll('.h'),function(h){
- var n=0;[].forEach.call(h.childNodes,function(c){var el=c.nodeType===3?null:c;var t=c.textContent;var parts=hs==='words'?t.split(/(\\s+)/):t.split('');
+ var n=0;[].slice.call(h.childNodes).forEach(function(c){var el=c.nodeType===3?null:c;var t=c.textContent;var parts=hs==='words'?t.split(/(\\s+)/):t.split('');
   var f=document.createDocumentFragment();parts.forEach(function(p){if(/^\\s+$/.test(p)||p===' '){f.appendChild(document.createTextNode(p));return}
-   var s=document.createElement('span');s.className='ch';s.textContent=p;s.style.transitionDelay=(n++*(hs==='words'?60:22))+'ms';f.appendChild(s)});
+   var s=document.createElement('span');s.className='ch';s.textContent=p;s.style.transitionDelay='calc(var(--d,0ms) + '+(n++*(hs==='words'?2.6:1))+' * var(--cstep))';f.appendChild(s)});
   if(el){el.textContent='';el.appendChild(f)}else{h.replaceChild(f,c)}});
  h.classList.remove('m')})}
-var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'}):null;
-[].forEach.call(document.querySelectorAll('.m,.h'),function(el){if(io)io.observe(el);else el.classList.add('in')});
-var drift=!calm?[].slice.call(document.querySelectorAll('[data-drift] img')):[];
-var bar=document.querySelector('.progress'),tick=false;
+var q=[],qf=0;function flush(){qf=0;var step=parseFloat(getComputedStyle(d).getPropertyValue('--mstep'))||110;
+ q.sort(function(a,b){var x=a.getBoundingClientRect(),y=b.getBoundingClientRect();return (x.top-y.top)||(x.left-y.left)});
+ q.forEach(function(el,i){var t=Math.round(i*step)+'ms';el.style.transitionDelay=t;el.style.setProperty('--d',t);el.classList.add('in')});q=[]}
+var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){q.push(e.target);io.unobserve(e.target)}});if(q.length&&!qf)qf=requestAnimationFrame(flush)},{rootMargin:'0px 0px -8% 0px'}):null;
+function watch(){[].forEach.call(document.querySelectorAll('.m,.h'),function(el){if(io)io.observe(el);else el.classList.add('in')})}
+if(document.prerendering)document.addEventListener('prerenderingchange',watch,{once:true});else watch();
+var sv=!!(window.CSS&&CSS.supports&&CSS.supports('animation-timeline: view()')),ss=!!(window.CSS&&CSS.supports&&CSS.supports('animation-timeline: scroll()'));
+var drift=!calm&&!sv?[].slice.call(document.querySelectorAll('[data-drift] img')):[],da=matchMedia('(hover: none),(max-width: 820px)').matches?.02:.045;
+var bar=ss?null:document.querySelector('.progress'),tick=false,pv=0;
 var near=window.matchMedia&&matchMedia('(hover: none)').matches?[].slice.call(document.querySelectorAll('.ccards li')):[];
 function frame(){tick=false;var vh=innerHeight;
- drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*0.05*r.height).toFixed(1)+'px,0)'});
- if(bar&&!calm){var m=document.documentElement.scrollHeight-vh;bar.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}
+ drift.forEach(function(i){var r=i.parentNode.getBoundingClientRect();var p=((r.top+r.height/2)-vh/2)/(vh/2+r.height/2);p=Math.max(-1,Math.min(1,p));i.style.transform='translate3d(0,'+(-p*da*r.height).toFixed(1)+'px,0)'});
+ if(bar&&!calm){var m=document.documentElement.scrollHeight-vh,goal=m>0?scrollY/m:0;pv+=(goal-pv)*.35;if(Math.abs(goal-pv)<.0008)pv=goal;bar.style.transform='scaleX('+pv.toFixed(4)+')';if(pv!==goal&&!tick){tick=true;requestAnimationFrame(frame)}}
  if(near.length){var best=null,bd=1e9;near.forEach(function(c){var r=c.getBoundingClientRect();if(r.top<0||r.bottom>vh)return;var dd=Math.abs(r.top+r.height/2-vh/2);if(dd<bd){bd=dd;best=c}});near.forEach(function(c){c.classList.toggle('is-near',c===best)})}}
 addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(frame)}d.classList.toggle('scrolled',scrollY>40)},{passive:true});frame();
+var got={};function pre(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a||a.origin!==location.origin||got[a.pathname]||a.pathname===location.pathname)return;got[a.pathname]=1;var l=document.createElement('link');l.rel='prefetch';l.href=a.href;document.head.appendChild(l)}
+if(!(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules'))){addEventListener('pointerover',pre,{passive:true});addEventListener('touchstart',pre,{passive:true})}
 document.addEventListener('click',function(e){[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){if(!m.contains(e.target))m.removeAttribute('open')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')[].forEach.call(document.querySelectorAll('details.langmenu[open]'),function(m){m.removeAttribute('open')})});
 var LS='site.langSwitch',secs=function(){return [].slice.call(document.querySelectorAll('main > section, main section'))};

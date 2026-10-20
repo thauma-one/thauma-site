@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-site-motion",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator, Motion: a new Speed choice (the middle one is now slower), and three new ways for sections to arrive: Into Focus, Wipe Up and Layered. Things arriving together now come in one after another, and the bold part of a heading now arrives with the rest. On your site, the line tracking the scroll and drifting photos move smoothly and gently on phones, the first photo shows at once, and the next page starts loading as soon as a visitor points at or touches its link.",
+        "hr": "Izrada stranice, Pokret: novi izbor Brzina (srednja je sada sporija) i tri nova načina na koje se odjeljci pojavljuju: Izoštre se, Otkriju se odozdo i Slojevito. Ono što se pojavljuje zajedno sada dolazi jedno za drugim, a podebljani dio naslova sada dolazi sa ostatkom. Na vašoj stranici crta koja prati listanje i fotografije koje plove kreću se glatko i blago na mobitelima, prva fotografija se odmah vidi, a sljedeća stranica počinje se učitavati čim posjetitelj pokaže ili dodirne njezinu poveznicu.",
+        "sr": "Израда странице, Покрет: нови избор Брзина (средња је сада спорија) и три нова начина на које се одјељци појављују: Изоштре се, Открију се одоздо и Слојевито. Оно што се појављује заједно сада долази једно за другим, а подебљани дио наслова сада долази са остатком. На вашој страници црта која прати листање и фотографије које плове крећу се глатко и благо на мобитељима, прва фотографија се одмах види, а сљедећа страница почиње се учитавати чим посјетитељ покаже или додирне њезину повезницу."
+      }
+    },
+    {
       "id": "2026-10-19-landing-clock",
       "date": "2026-10-19",
       "page": "site",
