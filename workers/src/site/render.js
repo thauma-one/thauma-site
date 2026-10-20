@@ -922,7 +922,7 @@ function renderSection(sec, ctx) {
   };
   const widget = (kind, extra = "") =>
     `<div class="m" data-thauma="${esc(ctx.slug)}" data-widget="${kind}" data-lang="${esc(lang)}" data-theme="${ctx.widgetTheme}" data-foot="off"` +
-    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(!!(sec.raised || sec.tint))}${extra}></div>`;
+    `${ctx.widgetAccent ? ` data-accent="${esc(ctx.widgetAccent)}"` : ""}${ctx.widgetLook(sec)}${extra}></div>`;
 
   /* A button of the owner's own, each its own color — the Links section's
      Buttons and a Videos section's (2026-10-07, 2026-10-12). */
@@ -1283,9 +1283,21 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
        2026-10-01): bg is the CARD — the site's card color on a plain band,
        the page color on a raised one (which is the card color), so cards
        never melt into the band they sit on. */
-    widgetLook: (raised) => {
-      const w = (P) => ({ bg: raised ? P.bg : P.panel, panel: raised ? P.panel : P.bg, fg: P.fg, dim: P.dim,
-        line: P.line, track: P.line, font: P.body });
+    /* THE WIDGET'S CARDS FOLLOW THE SECTION'S GROUND (Chase, 2026-10-19:
+       "timeline on desktop, the background of the cards that you can open
+       aren't changing colors based on the background look you select").
+       Plain: the raised panel; Raised: the page; Tint: the stronger tint
+       on the tinted band, and the reverse on a raised tint — always a step
+       apart from the ground they sit on, as the page's own cards are. */
+    widgetLook: (sec) => {
+      const tint = !!sec.tint, raised = !!sec.raised;
+      const hex = (P) => HEX.test(P.acc || "") && HEX.test(P.bg || "") && HEX.test(P.panel || "");
+      const w = (P) => {
+        const band = hex(P) ? mix(P.bg, P.acc, 0.1) : P.panel, band2 = hex(P) ? mix(P.panel, P.acc, 0.18) : P.panel;
+        const card = tint ? (raised ? band : band2) : raised ? P.bg : P.panel;
+        const under = tint ? (raised ? band2 : band) : raised ? P.panel : P.bg;
+        return { bg: card, panel: under, fg: P.fg, dim: P.dim, line: P.line, track: P.line, font: P.body };
+      };
       return ` data-look="${esc(JSON.stringify({ ...(L.alt ? { ...w(L), dark: w(L.alt) } : w(L)), display: L.display }))}"`;
     },
     /* The sign-up and contact forms wear the SITE's colors, not the form's

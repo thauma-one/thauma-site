@@ -43,8 +43,8 @@ import { summarize } from "./lib/build-progress.js";
 import { carry, carryConfig } from "./lib/carry.js";
 import { leafMap } from "./lib/translation-file.js";
 import { notify } from "./lib/notify.js";
-import { cutRelease, tells } from "./changes.js";
-import { siteOrigin } from "./lib/origin.js";
+import { cutRelease } from "./changes.js";
+import { tellRelease, LIVE } from "./lib/release-notice.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
@@ -419,11 +419,18 @@ async function act(request, env, db, user, me) {
     try {
       const by = (me && me.user_name) || user.email;
       const release = await cutRelease(db, { by, content });
-      /* only somebody with something of their own in it (changes.js tells);
-         without a release (before 0062) everyone, as before */
-      await notify(env, db, "site_published", { by },
-        { origin: siteOrigin(env, request), link: "/staff/changes/" + (release ? "#" + release.id : ""),
-          only: release ? (who) => tells(release, String(who.roles || "").split(",")) : null });
+      /* TOLD ONCE IT IS LIVE (0064, lib/release-notice.js): the release
+         waits for the production deploy this press started, and the
+         scheduled job sends it. Before 0064 (or 0062) it goes now, as it
+         did. */
+      let waits = false;
+      if (release) {
+        try { await db.query("release_wait", { id: release.id, now: new Date().toISOString() }); waits = true; } catch { /* not applied */ }
+      }
+      if (!waits) {
+        if (release) await tellRelease(env, db, release);
+        else await notify(env, db, "site_published", { by, _v: "both", areas: "" }, { origin: LIVE, link: "/staff/changes/" });
+      }
     } catch (err) {
       console.error("publish notice:", err.message);
     }

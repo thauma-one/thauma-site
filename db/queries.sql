@@ -3546,6 +3546,19 @@ INSERT INTO releases (id, at, by_name, entries, content) VALUES (:id, :now, :by_
 -- What's new, newest first.
 SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60;
 
+-- name: release_wait
+-- Publish (0064): this release's notice waits for the production deploy.
+UPDATE releases SET notify_after = :now WHERE id = :id;
+
+-- name: releases_waiting
+-- Releases whose notice has not gone yet, oldest first (0064).
+SELECT id, at, by_name, entries, content, notify_after FROM releases
+ WHERE notify_after IS NOT NULL AND notified_at IS NULL ORDER BY at LIMIT 5;
+
+-- name: release_claim
+-- One site claims the notice; the others then find nothing to send (0064).
+UPDATE releases SET notified_at = :now WHERE id = :id AND notified_at IS NULL RETURNING id;
+
 -- name: releases_entry_ids
 -- Every changelog entry already published, to know what the next Publish adds.
 SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;

@@ -1855,7 +1855,13 @@
     return light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
                  : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' };
   }
-  function cardSig(p, l) { var k = cardLook(); return [siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, state.body.site.subdomain].join('|'); }
+  /* the line at the card's foot: the owner's phrase, or the address */
+  function cardLine(l) { var o = state.doc.shareLine || {}; return o[l] || (state.body.site.subdomain + '.thauma.one'); }
+  /* WHAT THE CARD SHOWS, as its fingerprint — the font and the line too, and
+     a version, so a card drawn before a change to how cards are drawn is
+     made again (Chase, 2026-10-19: the name "isn't in the correct font
+     still" — cards from before the font fix were never redrawn). */
+  function cardSig(p, l) { var k = cardLook(); return ['v3', siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, k.font, cardLine(l)].join('|'); }
   /* A 1200×630 card: the page's name light, the ministry's name bold, a short
      line in the accent, the address small. */
   async function makeCard(p, l) {
@@ -1885,11 +1891,22 @@
     };
     g.textBaseline = 'alphabetic'; g.fillStyle = k.fg;
     var y = 330;
-    if (page) { fit(page, 100, 104, 1040); g.fillText(page, 80, y); y += 104; fit(nm, 600, 72, 1040); g.fillText(nm, 80, y); }
-    else { fit(nm, 600, 112, 1040); g.fillText(nm, 80, y + 40); y += 60; }
+    /* THE NAME AS THE SITE WRITES IT: the first word thin, the rest bold
+       ("Chase Roush"), at one size that fits both */
+    var name = function (size, at) {
+      var parts = nm.split(/\s+/), a = parts[0] || '', b = parts.slice(1).join(' ');
+      var z = size, wa, wb;
+      do { g.font = '100 ' + z + 'px ' + k.font; wa = g.measureText(a + (b ? ' ' : '')).width;
+           g.font = '600 ' + z + 'px ' + k.font; wb = b ? g.measureText(b).width : 0; z -= 4; } while (wa + wb > 1040 && z > 30);
+      z += 4;
+      g.font = '100 ' + z + 'px ' + k.font; g.fillText(a + (b ? ' ' : ''), 80, at);
+      if (b) { g.font = '600 ' + z + 'px ' + k.font; g.fillText(b, 80 + wa, at); }
+    };
+    if (page) { fit(page, 100, 104, 1040); g.fillText(page, 80, y); y += 104; name(72, y); }
+    else { name(112, y + 40); y += 60; }
     g.fillStyle = k.acc; g.fillRect(80, y + 34, 120, 6);
     g.fillStyle = k.dim; g.font = '500 30px ' + k.font;
-    g.fillText(state.body.site.subdomain + '.thauma.one', 80, 560);
+    g.fillText(cardLine(l), 80, 560);
     return c;
   }
   /* Before publishing: every shown page's card in every language whose card
@@ -2015,7 +2032,9 @@
       '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.titleField')) + ' <small class="ws-count">' + (o.title[l] || '').length + ' / 60</small></span>' +
         '<input type="text" maxlength="70" data-adv-title value="' + esc(o.title[l] || '') + '" placeholder="' + esc(autoTitle(p, l)) + '" lang="' + esc(l) + '"></label>' +
       '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.descField')) + ' <small class="ws-count">' + (o.desc[l] || '').length + ' / 160</small></span>' +
-        '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label></div>';
+        '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label>' +
+      (mode === 'card' ? '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.lineField')) + '</span>' +
+        '<input type="text" maxlength="60" data-adv-line value="' + esc((state.doc.shareLine || {})[l] || '') + '" placeholder="' + esc(host) + '" lang="' + esc(l) + '"></label>' : '') + '</div>';
     html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom', 'none'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
       (mode === 'custom' ? '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-adv-upload hidden></label>' +
         (p.shareImage && window.PhotoEditor ? '<button type="button" class="ghost-btn sm" data-adv-edit>' + esc(tr('pe.edit')) + '</button>' : '') : '')) + '</div>';
@@ -2195,6 +2214,14 @@
       return changed();
     }
     if (t.dataset.give !== undefined) { state.doc.give = v.trim(); return changed(); }
+    if (t.dataset.advLine !== undefined) {
+      state.doc.shareLine = state.doc.shareLine || {};
+      if (v.trim()) state.doc.shareLine[state.langA] = v; else delete state.doc.shareLine[state.langA];
+      /* the preview card follows as it is typed */
+      var pv = $('wsSharePic');
+      if (pv) makeCard(advPage(), state.langA).then(function (c) { if (c) pv.style.backgroundImage = 'url(' + c.toDataURL('image/jpeg', 0.8) + ')'; }).catch(function () {});
+      return changed();
+    }
     if (t.dataset.advTitle !== undefined || t.dataset.advDesc !== undefined) {
       var aq = advPage(); aq.seo = aq.seo || { title: {}, desc: {} };
       var key = t.dataset.advTitle !== undefined ? 'title' : 'desc';

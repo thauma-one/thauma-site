@@ -8,7 +8,7 @@
 // rather than silently shipping old SQL.
 
 /** sha256 of db/queries.sql at generation time, first 16 hex chars. */
-export const SOURCE_DIGEST = "53450e015ca529b3";
+export const SOURCE_DIGEST = "6c246fbbf0041644";
 
 export const QUERIES = {
   admin_audit_recent: `SELECT a.at, a.action, a.entity, a.entity_id, a.detail,
@@ -1039,8 +1039,12 @@ WHERE provider_id = :provider_id;`,
   recipient_opened: `UPDATE mailing_recipients SET opened_at = COALESCE(opened_at, :now)
 WHERE provider_id = :provider_id;`,
   release_add: `INSERT INTO releases (id, at, by_name, entries, content) VALUES (:id, :now, :by_name, :entries, :content);`,
+  release_claim: `UPDATE releases SET notified_at = :now WHERE id = :id AND notified_at IS NULL RETURNING id;`,
+  release_wait: `UPDATE releases SET notify_after = :now WHERE id = :id;`,
   releases_entry_ids: `SELECT json_extract(e.value, '$.id') AS id FROM releases r, json_each(r.entries) e;`,
   releases_recent: `SELECT id, at, by_name, entries, content FROM releases ORDER BY at DESC LIMIT 60;`,
+  releases_waiting: `SELECT id, at, by_name, entries, content, notify_after FROM releases
+ WHERE notify_after IS NOT NULL AND notified_at IS NULL ORDER BY at LIMIT 5;`,
   resource_can_edit_shared: `SELECT 1 AS ok FROM resource_shares
  WHERE resource_id = :id AND user_id = :user_id AND can_edit = 1
 UNION ALL

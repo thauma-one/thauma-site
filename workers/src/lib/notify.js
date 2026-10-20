@@ -58,6 +58,13 @@ export const NOTICES = [
      with a changelog. Essentially when the publish button is pressed"). To
      everybody. */
   { kind: "site_published", to: "all" },
+  /* an administrator stopped working inside your console (Chase,
+     2026-10-19: "After Sharing the Console of someone, a notification
+     should be sent to the web notification icon once stopping the share.
+     That notification should always occur, so no need to be able to
+     disable it. And it should take you to the activity page"). The bell
+     only, always: no switch in Settings, no email. */
+  { kind: "console_shared", to: "self", always: true, bellOnly: true },
 ];
 
 const BELL = "bell:";
@@ -71,7 +78,7 @@ const esc = (s) => String(s == null ? "" : s)
 export async function noticesFor(db, userId, roles, { self = false } = {}) {
   const mine = new Set((roles || []).map(String));
   const chosen = await choices(db, userId);
-  return NOTICES.filter((n) => (n.to === "self" ? self : n.to === "all" ? true : mine.has(n.role)))
+  return NOTICES.filter((n) => !n.always && (n.to === "self" ? self : n.to === "all" ? true : mine.has(n.role)))
     .map((n) => ({ kind: n.kind, on: wants(chosen, n), bell: wants(chosen, n, BELL) }));
 }
 
@@ -101,7 +108,10 @@ export async function notify(env, db, kind, vars = {}, opts = {}) {
       /* opts.only(who): a notice that concerns some of them (a release with
          nothing on their pages tells them nothing) */
       if (typeof opts.only === "function" && !opts.only(who)) continue;
-      sent += await deliver(env, db, who, notice, vars, opts);
+      /* opts.varsFor(who): words that differ by person (a release names
+         each person's own pages) */
+      const mine = typeof opts.varsFor === "function" ? { ...vars, ...opts.varsFor(who) } : vars;
+      sent += await deliver(env, db, who, notice, mine, opts);
     }
   } catch (e) {
     console.error("notice " + kind, e);
@@ -127,7 +137,7 @@ export async function notifyPerson(env, db, kind, userId, vars = {}, opts = {}) 
 async function deliver(env, db, who, notice, vars, { origin = "https://thauma.one", link = "/admin/users/", send = sendMail } = {}) {
   const kind = notice.kind;
   const chosen = await choices(db, who.user_id);
-  if (wants(chosen, notice, BELL)) {
+  if (notice.always || wants(chosen, notice, BELL)) {
     await db.query("notice_add", {
       id: "n_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20),
       user_id: who.user_id, kind, vars: JSON.stringify(vars), link, now: new Date().toISOString(),
@@ -141,7 +151,7 @@ async function deliver(env, db, who, notice, vars, { origin = "https://thauma.on
       title: plain(noticeWords(kind, who.preferred_lang, vars).summary), body: "", link, tag: kind,
     }).catch(() => {});
   }
-  if (!wants(chosen, notice)) return 0;
+  if (notice.bellOnly || !wants(chosen, notice)) return 0;
   const mail = noticeEmail(kind, { ...vars, origin, link, lang: who.preferred_lang });
   const r = await send(env, { to: who.email, ...mail }).catch((e) => ({ ok: false, error: e.message }));
   if (r && r.ok !== false) return 1;

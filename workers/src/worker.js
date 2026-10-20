@@ -43,6 +43,7 @@ import { hit, adminAnalytics } from "./analytics.js";
 import notices from "./notices.js";
 import changesPage from "./changes.js";
 import pushApi from "./push-api.js";
+import { sendWaitingReleases } from "./lib/release-notice.js";
 import { serveSw } from "./sw.js";
 import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
@@ -593,6 +594,17 @@ export default {
       return;
     }
     const db = createDb(env.DB);
+    /* "THE SITE WAS UPDATED", once it is (0064): every tick, cheap — one
+       query, and GitHub only while a release is waiting. */
+    try {
+      const told = await sendWaitingReleases(env, db);
+      if (told.sent) console.log(`release notices: ${told.sent} sent`);
+    } catch (err) {
+      console.error("release notices:", err.message);
+    }
+    /* the rest keeps its quarter hour; the tick is every five minutes so a
+       release notice follows its deploy closely */
+    if (new Date(event.scheduledTime).getUTCMinutes() % 15 >= 5) return;
     const results = await syncAll(db);
     const failed = results.filter((r) => !r.ok);
     console.log(

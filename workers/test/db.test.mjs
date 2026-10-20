@@ -374,7 +374,7 @@ await check("every real query converts with its documented params", async () => 
   // justified here rather than quietly slipping past.
   // Queries with nothing to scope by. languages_all is the organization's
   // catalog; the admin ones are unscoped BY DESIGN — see admin.test.mjs.
-  const NO_PARAMS = new Set(["languages_all", "admin_users", "admin_partners", "partner_site_all", "partner_site_needing_dns",
+  const NO_PARAMS = new Set(["languages_all", "releases_waiting", "admin_users", "admin_partners", "partner_site_all", "partner_site_needing_dns",
                              // What still names a stored file is asked of
                              // everything (media-cleanup.js): keys are unique.
                              "media_refs_sites", "media_refs_mailings", "media_refs_attachments", "media_refs_resources", "media_refs_signatures", "profile_proposals_all", "notify_everyone", "releases_recent", "releases_entry_ids", "push_subs_drop_failing",

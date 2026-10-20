@@ -308,7 +308,10 @@
 .adm-content{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);
   gap:24px;align-items:start;margin-top:24px}
 
-.c-sections{display:flex;flex-direction:column;gap:2px;position:sticky;top:88px}
+/* ITS OWN SCROLL (Chase, 2026-10-19: "I can't scroll down on the tabs without
+   scrolling the entire words interface down to the bottom") */
+.c-sections{display:flex;flex-direction:column;gap:2px;position:sticky;top:88px;
+  max-height:calc(100vh - 112px);max-height:calc(100dvh - 112px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .c-sec{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
   background:none;border:1px solid transparent;border-radius:var(--radius);
   padding:9px 12px;cursor:pointer;color:var(--dim);font-family:var(--font-body);
@@ -334,7 +337,7 @@
    words on the left, the page they are on beside them, held in view. */
 .adm-content.has-preview{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
   grid-template-areas:"sections sections" "panel preview"}
-.adm-content.has-preview .c-sections{grid-area:sections;position:static;flex-direction:row;flex-wrap:wrap;gap:4px}
+.adm-content.has-preview .c-sections{grid-area:sections;position:static;flex-direction:row;flex-wrap:wrap;gap:4px;max-height:none;overflow:visible}
 .adm-content.has-preview .c-sec{width:auto;padding:6px 11px}
 .adm-content.has-preview .c-sec-rule{display:none}
 .adm-content.has-preview .c-panel{grid-area:panel}

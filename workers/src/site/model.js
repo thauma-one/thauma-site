@@ -903,6 +903,10 @@ export function cleanDoc(raw, catalog) {
     links,
     footer,
     pages,
+    /* THE LINE AT THE FOOT OF A SHARE PICTURE (Chase, 2026-10-19: "the photo
+       says 'chaseroush.thauma.one', but I might want it to say a phrase like
+       All of Me For All of Him"), per language; empty is the address. */
+    shareLine: Object.fromEntries(langs.map((l) => [l, str(d.shareLine && d.shareLine[l], 60)]).filter(([, v]) => v)),
   };
   /* each outside link's clean name, kept from save to save (linkTable) */
   out.short = linkTable(out, "", d.short).short;

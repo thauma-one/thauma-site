@@ -143,9 +143,14 @@
      THE PAGES, in the order the site has them; the menu and the footer are
      one entry, as on the board. */
   var PAGE_ORDER = ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact', 'stay',
-                    'events', 'team', 'menu', 'coming', 'notFound', 'arcade', 'staff', 'emails', '_general'];
+                    'events', 'team', 'menu', 'coming', 'notFound', 'closed', 'arcade', 'staff', 'emails', '_general'];
 
   function sectionOf(line) {
+    /* THE CLOSED PAGE (a ministry site switched off; serve.js closedSite):
+       its words live with the partner-site words, but it is a page of its
+       own (Chase, 2026-10-19: "I don't see the Closed page in the Admin
+       Website Pages tab") */
+    if (line.source === 'emails' && /^site\.closed/.test(line.key)) return 'closed';
     if (line.source === 'emails') return 'emails';
     if (line.key.indexOf('.') === -1) return '_general';
     var s = line.key.split('.')[0];

@@ -208,7 +208,8 @@ nav{position:fixed;inset:0 0 auto;z-index:20;backdrop-filter:blur(12px);
    page's text starts on, and the line comes in from the margin, fading. */
 .logo{display:flex;align-items:center;color:var(--text)}
 .brand-logo{display:block;height:auto;flex:none}
-.logo .brand-logo{height:12px;width:auto;margin-left:calc(12px * -1450 / 746)}
+/* the line's start sits on the pages' text edge (Chase, 2026-10-19: "shift the logo to the right slightly so that the start of the line is aligned with the text") */
+.logo .brand-logo{height:12px;width:auto;margin-left:0}
 .links{display:flex;gap:24px;font-size:13px;font-weight:400;color:var(--dim)}
 .links a:hover{color:var(--text)}
 /* Hover underline (2026-07-20): a thin blue line draws in from the left
@@ -1195,4 +1196,4 @@ body:has(#arcade) .site-tabs{display:none}
 /* THE NAV'S LOGO ON A PHONE (Chase, 2026-10-15: "the mobile version of the
    logo seems to be very big"): 12px tall made it ~40% of a phone's width
    with its line; 9px on a narrow screen. */
-@media (max-width:600px){.logo .brand-logo{height:9px;margin-left:calc(9px * -1450 / 746)}}
+@media (max-width:600px){.logo .brand-logo{height:9px;margin-left:0}}

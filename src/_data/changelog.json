@@ -2,6 +2,66 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-19-release-live",
+      "date": "2026-10-19",
+      "page": "console",
+      "text": {
+        "en": "\"Thauma Was Updated\" now arrives once the changes are actually live, says which of your pages changed, and links to the live console.",
+        "hr": "„Thauma je ažurirana” sada stiže tek kad su promjene stvarno vidljive, kaže koje su se vaše stranice promijenile i vodi na konzolu uživo.",
+        "sr": "„Thauma је ажурирана” сада стиже тек кад су промјене стварно видљиве, каже које су се ваше странице промијениле и води на конзолу уживо."
+      }
+    },
+    {
+      "id": "2026-10-19-console-shared",
+      "date": "2026-10-19",
+      "page": "console",
+      "text": {
+        "en": "When an administrator finishes working inside your console, the bell tells you, and opens your Activity page so you can see what happened.",
+        "hr": "Kad administrator završi rad u vašoj konzoli, zvonce vam to javi i otvara vašu stranicu Aktivnost da vidite što se dogodilo.",
+        "sr": "Кад администратор заврши рад у вашој конзоли, звонце вам то јави и отвара вашу страницу Активност да видите што се догодило."
+      }
+    },
+    {
+      "id": "2026-10-19-share-line",
+      "date": "2026-10-19",
+      "page": "staff:website",
+      "text": {
+        "en": "Advanced: the name on your share picture is written as your site writes it, and you can choose the line at the bottom of the picture instead of your address.",
+        "hr": "Napredno: ime na slici za dijeljenje napisano je kao na vašoj stranici, a redak na dnu slike možete odabrati umjesto adrese.",
+        "sr": "Напредно: име на слици за дијељење написано је као на вашој страници, а редак на дну слике можете одабрати умјесто адресе."
+      }
+    },
+    {
+      "id": "2026-10-19-timeline-cards",
+      "date": "2026-10-19",
+      "page": "staff:website",
+      "text": {
+        "en": "Timeline cards now take the color of the section's background (Plain, Raised or Tint). The \"Get the App\" link in the footer is quieter.",
+        "hr": "Kartice vremenske crte sada preuzimaju boju pozadine odjeljka (Obično, Izdignuto ili Nijansa). Poveznica „Preuzmite aplikaciju” u podnožju je diskretnija.",
+        "sr": "Картице временске црте сада преузимају боју позадине одјељка (Обично, Издигнуто или Нијанса). Повезница „Преузмите апликацију” у подножју је дискретнија."
+      }
+    },
+    {
+      "id": "2026-10-19-pages-closed",
+      "date": "2026-10-19",
+      "page": "admin:website",
+      "text": {
+        "en": "Pages: the closed page has its own tab, and the list of pages scrolls on its own.",
+        "hr": "Stranice: zatvorena stranica ima svoju karticu, a popis stranica pomiče se zasebno.",
+        "sr": "Странице: затворена страница има своју картицу, а попис страница помиче се засебно."
+      }
+    },
+    {
+      "id": "2026-10-19-nav-logo",
+      "date": "2026-10-19",
+      "page": "site",
+      "text": {
+        "en": "The small logo at the top now lines up with the edge of the page's text.",
+        "hr": "Mali logotip na vrhu sada je poravnan s rubom teksta stranice.",
+        "sr": "Мали логотип на врху сада је поравнан с рубом текста странице."
+      }
+    },
+    {
       "id": "2026-10-16-landing-serbian",
       "date": "2026-10-16",
       "page": "site",

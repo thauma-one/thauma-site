@@ -588,6 +588,9 @@ export async function lastSuccessfulRun(env, workflowFile, fetchImpl = fetch) {
     at: run.updated_at || run.created_at,
     url: run.html_url,
     number: run.run_number,
+    /* when it began — a release waits for a deploy that STARTED after its
+       Publish (lib/release-notice.js) */
+    started: run.run_started_at || run.created_at,
   };
 }
 
