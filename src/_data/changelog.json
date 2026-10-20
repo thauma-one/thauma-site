@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-publish-builds-preview",
+      "date": "2026-10-20",
+      "page": "admin:index",
+      "text": {
+        "en": "Publish now rebuilds the preview (next.thauma.one) too, so it always matches what went live. Preview still works on its own for looking at changes before publishing.",
+        "hr": "Objavi sada ponovno gradi i pregled (next.thauma.one), pa uvijek odgovara onome što je objavljeno. Pregled i dalje radi zasebno, za gledanje promjena prije objave.",
+        "sr": "Објави сада поново гради и преглед (next.thauma.one), па увијек одговара ономе што је објављено. Преглед и даље ради засебно, за гледање промјена прије објаве."
+      }
+    },
+    {
       "id": "2026-10-20-site-fonts",
       "date": "2026-10-20",
       "page": "staff:website",

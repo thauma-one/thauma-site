@@ -436,6 +436,24 @@ async function act(request, env, db, user, me) {
     }
   }
 
+  /* THE PREVIEW GOES WITH IT (Chase, 2026-10-20: "Maybe the publish button
+     should also push to preview that way things stay in sync over time?").
+     next.thauma.one had fallen a week behind because nobody pressed Preview.
+     After the merge above dev holds what live is getting, so the preview is
+     built from dev too, exactly as its own button does (its data carried
+     first). Never in the way of the publish: if it cannot start, the page
+     says so and Preview still works by hand. */
+  let preview = null;
+  if (action === "publish") {
+    try {
+      const c = await carry(env, { target: "staging", branch: stagingBranch(env), who: (me && me.user_name) || user.email });
+      const r = c.error ? c : await dispatchWorkflow(env, STAGING_WORKFLOW, stagingBranch(env));
+      preview = r.error ? { error: r.error } : { started: true };
+    } catch (err) {
+      preview = { error: err.message };
+    }
+  }
+
   return json({
     ok: true,
     action,
@@ -446,5 +464,6 @@ async function act(request, env, db, user, me) {
     where: action === "publish" ? "thauma.one" : "next.thauma.one",
     merged,
     carried: carried.skipped ? null : { rows: carried.rows, migrations: carried.migrations.length },
+    preview,
   });
 }

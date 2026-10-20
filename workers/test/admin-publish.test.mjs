@@ -339,9 +339,25 @@ await check("the two buttons build DIFFERENT branches", async () => {
     await handler.fetch(req("POST", { action: "preview" }), envWith("admin"));
     await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }),
                         envWith("admin"));
-    const refs = g.filter((c) => c.url.endsWith("/dispatches")).map((c) => c.body.ref);
-    eq(refs, ["dev", "main"], "preview then publish");
+    const runs = g.filter((c) => c.url.endsWith("/dispatches")).map((c) => c.url.split("/workflows/")[1].split("/")[0] + "@" + c.body.ref);
+    /* Publish builds live from main, then the preview from dev (Chase,
+       2026-10-20: "the publish button should also push to preview that way
+       things stay in sync") */
+    eq(runs, ["deploy-staging.yml@dev", "deploy.yml@main", "deploy-staging.yml@dev"], "preview, then publish and its preview");
   } finally { g.restore(); }
+});
+
+await check("publish still succeeds when the preview build cannot start, and says so", async () => {
+  const g = stubGitHub();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => (String(url).includes("deploy-staging.yml") && String(url).endsWith("/dispatches"))
+    ? new Response(JSON.stringify({ message: "nope" }), { status: 422 }) : realFetch(url, init);
+  try {
+    const res = await handler.fetch(req("POST", { action: "publish", confirm: "PUBLISH" }), envWith("admin"));
+    const body = await res.json();
+    eq(res.status, 200, "published");
+    assert(body.preview && body.preview.error, "the preview's failure is reported: " + JSON.stringify(body.preview));
+  } finally { globalThis.fetch = realFetch; g.restore(); }
 });
 
 await check("with no STAGING_BRANCH set, preview falls back to the live branch", async () => {
