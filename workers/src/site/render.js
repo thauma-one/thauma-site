@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget, linkTable } from "./model.js";
+import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget, linkTable, FONT_CHOICES } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 import { ICON, SOCIAL_NAME } from "../lib/social-icons.js";
@@ -35,6 +35,23 @@ const FONTS = {
   bold: "family=Manrope:wght@400;600;800",
   custom: "family=Sora:wght@100;300;600&family=Inter:wght@300;400;600",
 };
+
+/* THE FONTS A SITE WEARS (model.js FONT_CHOICES): what to ask Google for,
+   the uploaded font's face, and the two stacks — the chosen font, then the
+   fallback (for letters it cannot write), then the look's own. */
+const FONT_FORMAT = { woff2: "woff2", woff: "woff", ttf: "truetype", otf: "opentype" };
+function siteFonts(design, L) {
+  const f = design.fonts || {}, fam = (id) => FONT_CHOICES[id];
+  const name = (id) => (fam(id) ? `'${fam(id).family}', ` : "");
+  const own = f.heading === "own" && f.own;
+  const used = [...new Set([f.heading, f.body, f.fallback].filter(fam))];
+  return {
+    query: [FONTS[design.look] || FONTS.night, ...used.map((id) => `family=${fam(id).family.replace(/ /g, "+")}${fam(id).q ? ":" + fam(id).q : ""}`)].join("&"),
+    face: own ? `@font-face{font-family:'SiteOwn';src:url(${f.own}) format('${FONT_FORMAT[f.own.split(".").pop()]}');font-weight:100 900;font-display:swap}` : "",
+    display: (own ? "'SiteOwn', " : name(f.heading)) + name(f.fallback) + L.display,
+    body: name(f.body) + name(f.fallback) + L.body,
+  };
+}
 
 /* Each look: surfaces, ink, fonts. `acc` fills (buttons, rules, the
    progress line); `ink` is the accent as TEXT, lightened where needed so it
@@ -1293,7 +1310,9 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const fallback = doc.fallback;
   const design = doc.design;
   const navOpt = design.nav || {};
-  const L = looks(design.look, theme, design.colors || {}, design.mode);
+  const L0 = looks(design.look, theme, design.colors || {}, design.mode);
+  const F = siteFonts(design, L0);
+  const L = { ...L0, display: F.display, body: F.body };
   const pages = doc.pages.filter((p) => p.on);
   const page = doc.pages.find((p) => p.id === pageId);
   const label = (id) => {
@@ -1606,8 +1625,8 @@ ${alternates}
 ${social}
 ${draft ? "" : `<script type="speculationrules">${JSON.stringify({ prerender: [{ where: { and: [{ href_matches: `${base}/*` }, { not: { selector_matches: "[target=_blank]" } }] }, eagerness: "moderate" }] })}</script>`}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${FONTS[design.look]}&display=swap">
-<style>${css(L, design)}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${F.query}&display=swap">
+<style>${F.face}${css(L, design)}
 @media (max-width:${fold}px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}.top .wrap>.langmenu{display:none}html.menu-open .nav .navlang{display:block;width:100%}}</style>
 </head>
 <body${only ? ' class="only-foot"' : ""}>
@@ -1803,4 +1822,4 @@ export function simplePage(title, text, status = 404) {
 
 export { SECTIONS };
 /* for the ministry's app (site/app.js), which wears the site's own look */
-export { looks as siteLook, FONTS as SITE_FONTS, initialsIcon };
+export { looks as siteLook, siteFonts, initialsIcon };

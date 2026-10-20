@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-site-fonts",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator › Design: choose your site's fonts — one for headings, one for text — from a set of tiles that show each font, or upload your own for headings. Fonts that can't write Cyrillic are marked when your site has Serbian, and a fallback font writes any letters a font is missing. The share picture uses your heading font too.",
+        "hr": "Izrada stranice › Izgled: odaberite fontove svoje stranice — jedan za naslove, jedan za tekst — među pločicama koje prikazuju svaki font ili učitajte vlastiti za naslove. Fontovi koji ne pišu ćirilicu označeni su kad vaša stranica ima srpski, a zamjenski font piše sva slova koja fontu nedostaju. I slika za dijeljenje koristi vaš font naslova.",
+        "sr": "Израда странице › Изглед: одаберите фонтове своје странице — један за наслове, један за текст — међу плочицама које приказују сваки фонт или учитајте властити за наслове. Фонтови који не пишу ћирилицу означени су кад ваша страница има српски, а замјенски фонт пише сва слова која фонту недостају. И слика за дијељење користи ваш фонт наслова."
+      }
+    },
+    {
       "id": "2026-10-20-site-menu-fit",
       "date": "2026-10-20",
       "page": "staff:website",
@@ -24,11 +34,11 @@
     {
       "id": "2026-10-20-search-descriptions",
       "date": "2026-10-20",
-      "page": "site",
+      "page": "console",
       "text": {
-        "en": "Thauma's site: the English descriptions shown in search results are written normally again, instead of with Every Word Capitalized.",
-        "hr": "Stranica Thauma: engleski opisi koji se prikazuju u rezultatima pretraživanja opet su napisani normalno, a ne sa svakom riječju velikim slovom.",
-        "sr": "Страница Thauma: енглески описи који се приказују у резултатима претраживања опет су написани нормално, а не са сваком ријечју великим словом."
+        "en": "Search descriptions in Title Case now capitalize a word that starts a new sentence, on Thauma's site and in the Site Creator (it read “…Simple to State. the Need Is…”).",
+        "hr": "Engleski opisi za pretraživanje sada velikim slovom pišu riječ kojom počinje nova rečenica, na stranici Thauma i u Izradi stranice (pisalo je „…Simple to State. the Need Is…”).",
+        "sr": "Енглески описи за претраживање сада великим словом пишу ријеч којом почиње нова реченица, на страници Thauma и у Изради странице (писало је „…Simple to State. the Need Is…”)."
       }
     },
     {

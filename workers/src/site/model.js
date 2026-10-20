@@ -203,6 +203,47 @@ export const GIVE_TO = ["page", "link"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
    one choice, each respected only where the visitor has not asked their
    device for less motion. */
+/* THE FONTS (Chase, 2026-10-19: "we should add a font selection/upload,
+   with a fallback text in case one of the languages doesn't support the
+   font"). Headings and text each wear the look's own font or one of these;
+   a site may upload its own for headings. Any letter the chosen font cannot
+   write is drawn in the fallback, then in the look's own font: browsers
+   pick per letter, so a Serbian page in a font without Cyrillic still
+   reads. `cyr` is whether the font writes Cyrillic (checked against
+   Google's lists, 2026-10-20); every one writes č ć đ š ž. `q` is the
+   weights asked of Google — exactly what each font has. */
+export const FONT_CHOICES = {
+  playfair:   { family: "Playfair Display",   q: "wght@400..900", cyr: true,  serif: true },
+  fraunces:   { family: "Fraunces",           q: "wght@100..900", cyr: false, serif: true },
+  dmserif:    { family: "DM Serif Display",   q: "",              cyr: false, serif: true },
+  cormorant:  { family: "Cormorant Garamond", q: "wght@300;400;500;600;700", cyr: true, serif: true },
+  lora:       { family: "Lora",               q: "wght@400..700", cyr: true,  serif: true },
+  merriweather: { family: "Merriweather",     q: "wght@300;400;700;900", cyr: true, serif: true },
+  sora:       { family: "Sora",               q: "wght@100..800", cyr: false },
+  montserrat: { family: "Montserrat",         q: "wght@100..900", cyr: true },
+  manrope:    { family: "Manrope",            q: "wght@200..800", cyr: true },
+  unbounded:  { family: "Unbounded",          q: "wght@200..900", cyr: true },
+  spacegrotesk: { family: "Space Grotesk",    q: "wght@300..700", cyr: false },
+  oswald:     { family: "Oswald",             q: "wght@200..700", cyr: true },
+  bebas:      { family: "Bebas Neue",         q: "",              cyr: false },
+  caveat:     { family: "Caveat",             q: "wght@400..700", cyr: true },
+  comfortaa:  { family: "Comfortaa",          q: "wght@300..700", cyr: true },
+  inter:      { family: "Inter",              q: "wght@100..900", cyr: true },
+  sourcesans: { family: "Source Sans 3",      q: "wght@200..900", cyr: true },
+  nunito:     { family: "Nunito",             q: "wght@200..1000", cyr: true },
+  worksans:   { family: "Work Sans",          q: "wght@100..900", cyr: false },
+  dmsans:     { family: "DM Sans",            q: "wght@100..1000", cyr: false },
+};
+export const HEADING_FONTS = ["look", "playfair", "fraunces", "dmserif", "cormorant", "lora", "sora", "montserrat", "manrope", "unbounded", "spacegrotesk", "oswald", "bebas", "caveat", "comfortaa", "own"];
+export const BODY_FONTS = ["look", "inter", "manrope", "sourcesans", "nunito", "worksans", "dmsans", "lora", "merriweather", "montserrat"];
+/* a fallback has to write every alphabet the site may need */
+export const FALLBACK_FONTS = ["look", ...Object.keys(FONT_CHOICES).filter((k) => FONT_CHOICES[k].cyr)];
+/** An uploaded font: our own /media/ only, and a font file. */
+export function safeFont(u) {
+  const s = str(u, 400);
+  return /^\/media\/partnersite\/[A-Za-z0-9._/-]{1,200}\.(woff2|woff|ttf|otf)$/.test(s) && !s.includes("..") ? s : null;
+}
+
 export const MOTION = {
   entrance: ["rise", "fade", "slide", "zoom", "blur", "reveal", "layered", "none"],   // how sections arrive as you scroll
   /* Chase, 2026-10-19: "I want the transition slowed down some more as the
@@ -411,10 +452,13 @@ export function titleCase(text, lang) {
   const ws = String(text || "").split(/(\s+)/);
   const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
   const first = real[0], last = real[real.length - 1];
+  /* a word starting a sentence (after . ! ? or :) is capitalized like the
+     first: "…simple to state. The Need Is…", never ". the need" */
+  const opens = new Set(real.filter((i, k) => k > 0 && /[.!?:]["'”’)\]]*$/.test(ws[real[k - 1]])));
   return ws.map((w, i) => {
     if (!/\S/.test(w)) return w;
     const bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
-    if (i !== first && i !== last && SMALL_EN.has(bare)) return w.toLowerCase();
+    if (i !== first && i !== last && !opens.has(i) && SMALL_EN.has(bare)) return w.toLowerCase();
     /* a word already capitalized inside (iPhone, McDonald) is left alone */
     return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, (c) => c.toUpperCase());
   }).join("");
@@ -902,6 +946,16 @@ export function cleanDoc(raw, catalog) {
         accent: HEX_RE.test((design.colors || {}).accent || "") ? design.colors.accent.toUpperCase() : null,
       },
       motion: m,
+      fonts: (() => {
+        const f = design.fonts || {}, own = safeFont(f.own);
+        const heading = pick(f.heading, HEADING_FONTS);
+        return {
+          heading: heading === "own" && !own ? "look" : heading,
+          body: pick(f.body, BODY_FONTS),
+          fallback: pick(f.fallback, FALLBACK_FONTS),
+          own, ownName: own ? str(f.ownName, 60) : "",
+        };
+      })(),
     },
     links,
     footer,

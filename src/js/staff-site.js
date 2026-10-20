@@ -71,6 +71,23 @@
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
     pages: ['fade', 'cut'], progress: ['on', 'off'], cue: ['line', 'arrow', 'mouse', 'none'],
   };
+  /* THE FONTS (workers/src/site/model.js FONT_CHOICES; a test checks the
+     two lists agree). NO_CYR: the ones without Cyrillic. */
+  var FONT_FAMILY = {
+    playfair: 'Playfair Display', fraunces: 'Fraunces', dmserif: 'DM Serif Display', cormorant: 'Cormorant Garamond',
+    lora: 'Lora', merriweather: 'Merriweather', sora: 'Sora', montserrat: 'Montserrat', manrope: 'Manrope',
+    unbounded: 'Unbounded', spacegrotesk: 'Space Grotesk', oswald: 'Oswald', bebas: 'Bebas Neue', caveat: 'Caveat',
+    comfortaa: 'Comfortaa', inter: 'Inter', sourcesans: 'Source Sans 3', nunito: 'Nunito', worksans: 'Work Sans', dmsans: 'DM Sans',
+  };
+  var FONT_Q = { playfair: 'wght@400..900', fraunces: 'wght@100..900', cormorant: 'wght@300;400;500;600;700', lora: 'wght@400..700',
+    merriweather: 'wght@300;400;700;900', sora: 'wght@100..800', montserrat: 'wght@100..900', manrope: 'wght@200..800', unbounded: 'wght@200..900',
+    spacegrotesk: 'wght@300..700', oswald: 'wght@200..700', caveat: 'wght@400..700', comfortaa: 'wght@300..700', inter: 'wght@100..900',
+    sourcesans: 'wght@200..900', nunito: 'wght@200..1000', worksans: 'wght@100..900', dmsans: 'wght@100..1000' };
+  var NO_CYR = ['fraunces', 'dmserif', 'sora', 'spacegrotesk', 'bebas', 'worksans', 'dmsans'];
+  var HEADING_FONTS = ['look', 'playfair', 'fraunces', 'dmserif', 'cormorant', 'lora', 'sora', 'montserrat', 'manrope', 'unbounded', 'spacegrotesk', 'oswald', 'bebas', 'caveat', 'comfortaa', 'own'];
+  var BODY_FONTS = ['look', 'inter', 'manrope', 'sourcesans', 'nunito', 'worksans', 'dmsans', 'lora', 'merriweather', 'montserrat'];
+  var LOOK_FONTS = { night: ['Sora', 'Inter'], paper: ['Fraunces', 'Manrope'], bold: ['Manrope', 'Manrope'], custom: ['Sora', 'Inter'] };
+  var CYR_LANGS = ['sr', 'ru', 'uk', 'bg', 'mk', 'be'];
   var SOCIALS = ['youtube', 'instagram', 'facebook', 'x', 'tiktok', 'linkedin', 'spotify', 'email'];
   var LOOKS = ['night', 'paper', 'bold', 'custom'];
   var FOOTERS = ['split', 'center', 'columns'];
@@ -934,6 +951,73 @@
       (label ? ' aria-label="' + esc(label) + '"' : '') + '><span class="switch-track"><span class="switch-state">' + esc(tr(on ? 'switch.on' : 'switch.off')) +
       '</span><span class="switch-knob"></span></span>' + (label ? '<span class="switch-label">' + esc(label) + '</span>' : '') + '</button>';
   }
+  /* FONTS (Chase, 2026-10-19: "we should add a font selection/upload, with
+     a fallback text in case one of the languages doesn't support the
+     font"). Each choice is a tile showing itself; a site writing Cyrillic
+     sees which fonts cannot, and those letters come out in the fallback. */
+  function fontsOf() {
+    var d = state.doc.design;
+    d.fonts = d.fonts || { heading: 'look', body: 'look', fallback: 'look', own: null, ownName: '' };
+    return d.fonts;
+  }
+  function loadConsoleFonts() {
+    if (document.getElementById('wsFontFaces')) return;
+    var fams = Object.keys(FONT_FAMILY).map(function (k) { return FONT_FAMILY[k]; });
+    var chars = 'Aa' + fams.join('') + tr('ws.font.look') + 'ČčĆćŠšŽžĐđ';
+    var uniq = chars.split('').filter(function (c, i, a) { return a.indexOf(c) === i; }).join('');
+    var l = document.createElement('link'); l.id = 'wsFontFaces'; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?' + fams.map(function (f) { return 'family=' + f.replace(/ /g, '+'); }).join('&') + '&text=' + encodeURIComponent(uniq) + '&display=swap';
+    document.head.appendChild(l);
+  }
+  function fontsHtml(d) {
+    loadConsoleFonts();
+    var f = fontsOf(), look = LOOK_FONTS[d.look] || LOOK_FONTS.night;
+    var cyr = state.doc.languages.some(function (l) { return CYR_LANGS.indexOf(l) !== -1; });
+    if (f.own && !document.getElementById('wsOwnFace')) {
+      var st = document.createElement('style'); st.id = 'wsOwnFace';
+      st.textContent = "@font-face{font-family:'WsOwn';src:url(" + f.own + ");font-display:swap}";
+      document.head.appendChild(st);
+    }
+    var tiles = function (key, list, cur, lookFam) {
+      return '<div class="ws-fonts" role="group">' + list.map(function (id) {
+        if (id === 'own' && !f.own) {
+          return '<label class="ws-font ws-font-up"><span class="ws-font-aa">+</span><span class="ws-font-name">' + esc(tr('ws.font.upload')) + '</span>' +
+            '<input type="file" accept=".woff2,.woff,.ttf,.otf" data-font-file hidden></label>';
+        }
+        var fam = id === 'look' ? lookFam : id === 'own' ? 'WsOwn' : FONT_FAMILY[id];
+        var name = id === 'look' ? tr('ws.font.look') : id === 'own' ? (f.ownName || tr('ws.font.own')) : FONT_FAMILY[id];
+        var noCyr = cyr && (id === 'own' || NO_CYR.indexOf(id) !== -1 || (id === 'look' && NO_CYR.indexOf(String(lookFam).toLowerCase()) !== -1));
+        return '<button type="button" class="ws-font" data-chip="font:' + key + '" data-value="' + esc(id) + '" aria-pressed="' + (id === cur) + '">' +
+          '<span class="ws-font-aa" style="font-family:\'' + esc(fam) + '\',sans-serif">Aa</span><span class="ws-font-name">' + esc(name) + '</span>' +
+          (noCyr && id !== 'own' ? '<span class="ws-font-tag">' + esc(tr('ws.font.noCyr')) + '</span>' : '') + '</button>';
+      }).join('') + (f.own ? '<label class="link-btn ws-font-change">' + esc(tr('ws.font.change')) + '<input type="file" accept=".woff2,.woff,.ttf,.otf" data-font-file hidden></label>' : '') + '</div>';
+    };
+    var fallbacks = ['look'].concat(Object.keys(FONT_FAMILY).filter(function (k) { return NO_CYR.indexOf(k) === -1; }));
+    return '<div class="ws-head"><h2>' + esc(tr('ws.fonts')) + '</h2></div><div class="ws-rows">' +
+      '<div class="ws-row ws-row-wide"><span class="ws-lbl">' + esc(tr('ws.font.heading')) + '</span><div class="ws-ctl">' + tiles('heading', HEADING_FONTS, f.heading || 'look', look[0]) + '</div></div>' +
+      '<div class="ws-row ws-row-wide"><span class="ws-lbl">' + esc(tr('ws.font.body')) + '</span><div class="ws-ctl">' + tiles('body', BODY_FONTS, f.body || 'look', look[1]) + '</div></div>' +
+      row(tr('ws.font.fallback'), choice('font:fallback', fallbacks, f.fallback || 'look', function (v) { return v === 'look' ? tr('ws.font.look') : FONT_FAMILY[v]; })) +
+      '</div>';
+  }
+  async function uploadFont(input) {
+    var file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    var type = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' }[ext];
+    if (!type) return toast(tr('ws.font.kinds'), 'err');
+    try {
+      var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': type, 'X-File-Name': fileName(file.name) }, body: file });
+      var body = await res.json();
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      noteMedia(body.url);
+      var f = fontsOf();
+      f.own = body.url; f.ownName = fileName(file.name).replace(/\.[a-z0-9]+$/i, '').slice(0, 60); f.heading = 'own';
+      var old = document.getElementById('wsOwnFace'); if (old) old.remove();
+      drawDesign(); changed();
+    } catch (err) { toast(err.message, 'err'); }
+  }
   function row(label, control) {
     /* a choice with pictures takes the row's whole width, under its name */
     var wide = control.indexOf('<div class="ws-pp') === 0;
@@ -1675,7 +1759,7 @@
             (d.favicon ? '<button type="button" class="link-btn" data-unfavicon>' + esc(tr('ws.removePhoto')) + '</button>' : '')
           : '') +
         '<span class="hint"></span>') +
-      '</div><div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
+      '</div>' + fontsHtml(d) + '<div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
       Object.keys(MOTION).map(function (k) {
         /* on or off is a switch, not two chips */
         if (k === 'progress') return row(tr('ws.m.' + k), sw('data-motion-progress', d.motion.progress === 'on', ''));
@@ -1882,10 +1966,12 @@
     if (!en) return text;
     var ws = String(text || '').split(/(\s+)/), real = [];
     ws.forEach(function (w, i) { if (/\S/.test(w)) real.push(i); });
+    /* a word starting a sentence is capitalized like the first (model.js) */
+    var opens = real.filter(function (i, k) { return k > 0 && /[.!?:]["'”’)\]]*$/.test(ws[real[k - 1]]); });
     return ws.map(function (w, i) {
       if (!/\S/.test(w)) return w;
       var bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
-      if (i !== real[0] && i !== real[real.length - 1] && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
+      if (i !== real[0] && i !== real[real.length - 1] && opens.indexOf(i) === -1 && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
       return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
     }).join('');
   }
@@ -1911,12 +1997,29 @@
   /* The look a name card wears: the site's own ground, ink and accent. */
   function cardLook() {
     var d = state.doc.design, acc = siteAccent();
-    if (d.look === 'paper') return { bg: '#F6F2EA', fg: '#1A1C22', dim: '#5B5E66', acc: acc, font: 'Georgia, serif' };
-    if (d.look === 'bold') return { bg: acc, fg: '#041D24', dim: 'rgba(4,29,36,.7)', acc: '#041D24', font: 'Sora, system-ui' };
+    if (d.look === 'paper') return withHeadingFont({ bg: '#F6F2EA', fg: '#1A1C22', dim: '#5B5E66', acc: acc, font: 'Georgia, serif' });
+    if (d.look === 'bold') return withHeadingFont({ bg: acc, fg: '#041D24', dim: 'rgba(4,29,36,.7)', acc: '#041D24', font: 'Sora, system-ui' });
     var bg = (d.look === 'custom' && d.colors && d.colors.background) || '#0A0D12';
     var n = parseInt(bg.slice(1), 16), light = ((n >> 16) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 140;
-    return light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
-                 : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' };
+    return withHeadingFont(light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
+                 : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' });
+  }
+  /* the card's name in the site's chosen heading font, when there is one */
+  function withHeadingFont(k) {
+    var f = state.doc.design.fonts || {};
+    if (f.heading === 'own' && f.own) k.font = "'WsOwnCard', " + k.font;
+    else if (FONT_FAMILY[f.heading]) k.font = "'" + FONT_FAMILY[f.heading] + "', " + k.font;
+    return k;
+  }
+  async function loadCardFont() {
+    var f = state.doc.design.fonts || {};
+    if (f.heading === 'own' && f.own && window.FontFace) {
+      if (window.__cardOwn !== f.own) { window.__cardOwn = f.own; var ff = new FontFace('WsOwnCard', 'url(' + f.own + ')', { weight: '100 900' }); document.fonts.add(ff); await ff.load(); }
+    } else if (FONT_FAMILY[f.heading] && !document.getElementById('wsCardFont-' + f.heading)) {
+      var l = document.createElement('link'); l.id = 'wsCardFont-' + f.heading; l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=' + FONT_FAMILY[f.heading].replace(/ /g, '+') + (FONT_Q[f.heading] ? ':' + FONT_Q[f.heading] : '') + '&display=swap';
+      await new Promise(function (r) { l.onload = r; l.onerror = r; document.head.appendChild(l); });
+    }
   }
   /* the line at the card's foot: the owner's phrase, or the address */
   function cardLine(l) { var o = state.doc.shareLine || {}; return o[l] || (state.body.site.subdomain + '.thauma.one'); }
@@ -1924,7 +2027,7 @@
      a version, so a card drawn before a change to how cards are drawn is
      made again (Chase, 2026-10-19: the name "isn't in the correct font
      still" — cards from before the font fix were never redrawn). */
-  function cardSig(p, l) { var k = cardLook(); return ['v3', siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, k.font, cardLine(l)].join('|'); }
+  function cardSig(p, l) { var k = cardLook(); return ['v3', siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, k.font, cardLine(l)].concat(/WsOwnCard/.test(k.font) ? [state.doc.design.fonts.own] : []).join('|'); }
   /* A 1200×630 card: the page's name light, the ministry's name bold, a short
      line in the accent, the address small. */
   async function makeCard(p, l) {
@@ -1940,7 +2043,7 @@
         }));
       }, [])).catch(function () {});
     }
-    try { await window.__cardFonts; await Promise.all([document.fonts.load('100 96px ' + fam), document.fonts.load('600 96px ' + fam)]); } catch (e) { /* system fonts */ }
+    try { await loadCardFont(); await window.__cardFonts; await Promise.all([document.fonts.load('100 96px ' + fam), document.fonts.load('600 96px ' + fam)]); } catch (e) { /* system fonts */ }
     var c = document.createElement('canvas'); c.width = 1200; c.height = 630;
     var g = c.getContext && c.getContext('2d');
     if (!g) return null;
@@ -2358,6 +2461,7 @@
        2026-10-04). Canceling keeps the photo as it came. */
     if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
     if (t.dataset.customIcon) return upload(t, function (url) { state.doc.links[+t.dataset.customIcon].iconImg = url; drawLinks(); }, 256);
+    if (t.dataset.fontFile !== undefined) return uploadFont(t);
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -2605,6 +2709,7 @@
       drawNav();
     }
     else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
+    else if (name.indexOf('font:') === 0) { fontsOf()[name.slice(5)] = val; drawDesign(); }
     else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; state.playMotion = true; drawDesign(); }
     else if (name === 'menu') { state.doc.design.menu = val; drawNav(); }
     else if (name === 'look' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }

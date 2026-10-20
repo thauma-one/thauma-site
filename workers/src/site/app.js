@@ -32,7 +32,7 @@
  * opens straight onto its tab, and the app works offline from the service
  * worker's copy (sw.js keeps pages and every data.json).
  */
-import { esc, siteLook, SITE_FONTS, initialsIcon } from "./render.js";
+import { esc, siteLook, siteFonts, initialsIcon } from "./render.js";
 import { wordsFor } from "../lib/mail-i18n.js";
 import { validSubscription, pushReady } from "../lib/webpush.js";
 import { subId } from "../push-api.js";
@@ -219,6 +219,7 @@ function vars(P) {
 }
 
 export function renderApp({ L, design, boot, title, apple }) {
+  const F = siteFonts(design, L);
   const dark = L.alt ? `@media (prefers-color-scheme:dark){:root{${vars(L.alt)}}}` : "";
   return `<!doctype html>
 <html lang="${esc(boot.lang)}">
@@ -236,8 +237,8 @@ export function renderApp({ L, design, boot, title, apple }) {
 <meta name="apple-mobile-web-app-title" content="${esc(title)}">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${SITE_FONTS[design.look] || SITE_FONTS.night}&display=swap">
-<style>:root{${vars(L)};--display:${L.display};--body:${L.body};--thin:${L.thin};--bold:${L.boldW}}${dark}${APP_CSS}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${F.query}&display=swap">
+<style>${F.face}:root{${vars(L)};--display:${F.display};--body:${F.body};--thin:${L.thin};--bold:${L.boldW}}${dark}${APP_CSS}</style>
 </head>
 <body>
 <header class="bar"><a class="brand" id="brand" href="#home"></a><button class="gear" id="gear" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button></header>

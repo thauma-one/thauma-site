@@ -1312,5 +1312,36 @@ check("the closed page's logo is the site's own, in pieces, with its shimmer par
   assert(!LOGO.splitLogo("cl").includes("{{"), "ids filled in");
 });
 
+check("Title Case: a word starting a sentence is capitalized, never \". the\"", () => {
+  eq(MODEL.titleCase("simple to state. the need is real: a church needs help", "en"), "Simple to State. The Need Is Real: A Church Needs Help", "after . and :");
+  eq(MODEL.titleCase("news, prayer and the road ahead", "en"), "News, Prayer and the Road Ahead", "small words inside stay small");
+});
+
+check("fonts: the chosen one, then the fallback, then the look's; Google is asked for exactly those; only our own font files", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "sr"], fallback: "en" });
+  d.design.fonts = { heading: "bebas", body: "inter", fallback: "montserrat" };
+  const c = cleanDoc(d, ["en", "sr"]);
+  eq(c.design.fonts.heading, "bebas", "heading kept");
+  const html = page(c);
+  assert(html.includes("family=Bebas+Neue&") && html.includes("family=Inter:wght@100..900") && html.includes("family=Montserrat:wght@100..900"), "Google asked");
+  assert(/--display:'Bebas Neue', 'Montserrat', 'Sora'/.test(html), "heading stack");
+  assert(/--body:'Inter', 'Montserrat', 'Inter'/.test(html), "text stack");
+  /* the fallback must write Cyrillic; a font without it is not one */
+  d.design.fonts = { fallback: "bebas", heading: "nope" };
+  eq([cleanDoc(d, ["en"]).design.fonts.fallback, cleanDoc(d, ["en"]).design.fonts.heading], ["look", "look"], "refused");
+  /* an uploaded font: only ours, only a font file */
+  d.design.fonts = { heading: "own", own: "/media/partnersite/c/display-ab12.woff2", ownName: "Display" };
+  const own = cleanDoc(d, ["en"]);
+  assert(page(own).includes("@font-face{font-family:'SiteOwn';src:url(/media/partnersite/c/display-ab12.woff2) format('woff2')"), "face");
+  for (const bad of ["https://evil.example/f.woff2", "/media/partnersite/c/x.svg", "/media/partnersite/../x.woff2"]) {
+    d.design.fonts = { heading: "own", own: bad };
+    eq(cleanDoc(d, ["en"]).design.fonts.heading, "look", bad);
+  }
+  const ids = Object.keys(MODEL.FONT_CHOICES);
+  const src = readFileSync(new URL("../../src/js/staff-site.js", import.meta.url), "utf8");
+  for (const id of [...MODEL.HEADING_FONTS, ...MODEL.BODY_FONTS]) assert(src.includes("'" + id + "'"), "the console offers " + id);
+  assert(ids.every((id) => src.includes("'" + MODEL.FONT_CHOICES[id].family + "'")), "the console knows every family");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
