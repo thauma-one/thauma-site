@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-site-discard-part",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator: you can now discard the changes to one part only. Where a dot shows changes, a line under the tabs puts that tab (or the open page) back to what visitors see, and a changed section has its own ↺ button. Undo brings it back.",
+        "hr": "Izrada stranice: sada možete odbaciti promjene samo na jednom dijelu. Gdje točka pokazuje promjene, redak ispod kartica vraća tu karticu (ili otvorenu stranicu) na ono što posjetitelji vide, a promijenjeni odjeljak ima svoj gumb ↺. Poništi to vraća.",
+        "sr": "Израда странице: сада можете одбацити промјене само на једном дијелу. Гдје тачка показује промјене, редак испод картица враћа ту картицу (или отворену страницу) на оно што посјетиоци виде, а промијењени одјељак има свој гумб ↺. Поништи то враћа."
+      }
+    },
+    {
       "id": "2026-10-20-site-motion",
       "date": "2026-10-20",
       "page": "staff:website",

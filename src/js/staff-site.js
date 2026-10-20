@@ -422,7 +422,7 @@
       design: JSON.stringify(d),
       nav: JSON.stringify(nav),
       pages: JSON.stringify(doc.pages.map(function (p) { var q = Object.assign({}, p); delete q.seo; delete q.shareImage; delete q.shareCards; return q; })),
-      advanced: JSON.stringify(doc.pages.map(function (p) { return [p.seo, p.shareImage, p.shareCards]; })),
+      advanced: JSON.stringify([doc.pages.map(function (p) { return [p.seo, p.shareImage, p.shareCards]; }), doc.shareLine || null]),
       links: JSON.stringify(doc.links),
       footer: JSON.stringify(doc.footer),
       settings: JSON.stringify([doc.languages, doc.fallback, doc.give]),
@@ -444,7 +444,61 @@
       dot.hidden = !was || now[t] === was[t];
       dot.title = dot.hidden ? '' : tr('ws.changedHere');
     });
+    drawRevert(now, was);
   }
+
+  /* DISCARD ONE PART (Chase, 2026-10-19: "we need the ability to discard
+     changes of certain section"). Where a dot says a part differs from what
+     visitors see, that part alone can go back to it: the open tab (or, on
+     Pages, the open page) from the line under the tabs, a section from the
+     arrow on its row. It is one more change: Undo brings it back. */
+  function drawRevert(now, was) {
+    var box = $('wsRevert'); if (!box) return;
+    var what = null;
+    if (was && canEdit()) {
+      if (state.tab === 'pages' && state.page) {
+        var rp = realPage();
+        if (pubPage(rp.id) && pageChanged(rp)) what = tr('ws.revert.page');
+      } else if (now[state.tab] !== was[state.tab]) what = fill('ws.revert.area', { area: tr('ws.tab.' + state.tab) });
+    }
+    box.hidden = !what;
+    if (what) $('wsRevertBtn').textContent = what;
+  }
+  function pubPage(id) { var pub = state.body.published; return pub && pub.pages.filter(function (x) { return x.id === id; })[0]; }
+  function copy(x) { return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }
+  function revertArea(tab) {
+    var doc = state.doc, pub = state.body.published;
+    if (tab === 'design') {
+      var keep = { headerLinks: doc.design.headerLinks, nav: doc.design.nav, giveTo: doc.design.giveTo };
+      doc.design = Object.assign(copy(pub.design), keep);
+    } else if (tab === 'nav') {
+      doc.design.nav = copy(pub.design.nav); doc.design.giveTo = copy(pub.design.giveTo); doc.design.headerLinks = copy(pub.design.headerLinks);
+    } else if (tab === 'pages') {
+      doc.pages = pub.pages.map(function (pp) {
+        var mine = doc.pages.filter(function (x) { return x.id === pp.id; })[0], q = copy(pp);
+        if (mine) { q.seo = copy(mine.seo); q.shareImage = copy(mine.shareImage); q.shareCards = copy(mine.shareCards); }
+        return q;
+      });
+    } else if (tab === 'advanced') {
+      doc.pages.forEach(function (p) {
+        var was = pubPage(p.id) || {};
+        p.seo = copy(was.seo); p.shareImage = copy(was.shareImage); p.shareCards = copy(was.shareCards);
+      });
+      doc.shareLine = copy(pub.shareLine);
+    } else if (tab === 'links') doc.links = copy(pub.links);
+    else if (tab === 'footer') doc.footer = copy(pub.footer);
+    else if (tab === 'settings') { doc.languages = copy(pub.languages); doc.fallback = pub.fallback; doc.give = copy(pub.give); fillPair(); }
+  }
+  if ($('wsRevertBtn')) $('wsRevertBtn').addEventListener('click', async function () {
+    var ok = window.StaffConfirm ? await window.StaffConfirm({ title: tr('ws.revert.title'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true }) : true;
+    if (!ok || !state.body.published) return;
+    if (state.tab === 'pages' && state.page) {
+      var i = state.doc.pages.indexOf(realPage());
+      state.doc.pages[i] = copy(pubPage(state.doc.pages[i].id));
+      state.view = null; state.edit = null;
+    } else revertArea(state.tab);
+    draw(); changed(); toast(tr('toast.discarded'));
+  });
 
   function drawBar() {
     var show = canEdit() && state.body.site.unpublished;
@@ -602,6 +656,7 @@
     if (state.tab === 'nav') drawNav();
     if (state.tab === 'advanced') drawAdvanced();
     if (state.tab === 'settings') drawSettings();
+    if (state.body) drawDots();
     /* The site beside whatever is being changed: the page being arranged, or
        Home for the look, the links and the footer. */
     var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer' || state.tab === 'nav';
@@ -1043,6 +1098,10 @@
     var was = allSecs(pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).filter(function (x) { return x.id === s.id; })[0];
     return JSON.stringify(s) !== JSON.stringify(was);
   }
+  function pubSection(id) {
+    var was = pubPage(realPage().id);
+    return was && allSecs(was).filter(function (x) { return x.id === id; })[0];
+  }
   function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
 
   /* ALL PAGES, then ONE PAGE (Chase, 2026-09-29, after the page tabs: "didn't
@@ -1054,7 +1113,7 @@
      the top of every page. */
   function drawPages() {
     keepPlace();
-    if (!state.page) return drawOverview();
+    if (!state.page) { drawOverview(); if (state.body) drawDots(); return; }
     var p = currentPage();
     if (state.edit != null && !p.sections[state.edit]) state.edit = null;
 
@@ -1106,6 +1165,8 @@
               '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span>' + missingNote(sectionMissing(x)) + '</span>' +
               '<span class="ws-chev" aria-hidden="true"></span></button>' +
             '<span class="ws-stile-tools">' + grip() +
+              (pubSection(x.id) && sectionChanged(x) && canEdit()
+                ? '<button type="button" class="ws-icon" data-sec-revert="' + i + '" aria-label="' + esc(tr('ws.revert.sec')) + '" title="' + esc(tr('ws.revert.sec')) + '">↺</button>' : '') +
               '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
             '</span></div>' +
           '<div class="ws-acc-body"><div class="ws-acc-inner">' + (open ? panelHtml(p, i) : '') + '</div></div>' +
@@ -1130,6 +1191,7 @@
       (n || tAt >= 0 ? insert(0, false) : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') + rows +
       (n || tAt >= 0 ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
+    if (state.body) drawDots();
     sizeOnScreen($('wsPages'));
     if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
 
@@ -2404,6 +2466,12 @@
       drawSections(); return changed();
     }
     if (d.pageOn) { var pg = state.doc.pages[+d.pageOn]; pg.on = !pg.on; drawPages(); return changed(); }
+    if (d.secRevert) {
+      var rs = p.sections[+d.secRevert], rwas = pubSection(rs.id);
+      var rok = window.StaffConfirm ? await window.StaffConfirm({ title: tr('ws.revert.title'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true }) : true;
+      if (rok && rwas) { p.sections[+d.secRevert] = copy(rwas); drawSections(); changed(); toast(tr('toast.discarded')); }
+      return;
+    }
     if (d.secRemove) {
       var s = p.sections[+d.secRemove];
       var ok = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.removeTitle', { kind: tr('ws.sec.' + s.type) }), confirm: tr('ws.remove'), cancel: tr('ms.cancel'), danger: true }) : true;
