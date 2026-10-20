@@ -217,7 +217,31 @@ html.menu-open .nav{display:flex;position:absolute;left:0;right:0;top:100%;flex-
 .langmenu a:hover{background:color-mix(in srgb,var(--fg) 7%,transparent)}
 .langmenu a[aria-current]{color:var(--ink);font-weight:600}
 .foot-center .langmenu ul{right:auto;left:50%;transform:translateX(-50%)}
-.headlinks{display:flex;gap:10px}
+.headlinks{display:flex;gap:10px;position:relative}.headlinks .hl-set{display:flex;gap:inherit;flex-wrap:nowrap}
+/* A MENU THAT ALWAYS FITS ON ONE LINE (Chase, 2026-10-19: "if we put the
+   socials in the menu, the design goes to 2 lines … get creative"). The
+   page measures it (MOTION_JS fit) and steps down only as far as needed:
+   tighter spacing; then the social links gathered behind one round button
+   showing the first of them and how many more, which opens them beneath;
+   then the last pages under "More" at the end (never fewer than two left
+   out in the open); then the whole menu behind its button. */
+.headlinks .follow{display:none;position:relative;width:40px;height:40px;padding:0;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;background:none;color:var(--fg);cursor:pointer}
+.headlinks .follow:hover,.headlinks.open .follow{border-color:var(--acc)}
+.headlinks .follow svg,.headlinks .follow img{width:18px;height:18px}
+.headlinks .follow .n{position:absolute;top:-5px;right:-7px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:var(--acc);color:var(--on-acc);font:600 10px/18px var(--body)}
+.nav .more{position:relative;display:inline-flex}.nav .more[hidden]{display:none}
+.morebtn{display:inline-flex;align-items:center;gap:7px;background:none;border:0;padding:0;font:inherit;font-size:15px;color:var(--dim);cursor:pointer}.morebtn:hover,.more.open .morebtn{color:var(--fg)}
+.morebtn i{width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+.more.open .morebtn i{transform:translateY(1px) rotate(225deg)}
+.more.has-current .morebtn{color:var(--fg)}
+.more-set{display:none;position:absolute;top:calc(100% + 14px);right:0;min-width:190px;flex-direction:column;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--bg);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:30}
+.more.open .more-set{display:flex}
+html.fit-tight .nav{gap:14px}html.fit-tight .headlinks{gap:6px}
+html.fit-follow .headlinks .follow{display:inline-flex}
+html.fit-follow .headlinks .hl-set{display:none;position:absolute;top:calc(100% + 10px);right:0;padding:10px;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:30}
+html.fit-follow .headlinks.open .hl-set{display:flex}
+html.nav-fold .menubtn{display:inline-block}html.nav-fold:not(.menu-open) .nav{display:none}html.nav-fold .top .wrap{flex-direction:row!important;padding:0!important}html.nav-fold .top .wrap>.langmenu{display:none}html.nav-fold.menu-open .nav .navlang{display:block;width:100%}
+html.menu-open .headlinks .follow{display:none}html.menu-open .headlinks .hl-set{display:flex;position:static;padding:0;border:0;background:none;box-shadow:none;flex-wrap:wrap}
 @media (max-width:820px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}}
 html[data-menu="center"] .top .wrap{position:relative}
 html[data-menu="center"] .top .langmenu{position:absolute;right:0;top:16px}
@@ -1562,19 +1586,12 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     (draft ? "" : `<link rel="alternate" hreflang="x-default" href="${esc(altHref(doc.fallback))}">`);
   const m = design.motion;
   const widgets = /data-thauma="/.test(body);
-  /* WHEN THE MENU FOLDS INTO ITS BUTTON: when this site's own menu would no
-     longer fit on one line — worked out from its real labels, so a site with
-     four short pages keeps its menu on a laptop and one with nine long ones
-     folds before it wraps onto a second row. Estimated generously from the
-     characters; a fold a little early beats a menu on two lines. */
-  const chars = (t) => String(t).length * 8.2;
-  const inMenu = pages.filter((p) => p.id !== "give");
-  const menuW = (design.brand === "logo" ? 160 : chars(name) * 1.35) + 28 +
-    inMenu.reduce((n, p) => n + chars(label(p.id)) + 22, 0) +
-    (ctx.pageOn("give") ? chars(label("give")) + 60 : 0) +
-    (doc.languages.length > 1 ? 96 : 0) +
-    (design.headerLinks ? doc.links.filter((k) => k.kind !== "custom" || k.icon).length * 52 : 0) + 72;
-  const fold = design.menu === "center" ? 820 : Math.max(820, Math.ceil(menuW / 10) * 10);
+  /* WHEN THE MENU FOLDS INTO ITS BUTTON: on a phone-sized screen always;
+     above that, only when the page has measured that nothing else makes it
+     fit on one line (NAV_JS: tighter, socials gathered, pages under More).
+     It used to be estimated here from the labels' characters, which folded
+     long menus on wide screens and still let some wrap (2026-10-19). */
+  const fold = 820;
 
   const out = `<!doctype html>
 <html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-navcur="${esc(navOpt.current || "lit")}" data-navtint="${esc(navOpt.tint || "white")}" data-navline="${esc(navOpt.line || "subtle")}" data-navphone="${esc(navOpt.phone || "drop")}" data-entrance="${esc(m.entrance)}" data-speed="${esc(m.speed || "medium")}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
@@ -1600,9 +1617,10 @@ ${draft ? `<div style="background:#F5B845;color:#1a1200;font:600 13px system-ui;
 <header class="top"><div class="wrap">
 <a class="brand" href="${esc(href("home"))}">${brand}</a>
 <button class="menubtn burger" type="button" aria-expanded="false" aria-controls="sitenav" aria-label="${esc(word(lang, "menu"))}"><i></i><i></i><i></i></button>
-<nav class="nav" id="sitenav">${nav}${give}${design.headerLinks && socials ? `<span class="socials headlinks">${socials}</span>` : ""}${navLang}</nav>
+<nav class="nav" id="sitenav">${nav}${pages.length > 3 ? `<span class="more" hidden><button type="button" class="morebtn" aria-expanded="false">${esc(word(lang, "moreMenu"))}<i aria-hidden="true"></i></button><span class="more-set"></span></span>` : ""}${give}${design.headerLinks && socials ? `<span class="socials headlinks"><button type="button" class="follow" aria-expanded="false" aria-label="${esc(word(lang, "follow"))}" title="${esc(word(lang, "follow"))}"></button><span class="hl-set">${socials}</span></span>` : ""}${navLang}</nav>
 ${langMenu(false)}
 </div></header>
+<script>${NAV_JS}</script>
 <main id="main">
 ${body}
 </main>
@@ -1684,6 +1702,30 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
    tracked. A random id per tab, forgotten when the tab closes; no cookie.
    Never in the Site Creator's preview. */
 const HIT_JS = `function(x){try{var n=navigator;if(n.doNotTrack==="1"||window.doNotTrack==="1"||n.globalPrivacyControl||n.webdriver)return;var s;try{s=sessionStorage.getItem("th-v")}catch(e){}if(!s){s=Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(12)),function(b){return("0"+b.toString(16)).slice(-2)}).join("");try{sessionStorage.setItem("th-v",s)}catch(e){}}var go=function(){var b=JSON.stringify({p:location.pathname,r:document.referrer,l:(document.documentElement.lang||"").slice(0,2),s:s,w:window.innerWidth,x:x});if(n.sendBeacon)n.sendBeacon("/api/hit",b);else fetch("/api/hit",{method:"POST",body:b,keepalive:true})};if(document.readyState==="complete")setTimeout(go,0);else addEventListener("load",function(){setTimeout(go,0)})}catch(e){}}`;
+
+/* THE MENU'S FIT, run straight after the header is parsed so the page never
+   paints it on two lines (see the .headlinks comment in the CSS). */
+const NAV_JS = `(function(){
+var d=document.documentElement,b=document.querySelector('.menubtn');
+var nav=document.getElementById('sitenav'),hl=nav&&nav.querySelector('.headlinks'),fl=hl&&hl.querySelector('.follow');
+if(fl){var hs=hl.querySelectorAll('.hl-set a'),one=[].filter.call(hs,function(a){return a.querySelector('svg')||a.querySelector('img[src]')})[0],ic=one&&(one.querySelector('svg')||one.querySelector('img[src]'));
+ fl.innerHTML=(ic?ic.outerHTML:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>')+(hs.length>1?'<b class="n">+'+(hs.length-1)+'</b>':'');
+ var shut=function(){hl.classList.remove('open');fl.setAttribute('aria-expanded','false')};
+ fl.addEventListener('click',function(e){e.stopPropagation();var o=hl.classList.toggle('open');fl.setAttribute('aria-expanded',o)});
+ document.addEventListener('click',function(e){if(!hl.contains(e.target))shut()});document.addEventListener('keydown',function(e){if(e.key==='Escape')shut()})}
+var mo=nav&&nav.querySelector('.more'),mb=mo&&mo.querySelector('.morebtn'),ms=mo&&mo.querySelector('.more-set');
+if(mo){var mshut=function(){mo.classList.remove('open');mb.setAttribute('aria-expanded','false')};
+ mb.addEventListener('click',function(e){e.stopPropagation();var o=mo.classList.toggle('open');mb.setAttribute('aria-expanded',o)});
+ document.addEventListener('click',function(e){if(!mo.contains(e.target))mshut()});document.addEventListener('keydown',function(e){if(e.key==='Escape')mshut()})}
+function unmore(){if(!mo)return;while(ms.firstChild)nav.insertBefore(ms.firstChild,mo);mo.hidden=true;mo.classList.remove('open','has-current')}
+function more(){if(!mo)return false;mo.hidden=false;var ls=[].filter.call(nav.children,function(c){return c.tagName==='A'&&!c.classList.contains('givebtn')});
+ while(!fits()&&ls.length>2){var a=ls.pop();ms.insertBefore(a,ms.firstChild);if(a.getAttribute('aria-current'))mo.classList.add('has-current')}
+ if(fits())return true;unmore();return false}
+function fits(){var hi=-1e9,lo=1e9;[].forEach.call(nav.children,function(c){if(!c.getClientRects().length)return;var r=c.getBoundingClientRect();hi=Math.max(hi,r.top);lo=Math.min(lo,r.bottom)});return hi<lo-1}
+function fit(){if(!nav||!b||d.classList.contains('menu-open')||d.getAttribute('data-menu')==='button')return;unmore();['fit-tight','fit-follow','nav-fold'].forEach(function(c){d.classList.remove(c)});if(getComputedStyle(b).display!=='none')return;
+ if(fits())return;d.classList.add('fit-tight');if(fits())return;if(fl){d.classList.add('fit-follow');if(fits())return}if(more())return;d.classList.add('nav-fold')}
+fit();if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);var ft=0;addEventListener('resize',function(){cancelAnimationFrame(ft);ft=requestAnimationFrame(fit)});
+})();`;
 
 const MOTION_JS = `(function(){
 var d=document.documentElement,b=document.querySelector('.menubtn');

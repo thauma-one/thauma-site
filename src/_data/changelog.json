@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-site-menu-fit",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Your site's menu now always stays on one line. When it runs out of room it first tightens up, then gathers your social links behind one round button (showing the first and how many more), then puts the last pages under “More”. Only on a phone-sized screen does the whole menu fold behind its button.",
+        "hr": "Izbornik vaše stranice sada uvijek ostaje u jednom retku. Kad mu ponestane mjesta, najprije se zbije, zatim vaše društvene poveznice skupi iza jednog okruglog gumba (prikazuje prvu i koliko ih je još), a onda posljednje stranice stavi pod „Više”. Samo se na zaslonu veličine mobitela cijeli izbornik sklopi iza svog gumba.",
+        "sr": "Изборник ваше странице сада увијек остаје у једном ретку. Кад му понестане мјеста, најприје се збије, затим ваше друштвене повезнице скупи иза једног округлог гумба (приказује прву и колико их је још), а онда посљедње странице стави под „Више”. Само се на екрану величине мобитела цијели изборник склопи иза свог гумба."
+      }
+    },
+    {
       "id": "2026-10-20-pages-discard-page",
       "date": "2026-10-20",
       "page": "admin:website",
