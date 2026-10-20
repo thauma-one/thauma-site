@@ -739,9 +739,28 @@
     if (t.dataset && t.dataset.seoPic && t.files && t.files[0]) seoPicture(t.dataset.seoPic, t.files[0]);
   });
   $('cRows').addEventListener('click', async function (e) {
+    var pb = e.target.closest && e.target.closest('[data-page-back]');
+    if (pb) return pageBack(pb.dataset.pageBack);
     var b = e.target.closest && e.target.closest('[data-seo-unpic]');
     if (b && await saveSetting('share.' + b.dataset.seoUnpic, '')) renderRows();
   });
+
+  async function pageBack(page) {
+    var ok = await window.StaffConfirm({ title: tr('ws.revert.title'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true });
+    if (!ok) return;
+    var mine = state.lines.filter(function (l) { return sectionOf(l) === page; });
+    var live = {};
+    if (state.changedSecs[page]) {
+      var data = await send(WORDS + '?live=' + encodeURIComponent(state.lang));
+      if (!data) return;
+      live = data.lines || {};
+    }
+    /* a line visitors never had (new since) keeps what is saved */
+    mine.forEach(function (l) { state.draft[l.id] = l.id in live ? live[l.id] : state.saved[l.id]; delete state.blocked[l.id]; });
+    prev.url = null;
+    render();
+    toast(tr(dirtyIds().length ? 'con.backSave' : 'toast.discarded'), 'ok');
+  }
 
   function renderRows() {
     var rows = visible();
@@ -759,9 +778,22 @@
       seo = seoCard(page) + rows.filter(isSeo).map(rowHtml).join('') + '<div class="c-seo-end"></div>';
       rows = rows.filter(function (r) { return !isSeo(r); });
     }
-    $('cRows').innerHTML = forms + seo + (rows.length ? rows.map(rowHtml).join('')
+    /* ONE PAGE BACK (Chase, 2026-10-19: "we need the ability to discard
+       changes of certain section"): this page's lines go back to what
+       visitors see now — typed words and saved ones not yet published. They
+       come back as unsaved, to look over and Save like any change. */
+    $('cRows').innerHTML = '<div class="ws-revert" data-back-line hidden></div>' + forms + seo + (rows.length ? rows.map(rowHtml).join('')
       : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>');
     $('cRows').querySelectorAll('textarea').forEach(autosize);
+    drawBack();
+  }
+  function drawBack() {
+    var box = $('cRows').querySelector('[data-back-line]');
+    if (!box) return;
+    var page = !state.find && /^section:/.test(state.view || '') ? state.view.slice(8) : null;
+    var show = !!page && (!!state.changedSecs[page] || state.lines.some(function (l) { return sectionOf(l) === page && lineDirty(l); }));
+    box.hidden = !show;
+    box.innerHTML = show ? '<i class="ws-dot"></i><button type="button" class="link-btn" data-page-back="' + esc(page) + '">' + esc(tr('ws.revert.page')) + '</button>' : '';
   }
 
   function renderMore() {
@@ -805,6 +837,7 @@
     if (badge) badge.hidden = dirty;
     renderSaveBar();
     renderSections();
+    drawBack();
   }
 
   /* ---- editing -------------------------------------------------------- */
@@ -1014,7 +1047,7 @@
     changedLines.forEach(function (id) { set[id] = true; });
     state.changedSecs = {};
     state.lines.forEach(function (l) { if (set[l.id]) state.changedSecs[sectionOf(l)] = true; });
-    if (state.rows.length) renderSections();
+    if (state.rows.length) { renderSections(); drawBack(); }
   }
   document.addEventListener('web:changes', function (e) { changedLines = (e.detail && e.detail.lines) || []; markChanged(); });
 

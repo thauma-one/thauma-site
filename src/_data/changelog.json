@@ -2,6 +2,26 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-pages-discard-page",
+      "date": "2026-10-20",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Pages: a page with changes now has “Discard Changes to This Page” at the top of its words. It puts that page back to what visitors see now — both typed words and saved ones not yet published — for you to look over and Save.",
+        "hr": "Web-stranica › Stranice: stranica s promjenama sada na vrhu svojih riječi ima „Odbaci promjene na ovoj stranici”. Vraća tu stranicu na ono što posjetitelji sada vide — i upisane riječi i spremljene koje još nisu objavljene — da ih pregledate i spremite.",
+        "sr": "Веб-сајт › Странице: страница с промјенама сада на врху својих ријечи има „Одбаци промјене на овој страници”. Враћа ту страницу на оно што посјетиоци сада виде — и уписане ријечи и сачуване које још нису објављене — да их прегледате и сачувате."
+      }
+    },
+    {
+      "id": "2026-10-20-search-descriptions",
+      "date": "2026-10-20",
+      "page": "site",
+      "text": {
+        "en": "Thauma's site: the English descriptions shown in search results are written normally again, instead of with Every Word Capitalized.",
+        "hr": "Stranica Thauma: engleski opisi koji se prikazuju u rezultatima pretraživanja opet su napisani normalno, a ne sa svakom riječju velikim slovom.",
+        "sr": "Страница Thauma: енглески описи који се приказују у резултатима претраживања опет су написани нормално, а не са сваком ријечју великим словом."
+      }
+    },
+    {
       "id": "2026-10-20-site-discard-part",
       "date": "2026-10-20",
       "page": "staff:website",

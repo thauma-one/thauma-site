@@ -10,7 +10,7 @@
  * branches last agreed — so a word saved a minute ago on main, and not yet
  * carried to dev, is NOT mistaken for a change waiting on dev.
  */
-import { waitingOnDev } from "../src/admin-translate.js";
+import { waitingOnDev, liveWords } from "../src/admin-translate.js";
 import { changes } from "../src/admin-publish.js";
 
 let pass = 0, fail = 0;
@@ -104,6 +104,23 @@ await check("a changed word marks Pages and its line; a changed event marks Even
 await check("never published, or GitHub failing: no dots, no error", async () => {
   eq(await changes(env, async () => Response.json({ workflow_runs: [] })), { tabs: [], lines: [] }, "never");
   eq(await changes(env, async () => new Response("x", { status: 500 })), { tabs: [], lines: [] }, "failing");
+});
+
+/* Pages › one page back to what visitors see (Chase, 2026-10-19) */
+await check("a page goes back to the LIVE build's words: site and emails, in that language", async () => {
+  const live = { "src/_data/i18n/hr.json": { home: { title: "Uživo" } },
+                 "src/_data/emailsAndForms.json": { en: { a: { s: "Live" } }, hr: { a: { s: "Uživo mail" } } } };
+  const seen = [];
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    if (/\/runs/.test(u.pathname)) return Response.json({ workflow_runs: [{ head_sha: "live1" }] });
+    seen.push(u.searchParams.get("ref"));
+    const doc = live[decodeURIComponent(u.pathname.split("/contents/")[1])];
+    return doc ? Response.json({ type: "file", content: b64(doc), sha: "x" }) : new Response("{}", { status: 404 });
+  };
+  eq(await liveWords(env, "hr", fetchImpl), { "site:home.title": "Uživo", "emails:a.s": "Uživo mail" }, "lines");
+  eq([...new Set(seen)], ["live1"], "read at the live build, never a branch");
+  eq(await liveWords(env, "hr", async () => Response.json({ workflow_runs: [] })), null, "never published");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

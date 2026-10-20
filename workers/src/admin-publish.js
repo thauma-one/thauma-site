@@ -48,7 +48,7 @@ import { tellRelease, LIVE } from "./lib/release-notice.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
-const PROD_WORKFLOW = "deploy.yml";
+export const PROD_WORKFLOW = "deploy.yml";
 const STAGING_WORKFLOW = "deploy-staging.yml";
 
 /** Resolve the caller and refuse anyone who is not an administrator. */

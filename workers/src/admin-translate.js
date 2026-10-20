@@ -46,7 +46,8 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { getFile, getFileAt, putFile, compareBranches, githubConfig } from "./lib/github.js";
+import { getFile, getFileAt, putFile, compareBranches, githubConfig, lastSuccessfulRun } from "./lib/github.js";
+import { PROD_WORKFLOW } from "./admin-publish.js";
 import { EDITORS } from "./admin-content.js";
 import { loadNotes, briefFor } from "./lib/translation-notes.js";
 import {
@@ -188,6 +189,25 @@ async function load(env, db, lang, { english = false, shared = null } = {}) {
    cannot collide with them in the merge.
 
    Quiet on failure: the editor works as before without it. */
+/** One language's lines as the live site has them: { "site:key": text,
+    "emails:key": text }, from the last successful production build. Null
+    when nothing was ever published. */
+export async function liveWords(env, code, fetchImpl = fetch) {
+  const run = await lastSuccessfulRun(env, PROD_WORKFLOW, fetchImpl);
+  if (run.error || run.never) return null;
+  const [s, e] = await Promise.all([getFileAt(env, langPath(code), run.sha, fetchImpl), getFileAt(env, EMAILS, run.sha, fetchImpl)]);
+  const lines = {};
+  const add = (source, f, pick) => {
+    if (f.error) return;
+    try {
+      for (const [k, v] of Object.entries(leafMap(pick(JSON.parse(f.text)) || {}))) if (typeof v === "string") lines[`${source}:${k}`] = v;
+    } catch { /* not readable: none from it */ }
+  };
+  add("site", s, (d) => d);
+  add("emails", e, (d) => d[code]);
+  return lines;
+}
+
 export async function waitingOnDev(env, wanted, fetchImpl = fetch) {
   const cfg = githubConfig(env);
   const dev = env.STAGING_BRANCH;
@@ -247,6 +267,16 @@ export default {
                      outdated: code === "en" ? 0 : count("outdated") });
         }
         return json({ languages: out });
+      }
+      /* ONE LANGUAGE'S WORDS AS VISITORS SEE THEM NOW (Chase, 2026-10-19: "we
+         need the ability to discard changes of certain section"): the last
+         successful production build's copy, so Pages can put one page's
+         lines back. Null when nothing was ever published. */
+      const liveOf = new URL(request.url).searchParams.get("live");
+      if (liveOf) {
+        const code = String(liveOf).toLowerCase();
+        if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(code)) return json({ error: "Not a language code." }, 400);
+        return json({ lines: await liveWords(env, code) });
       }
       const lang = new URL(request.url).searchParams.get("lang");
       if (!lang) {
