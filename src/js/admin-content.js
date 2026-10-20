@@ -482,7 +482,8 @@
   var PAGE_OF = { home: '', about: 'about/', mission: 'mission/', values: 'values/', resources: 'resources/',
     give: 'give/', contact: 'contact/', events: 'events/', team: 'team/', coming: 'coming-soon/' };
   var prev = { on: false, url: null, device: 'wide', section: null };
-  try { prev.on = localStorage.getItem('thauma.pages.preview') === '1'; } catch (e) { /* private mode */ }
+  /* Remembered; until it is, open on a screen wide enough for it beside the words */
+  try { var pvSaved = localStorage.getItem('thauma.pages.preview'); prev.on = pvSaved === null ? window.innerWidth >= 1500 : pvSaved === '1'; } catch (e) { prev.on = window.innerWidth >= 1500; }
   function prevSection() {
     if (prev.section) return prev.section;
     var v = state.view || '';

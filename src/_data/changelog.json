@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-website-area-bar",
+      "date": "2026-10-20",
+      "page": "admin:website",
+      "text": {
+        "en": "Website: its screens (Pages, Forms, Mail and the rest) now run across the top, like tabs, so each screen has the full width. On Pages, the preview sits beside the words as a tall panel that stays in view, the page widens to fit it, and it opens by itself on a wide screen.",
+        "hr": "Web-stranica: njezini zasloni (Stranice, Obrasci, Pošta i ostali) sada stoje na vrhu, kao kartice, pa svaki zaslon ima punu širinu. Na Stranicama je pregled pokraj riječi kao visoka ploča koja ostaje na zaslonu, stranica se proširi da stane, a na širokom zaslonu se otvori sama.",
+        "sr": "Веб-сајт: његови екрани (Странице, Обрасци, Пошта и остали) сада стоје на врху, као картице, па сваки екран има пуну ширину. На Страницама је преглед поред ријечи као висока плоча која остаје на екрану, страница се прошири да стане, а на широком екрану се отвори сама."
+      }
+    },
+    {
       "id": "2026-10-20-publish-builds-preview",
       "date": "2026-10-20",
       "page": "admin:index",
