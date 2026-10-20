@@ -1180,12 +1180,14 @@ body:has(#arcade) .site-tabs{display:none}
 .brand-logo-split .lg-line{transform-origin:left center}
 @keyframes lg-ch{from{opacity:0;transform:translateY(18%)}to{opacity:1;transform:none}}
 @keyframes lg-line{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes lg-lead{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @media (prefers-reduced-motion:no-preference){
   html:not(.vt-came) .hero-logo .lg-ch{animation:lg-ch .75s cubic-bezier(.55,.05,.45,.95) both;animation-delay:calc(var(--i) * 90ms + 250ms)}
-  html:not(.vt-came) .hero-logo .lg-arrive{animation:lg-line 1.1s cubic-bezier(.16,1,.3,1) 1.05s both}
-  html:not(.vt-came) .hero-logo .lg-bar{animation:lg-line .5s cubic-bezier(.55,.05,.45,.95) 1.75s both}
-  html:not(.vt-came) .hero-logo .lg-close1{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 2.15s both}
-  html:not(.vt-came) .hero-logo .lg-close2{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 2.3s both}
+  /* the arriving line and the H's bar: ONE stroke, drawn with the letters,
+     so the H is whole the moment it arrives (Chase, 2026-10-19) */
+  html:not(.vt-came) .hero-logo .lg-lead{animation:lg-lead .95s cubic-bezier(.25,.7,.35,1) .1s both}
+  html:not(.vt-came) .hero-logo .lg-close1{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 1.35s both}
+  html:not(.vt-came) .hero-logo .lg-close2{animation:lg-line .7s cubic-bezier(.16,1,.3,1) 1.5s both}
 }
 .hero-logo{position:relative}
 .brand-logo-sheen{position:absolute;inset:0;width:100%;height:auto;overflow:visible;pointer-events:none;

@@ -1308,7 +1308,7 @@ check("the closed page's logo is the site's own, in pieces, with its shimmer par
   const body = (f) => readFileSync(new URL("../../src/_includes/brand/" + f, import.meta.url), "utf8").replace(/\{#-[\s\S]*?-#\}\s*/g, "").trim();
   eq(LOGO.LOGO_SPLIT, body("logo-split.njk"), "logo-split.njk and site/logo.js agree");
   eq(LOGO.LOGO_SHEEN, body("logo-sheen.njk"), "logo-sheen.njk and site/logo.js agree");
-  assert(LOGO.sheenLogo("cl").includes('gradientTransform="translate(-3600 0)"'), "the light waits off to the left");
+  assert(LOGO.sheenLogo("cl").includes('gradientTransform="translate(-9000 0)"'), "the light waits well clear of the logo");
   assert(!LOGO.splitLogo("cl").includes("{{"), "ids filled in");
 });
 
