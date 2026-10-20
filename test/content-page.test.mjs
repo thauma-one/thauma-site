@@ -145,7 +145,7 @@ await check("each line is named for what it is, its block named by its own headi
   const { d } = await boot();
   view(d, "section:home");
   const n = names(d);
-  assert(n["site:home.title"] === "Page name", n["site:home.title"]);
+  assert(n["site:home.title"] === "Page Name", n["site:home.title"]);
   assert(n["site:home.cue"] === "Small line above the headline", n["site:home.cue"]);
   assert(n["split:site:home.h1"] === "Headline", n["split:site:home.h1"]);
   assert(n["split:site:home.who_h2"] === "The need · Heading", n["split:site:home.who_h2"]);
@@ -292,7 +292,7 @@ await check("a returned file replaces the editor for approval, flagged lines unt
   assert(d.getElementById("cRoot").hidden && !d.getElementById("tlReview").hidden, "no review shown");
   const box = (id) => d.querySelector(`[data-item="${id}"] [data-approve]`);
   assert(box("emails:confirm.helloAnon").checked && !box("site:home.title").checked, "ticks wrong");
-  assert(d.querySelector('[data-item="site:home.title"] .tl-key').textContent === "Page name", "not named");
+  assert(d.querySelector('[data-item="site:home.title"] .tl-key').textContent === "Page Name", "not named");
   d.getElementById("tlApprove").click();
   await tick(150);
   const apply = sent.find((s) => s.body && s.body.action === "apply");

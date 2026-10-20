@@ -50,8 +50,8 @@ await check("the confirmation is Thauma's template with the name in the band, th
   const m = listConfirmEmail({ name: "Ana", listName: "Newsletter", fromName: "Chase Roush", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=a", lang: "en", brand });
   assert(!/email-band\.png/.test(m.html), "no THAUMA image");
   assert(/letter-spacing:7px;text-transform:uppercase;color:#EDF2F8;">Chase Roush</.test(m.html), "the name, spaced like Thauma's");
-  assert(/white-space:nowrap;">Sign-up confirmation</.test(m.html), "what it is, as the cue above the heading");
-  assert(/<h1[^>]*>Confirm your <b[^>]*>subscription<\/b></.test(m.html), "the heading in the body, its last word bold");
+  assert(/white-space:nowrap;">Sign-Up Confirmation</.test(m.html), "what it is, as the cue above the heading");
+  assert(/<h1[^>]*>Confirm Your <b[^>]*>Subscription<\/b></.test(m.html), "the heading in the body, its last word bold");
   assert(/bgcolor="#FD5812"/i.test(m.html) && /border:1px solid #FD5812/i.test(m.html), "their color, on the line and the outlined button");
   assert(/A Thauma ministry/.test(m.html), "the credit");
   const thauma = listConfirmEmail({ name: "Ana", listName: "News", fromName: "Thauma", origin: "https://thauma.one", confirmUrl: "https://thauma.one/confirm?t=a", lang: "en" });
@@ -61,7 +61,7 @@ await check("the confirmation is Thauma's template with the name in the band, th
 await check("a partner's contact receipt wears their band; Thauma's keeps the wordmark", async () => {
   const brand = { accent: "#FD5812", accent2: "#FF1854", mode: "light", name: "Chase Roush" };
   const m = contactReceiptEmail({ name: "Ana", ministry: "Chase Roush", message: "Hello", origin: "https://thauma.one", lang: "en", brand });
-  assert(/">Chase Roush</.test(m.html) && /white-space:nowrap;">Message received</.test(m.html), "name and kind");
+  assert(/">Chase Roush</.test(m.html) && /white-space:nowrap;">Message Received</.test(m.html), "name and kind");
   assert(/A Thauma ministry/.test(m.html), "the credit");
   const own = contactReceiptEmail({ name: "Ana", ministry: "Thauma", message: "Hello", origin: "https://thauma.one", lang: "en" });
   assert(/">Thauma</.test(own.html) && !/">Chase Roush</.test(own.html), "Thauma's own name");

@@ -83,7 +83,7 @@ await check("search narrows the list by name, city or country, and says when nob
 await check("each cell says what it is, for the phone's cards", async () => {
   const { d } = await boot();
   const labels = [...d.querySelectorAll('#rows tr[data-id="c2"] td[data-label]')].map((t) => t.dataset.label);
-  eq(labels, ["Last personal contact", "Last contact of any kind", "Contacts"], "labels");
+  eq(labels, ["Last Personal Contact", "Last Contact of Any Kind", "Contacts"], "labels");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

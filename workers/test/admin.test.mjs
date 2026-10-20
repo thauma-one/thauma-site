@@ -600,7 +600,7 @@ await check("an answer to a bio, part by part, is kept for the person and told t
   assert(/&lt;Chase&gt;<\/b> approved[\s\S]*changes of their own/.test(w.body) && w.note === "Tidied it", "words: " + JSON.stringify(w));
   assert(noticeWords("profile_declined", "hr", { by: "C", _v: "nonsense" }).body.startsWith("<b>C</b>: izmjene"), "an unknown wording does not fall back to the plain one");
   const partly = noticeEmail("profile_approved", { lang: "en", by: "C", _v: "partly", origin, link: "/staff/settings/#bio" });
-  assert(/answered/.test(partly.subject) && /some are approved, some are not/.test(partly.html), "partly is not worded as partly: " + partly.subject);
+  assert(/Answered/.test(partly.subject) && /some are approved, some are not/.test(partly.html), "partly is not worded as partly: " + partly.subject);
   const mail = noticeEmail("profile_declined", { lang: "sr", by: "C", note: "Не сада", origin: "https://thauma.one", link: "/staff/settings/#bio" });
   assert(/нису одобрене/.test(mail.subject) && /Не сада/.test(mail.html) && /Не сада/.test(mail.text), "the email has no note, or not in Serbian");
 });

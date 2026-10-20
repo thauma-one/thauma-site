@@ -1027,7 +1027,7 @@
         '<label><span data-i18n="ml.editName">Name</span>' +
           '<input type="text" data-edit="name" maxlength="120" value="' +
             esc(sub.name || '') + '"></label>' +
-        '<label><span data-i18n="ml.editEmail">Email address</span>' +
+        '<label><span data-i18n="ml.editEmail">Email Address</span>' +
           '<input type="email" data-edit="email" maxlength="200" required value="' +
             esc(sub.email) + '"></label>' +
         '<button type="submit" class="solid-btn" data-i18n="ml.editSave">Save</button>' +

@@ -1197,7 +1197,7 @@ check("every site has an app: the page offers it to a phone and links it in the 
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   const html = page(d);
   assert(html.includes('<link rel="manifest" href="/site/chaseroush/app/manifest.webmanifest">'), "the manifest");
-  assert(/<footer[\s\S]*<a href="\/site\/chaseroush\/app">Get the app<\/a>[\s\S]*<\/footer>/.test(html), "the footer link");
+  assert(/<footer[\s\S]*<a href="\/site\/chaseroush\/app">Get the App<\/a>[\s\S]*<\/footer>/.test(html), "the footer link");
   assert(!page(d, "home", "en", { draft: true }).includes('rel="manifest"'), "not in a preview");
   assert(/<a href="\/site\/chaseroush\/app">Preuzmite aplikaciju<\/a>/.test(page(d, "home", "hr")), "in the page's language");
 });

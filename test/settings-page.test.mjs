@@ -78,7 +78,7 @@ await check("settings carry their real names; the social links are on Website â€
 
 await check("a donation form for every language, the missing one ready to fill", async () => {
   const { d } = await boot();
-  const card = [...d.querySelectorAll("#sRoot .s-group")].find((g) => g.querySelector("h3").textContent === "Donation form");
+  const card = [...d.querySelectorAll("#sRoot .s-group")].find((g) => g.querySelector("h3").textContent === "Donation Form");
   assert(card, "no Donation form card");
   const fields = [...card.querySelectorAll("[data-path]")].map((i) => i.getAttribute("data-path"));
   assert(fields.join() === "donorbox.en,donorbox.hr,donorbox.sr", `fields: ${fields}`);

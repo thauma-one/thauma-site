@@ -21,22 +21,22 @@
   {#- While a build runs: its stages, ticked off as GitHub reports them
       (admin-publish.js followProgress). -#}
   <ol class="web-bar-stages" id="pStages" hidden></ol>
-  <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.previewSite">Preview site</button>
+  <button type="button" class="ghost-btn" id="pPreview" data-i18n="pub.previewSite">Preview Site</button>
   <button type="button" class="solid-btn" id="pReview" aria-expanded="false" aria-controls="pReviewPanel"
-          data-i18n="pub.review">Review and publish</button>
+          data-i18n="pub.review">Review and Publish</button>
 </div>
 
 <div class="web-review-back" id="pReviewBack" hidden></div>
 <aside class="web-review" id="pReviewPanel" aria-labelledby="pReviewTitle" data-live="{{ site.url | replace('https://', '') }}" hidden>
   <div class="web-review-head">
-    <h2 id="pReviewTitle" data-i18n="pub.review">Review and publish</h2>
+    <h2 id="pReviewTitle" data-i18n="pub.review">Review and Publish</h2>
     <button type="button" class="ln-x" id="pReviewClose" aria-label="Close" data-i18n-attr="aria-label:con.close">&times;</button>
   </div>
 
 <p class="rolegate" id="pNotConfigured" hidden></p>
 <p class="rolegate web-review-problem" id="pReviewProblem" role="alert" hidden>
   <span></span>
-  <button type="button" class="ghost-btn" data-i18n="err.tryAgain">Try again</button>
+  <button type="button" class="ghost-btn" data-i18n="err.tryAgain">Try Again</button>
 </p>
 
 <div class="adm-publish" id="pRoot" hidden>
@@ -70,7 +70,7 @@
   <div class="p-acts">
     <button type="button" class="ghost-btn" id="pRefresh" data-i18n="pub.refresh">Refresh</button>
     <span class="c-gap"></span>
-    <button type="button" class="ghost-btn" id="pPreviewIn" data-i18n="pub.previewSite">Preview site</button>
+    <button type="button" class="ghost-btn" id="pPreviewIn" data-i18n="pub.previewSite">Preview Site</button>
     <button type="button" class="solid-btn" id="pPublish">Publish</button>
   </div>
 
@@ -86,12 +86,12 @@
      Folded away rather than hidden: findable when something is wrong,
      not sitting next to the ordinary buttons inviting a misclick. -#}
   <details class="p-manual" id="pManual">
-    <summary data-i18n="pub.manualTitle">Something looks out of step</summary>
+    <summary data-i18n="pub.manualTitle">Something Looks Out of Step</summary>
     <div class="p-manual-acts">
       <button type="button" class="ghost-btn" id="pForcePreview"
-              data-i18n="pub.forcePreview">Rebuild the preview site</button>
+              data-i18n="pub.forcePreview">Rebuild the Preview Site</button>
       <button type="button" class="ghost-btn" id="pForcePublish"
-              data-i18n="pub.forcePublish">Rebuild the live site</button>
+              data-i18n="pub.forcePublish">Rebuild the Live Site</button>
     </div>
     <p class="p-manual-note" id="pManualNote"></p>
   </details>
@@ -105,7 +105,7 @@
      credential for reaching another database, so the section simply is not
      there rather than being present and refusing. -#}
   <section class="p-sync" id="pSync" hidden>
-    <h2 data-i18n="sync.title">Move data between sites</h2>
+    <h2 data-i18n="sync.title">Move Data Between Sites</h2>
 
     <div class="p-sync-counts" id="pSyncCounts"></div>
 

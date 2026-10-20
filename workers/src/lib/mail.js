@@ -533,7 +533,7 @@ export function contactNotificationEmail({ name, email, topic, subject, message,
       heading: topic || "A message from the website",
       rows,
       footer: "Sent from the contact form on thauma.one. Replying reaches the sender.",
-      origin, cue: "Contact form", facts,
+      origin, cue: "Contact Form", facts,
     }),
     text,
   };

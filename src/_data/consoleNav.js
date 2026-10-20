@@ -70,7 +70,7 @@ const staff = [
     roles: ["staff", "partner"], menu: true },
   /* What each Publish changed, by page (2026-10-13; workers/src/changes.js).
      Everyone: each sees only the pages they have. */
-  { slug: "changes", url: "/staff/changes/", label: "What's new",
+  { slug: "changes", url: "/staff/changes/", label: "What's New",
     roles: ["staff", "partner", "admin", "board", "communications"], menu: true },
 ];
 
@@ -111,29 +111,29 @@ const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || [
    listed before its page exists. */
 const website = [
   { tab: "pages", url: "/admin/website/", label: "Pages",
-    page: "content", heading: "The site's <b>words</b>" },
+    page: "content", heading: "The Site's <b>Words</b>" },
   /* Thauma's own forms and mail (Chase, 2026-09-27): what happens to what a
      visitor sends, and Thauma's lists — admin work, so off the staff pages. */
   { tab: "forms", url: "/admin/website/forms/", label: "Forms",
-    page: "forms", heading: "Thauma's <b>forms</b>" },
+    page: "forms", heading: "Thauma's <b>Forms</b>" },
   { tab: "mail", url: "/admin/website/mail/", label: "Mail",
-    page: "orgmail", heading: "Who hears from <b>Thauma</b>" },
+    page: "orgmail", heading: "Who Hears from <b>Thauma</b>" },
   { tab: "resources", url: "/admin/website/resources/", label: "Resources",
-    page: "resources", heading: "The site's <b>resources</b>" },
+    page: "resources", heading: "The Site's <b>Resources</b>" },
   { tab: "events", url: "/admin/website/events/", label: "Events",
-    page: "events", heading: "What is <b>coming up</b>" },
+    page: "events", heading: "What Is <b>Coming Up</b>" },
   { tab: "photos", url: "/admin/website/photos/", label: "Photos",
-    page: "photos", heading: "Frame what <b>matters</b>" },
+    page: "photos", heading: "Frame What <b>Matters</b>" },
   /* The hidden arcade's control room (Chase, 2026-10-06): games open or out
      of order, the high scores, blocked names. Saves at once, like Forms. */
   /* The footer's social and own links (2026-10-07), as a partner site's
      Links tab has them. Saves at once, like Settings. */
   { tab: "links", url: "/admin/website/links/", label: "Links",
-    page: "links", heading: "Where the site <b>links</b>" },
+    page: "links", heading: "Where the Site <b>Links</b>" },
   { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade",
-    page: "arcade", heading: "The <b>arcade</b>" },
+    page: "arcade", heading: "The <b>Arcade</b>" },
   { tab: "settings", url: "/admin/website/settings/", label: "Settings",
-    page: "site", heading: "Site <b>settings</b>" },
+    page: "site", heading: "Site <b>Settings</b>" },
 ];
 
 module.exports = {

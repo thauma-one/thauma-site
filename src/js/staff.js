@@ -1902,7 +1902,7 @@
          accurate it is. Same `.toast-x` the error toasts already use. */
       problemEl.innerHTML =
         '<span class="problem-msg"></span>' +
-        '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try again</button>' +
+        '<button type="button" class="toast-act" data-i18n="err.tryAgain">Try Again</button>' +
         '<button type="button" class="toast-x" aria-label="Dismiss">&times;</button>';
       problemEl.querySelector('.toast-x').onclick = problemClear;
 

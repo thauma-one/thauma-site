@@ -2,7 +2,7 @@
 layout: layouts/staff.njk
 staffPage: directory
 staffTitle: Directory
-staffHeading: Network <b>contacts</b>
+staffHeading: Network <b>Contacts</b>
 ---
 {#- THE MINISTRY'S ADDRESS BOOK (board 11, option A: kept apart from
    Stewardship, with the same rows, search and dialog; Chase kept its own nav
@@ -16,7 +16,7 @@ staffHeading: Network <b>contacts</b>
   <input type="search" id="dirFind" class="sw-find" maxlength="80"
          data-i18n-attr="placeholder:dir.search,aria-label:dir.search"
          placeholder="Search contacts" aria-label="Search contacts">
-  <button class="ghost-btn" id="addContactBtn" type="button" data-i18n="dir.add">+ Add contact</button>
+  <button class="ghost-btn" id="addContactBtn" type="button" data-i18n="dir.add">+ Add Contact</button>
 </div>
 
 <div class="tw sw-cards">
@@ -36,7 +36,7 @@ staffHeading: Network <b>contacts</b>
    Stewardship. Adding and correcting are the same form. -#}
 <div class="dlg-back" id="contactBack" hidden>
   <form class="form dlg" id="contactForm">
-    <h3 id="contactFormTitle" data-i18n="dir.new">New contact</h3>
+    <h3 id="contactFormTitle" data-i18n="dir.new">New Contact</h3>
     <p class="sw-sub" id="contactAdded" hidden></p>
     <input type="hidden" id="contactIndex" value="">
     <input type="text" id="contactName" placeholder="Name" data-i18n-attr="placeholder:dir.name,aria-label:dir.name" aria-label="Name" required>
@@ -44,15 +44,15 @@ staffHeading: Network <b>contacts</b>
     <div class="fgroup">
       <span class="flabel" data-i18n="dir.emails">Emails</span>
       <div id="contactEmails"></div>
-      <button class="ghost-btn" type="button" id="addEmailRow" data-i18n="dir.addEmail">+ Add email</button>
+      <button class="ghost-btn" type="button" id="addEmailRow" data-i18n="dir.addEmail">+ Add Email</button>
     </div>
     <div class="fgroup">
-      <span class="flabel" data-i18n="dir.phones">Phone numbers</span>
+      <span class="flabel" data-i18n="dir.phones">Phone Numbers</span>
       <div id="contactPhones"></div>
-      <button class="ghost-btn" type="button" id="addPhoneRow" data-i18n="dir.addPhone">+ Add phone</button>
+      <button class="ghost-btn" type="button" id="addPhoneRow" data-i18n="dir.addPhone">+ Add Phone</button>
     </div>
     <div class="frow">
-      <button class="solid-btn" type="submit" data-i18n="dir.save">Save contact</button>
+      <button class="solid-btn" type="submit" data-i18n="dir.save">Save Contact</button>
       <button class="ghost-btn" type="button" id="contactCancel" data-i18n="common.cancel">Cancel</button>
       <button class="ghost-btn del" type="button" id="contactDelete" data-i18n="dir.delete" hidden>Remove</button>
     </div>

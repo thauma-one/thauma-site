@@ -62,17 +62,17 @@
       {#- ADD EMAIL opens a dialog, as Resources' Add does (2026-10-07, Chase:
           "it also doesn't let me put in a name for the person … make the Add
           button an Add Email button that pops up like the resource tab"). -#}
-      <button type="button" class="ghost-btn" id="mlAddEmailBtn" data-i18n="ml.addEmailBtn">+ Add email</button>
+      <button type="button" class="ghost-btn" id="mlAddEmailBtn" data-i18n="ml.addEmailBtn">+ Add Email</button>
     </div>
     <span class="hint ml-add-status" id="mlAddStatus"></span>
     <div class="dlg-back" id="mlAddBack" hidden>
       <form class="form dlg" id="mlAddPerson" autocomplete="off">
-        <h3 data-i18n="ml.addEmailTitle">Add someone to this list</h3>
-        <label class="fld"><span data-i18n="ml.personName">Their name</span>
+        <h3 data-i18n="ml.addEmailTitle">Add Someone to This List</h3>
+        <label class="fld"><span data-i18n="ml.personName">Their Name</span>
           <input type="text" id="mlNewName" maxlength="120" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
-        <label class="fld"><span data-i18n="ml.personEmail">Their email address</span>
+        <label class="fld"><span data-i18n="ml.personEmail">Their Email Address</span>
           <input type="email" id="mlNewEmail" maxlength="200" required autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
-        <label class="fld"><span data-i18n="ml.personLang">The language of their confirmation email</span>
+        <label class="fld"><span data-i18n="ml.personLang">The Language of Their Confirmation Email</span>
           <select id="mlNewLang"></select></label>
         <div class="dlg-actions">
           <button class="ghost-btn" type="button" id="mlAddCancel" data-i18n="common.cancel">Cancel</button>
@@ -93,11 +93,11 @@
         <option value="bounced" data-i18n="ml.status.bounced">Bounced</option>
       </select>
       <select id="subsSort" aria-label="Sort">
-        <option value="" data-i18n="ml.sortNewest">Newest first</option>
-        <option value="oldest" data-i18n="ml.sortOldest">Oldest first</option>
-        <option value="name" data-i18n="ml.sortName">By name</option>
-        <option value="email" data-i18n="ml.sortEmail">By address</option>
-        <option value="status" data-i18n="ml.sortStatus">By status</option>
+        <option value="" data-i18n="ml.sortNewest">Newest First</option>
+        <option value="oldest" data-i18n="ml.sortOldest">Oldest First</option>
+        <option value="name" data-i18n="ml.sortName">By Name</option>
+        <option value="email" data-i18n="ml.sortEmail">By Address</option>
+        <option value="status" data-i18n="ml.sortStatus">By Status</option>
       </select>
       {#- Tags exist to group people, so they have to be a way of finding
          them — a column you can read but not filter by is decoration. -#}
@@ -116,7 +116,7 @@
       <form class="subs-tag-add" id="subsTagAdd">
         <input type="text" id="subsTagName" maxlength="60"
                data-i18n-attr="placeholder:ml.tagName, aria-label:ml.tagName" aria-label="Home church" placeholder="Home church">
-        <button type="submit" class="ghost-btn" data-i18n="ml.tagAdd">Add tag</button>
+        <button type="submit" class="ghost-btn" data-i18n="ml.tagAdd">Add Tag</button>
       </form>
     </div>
 
@@ -132,9 +132,9 @@
       <span class="subs-bulk-tagwrap" id="subsBulkTagWrap">
         <select id="subsBulkTag" aria-label="Tag"></select>
         <button type="button" class="ghost-btn" data-bulk="tag-add"
-                data-i18n="ml.bulkAddTag">Add tag</button>
+                data-i18n="ml.bulkAddTag">Add Tag</button>
         <button type="button" class="ghost-btn" data-bulk="tag-remove"
-                data-i18n="ml.bulkRemoveTag">Remove tag</button>
+                data-i18n="ml.bulkRemoveTag">Remove Tag</button>
       </span>
       <span class="subs-bulk-gap"></span>
       {#- NO "mark subscribed". Marking somebody confirmed is a claim that they
@@ -144,7 +144,7 @@
       <button type="button" class="ghost-btn" data-bulk="unsubscribed"
               data-i18n="ml.bulkUnsubBtn">Unsubscribe</button>
       <button type="button" class="ghost-btn" data-bulk="bounced"
-              data-i18n="ml.bulkBounceBtn">Mark bounced</button>
+              data-i18n="ml.bulkBounceBtn">Mark Bounced</button>
       <button type="button" class="ghost-btn del" data-bulk="delete"
               data-i18n="ms.delete">Delete</button>
     </div>
@@ -192,7 +192,7 @@
       </label>
 
       <div class="ms-grid">
-        <label class="fld"><span data-i18n="ml.fromName">From name</span>
+        <label class="fld"><span data-i18n="ml.fromName">From Name</span>
           <input type="text" id="mlFromName" maxlength="80" required>
         </label>
         {#- CHOSEN, NEVER TYPED. This was a text box, and that is unsafe in a
@@ -207,7 +207,7 @@
            screen, because adding one carries obligations OUTSIDE this system:
            the domain has to be verified with the provider, and anything
            expected to receive has to exist as a mailbox. -#}
-        <label class="fld"><span data-i18n="ml.fromEmail">From address</span>
+        <label class="fld"><span data-i18n="ml.fromEmail">From Address</span>
           <select id="mlFromEmail" required></select>
           <span class="fld-hint" id="mlFromNone" hidden></span>
         </label>
@@ -245,7 +245,7 @@
       </div>
 
       <div class="ms-actions">
-        <button type="submit" class="solid-btn" data-i18n="ml.save">Save list</button>
+        <button type="submit" class="solid-btn" data-i18n="ml.save">Save List</button>
         <button type="button" class="ghost-btn" id="mlCancel" data-i18n="ms.cancel">Cancel</button>
         <button type="button" class="del" id="mlArchive" data-i18n="ml.archive">Archive</button>
         <span class="hint" id="mlFormStatus"></span>
@@ -291,7 +291,7 @@
 
      So the recipient row is a picker, and the count beside it is real. -#}
   <div class="cp-bar">
-    <label class="cp-pick"><span data-i18n="ml.cpWriting">Sending to</span>
+    <label class="cp-pick"><span data-i18n="ml.cpWriting">Sending To</span>
       <select id="cpList"></select>
     </label>
     <span class="cp-count" id="cpCount"></span>
@@ -333,7 +333,7 @@
              clients scrape the first words of the body — which is why so much
              mail previews as "View this in your browser". -#}
           <label class="cp-field">
-            <span data-i18n="ml.cpPreheader">Preview line</span>
+            <span data-i18n="ml.cpPreheader">Preview Line</span>
             <input type="text" id="cpPreheader" maxlength="160"
                    data-i18n-attr="placeholder:ml.cpPreheaderHint2"
                    placeholder="The line shown next to the subject in an inbox">
@@ -400,7 +400,7 @@
           <button type="button" data-size="sm" data-sz="sm" data-i18n="ml.cpSizeSm">Small</button>
           <button type="button" data-size="" data-i18n="ml.cpSizeNormal">Normal</button>
           <button type="button" data-size="lg" data-sz="lg" data-i18n="ml.cpSizeLg">Large</button>
-          <button type="button" data-size="xl" data-sz="xl" data-i18n="ml.cpSizeXl">Extra large</button>
+          <button type="button" data-size="xl" data-sz="xl" data-i18n="ml.cpSizeXl">Extra Large</button>
           {#- any size, as Site Creator has it (2026-10-06) -#}
           <span class="cp-step"><button type="button" data-size-step="-1" data-i18n-attr="title:ws.fmt.smaller, aria-label:ws.fmt.smaller" title="Smaller" aria-label="Smaller">&minus;</button>
             <input type="number" id="cpSizeVal" min="10" max="60" step="1" value="16" data-i18n-attr="aria-label:ml.cpSize" aria-label="Text size">
@@ -455,7 +455,7 @@
             <select id="cpSigWhich" class="lang-pick" data-i18n-attr="aria-label:ml.sigWhich" aria-label="Signature"></select>
             <button type="button" class="ghost-btn sm" id="cpSigNew" data-i18n="ml.sigNew">+ Another</button>
           </div>
-          <label class="fld"><span data-i18n="ml.sigName">Its name</span>
+          <label class="fld"><span data-i18n="ml.sigName">Its Name</span>
             <input type="text" id="cpSigName" maxlength="60" autocomplete="off" data-1p-ignore data-lpignore="true"></label>
           <div class="cp-tools" id="cpSigTools" role="toolbar" aria-label="Formatting">
             <button type="button" data-tool="bold" aria-pressed="false" title="Bold"><b>B</b></button>
@@ -475,7 +475,7 @@
             <button class="ghost-btn danger" type="button" id="cpSigDelete" data-i18n="common.delete">Delete</button>
             <span class="dlg-gap"></span>
             <button class="ghost-btn" type="button" id="cpSigCancel" data-i18n="ml.sigClose">Close</button>
-            <button class="solid-btn" type="button" id="cpSigSave" data-i18n="ml.sigSave">Keep signature</button>
+            <button class="solid-btn" type="button" id="cpSigSave" data-i18n="ml.sigSave">Keep Signature</button>
           </div>
         </div>
       </div>
@@ -489,14 +489,14 @@
          so it costs its full weight in every copy sent. Shown only when there
          is something to show. -#}
       <div class="cp-files" id="cpFiles" hidden>
-        <span class="adm-label" data-i18n="ml.cpAttached">Attached files</span>
+        <span class="adm-label" data-i18n="ml.cpAttached">Attached Files</span>
         <ul id="cpFileList"></ul>
       </div>
 
       <div class="cp-actions">
         <button type="button" class="solid-btn cp-send" id="cpSend" data-i18n="ml.cpSend">Send</button>
-        <button type="button" class="ghost-btn" id="cpSave" data-i18n="ml.cpSave">Save draft</button>
-        <button type="button" class="ghost-btn" id="cpTest" data-i18n="ml.cpTest">Send me a test</button>
+        <button type="button" class="ghost-btn" id="cpSave" data-i18n="ml.cpSave">Save Draft</button>
+        <button type="button" class="ghost-btn" id="cpTest" data-i18n="ml.cpTest">Send Me a Test</button>
         {#- Where the test goes (0048). The sign-in address may be a forward,
             and Gmail files forwarded tests as spam; a second inbox is proven
             by a link before any test goes there. -#}
@@ -506,7 +506,7 @@
           <span class="cp-testto-box" id="cpTestBox" hidden>
             <input type="email" id="cpTestEmail" autocomplete="email"
                    data-i18n-attr="aria-label:ml.cpTestTo" aria-label="Tests go to">
-            <button type="button" class="ghost-btn" id="cpTestLink" data-i18n="ml.cpTestSendLink">Send confirm link</button>
+            <button type="button" class="ghost-btn" id="cpTestLink" data-i18n="ml.cpTestSendLink">Send Confirm Link</button>
             <button type="button" class="ghost-btn" id="cpTestReset" data-i18n="ml.cpTestUseSignIn" hidden>Use my sign-in address</button>
           </span>
         </span>

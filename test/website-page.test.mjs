@@ -91,7 +91,7 @@ await check("a tab opens without leaving the page, and the address follows it", 
   click(w, d, "settings");
   assert(on(d).join() === "settings", `showing ${on(d)}`);
   assert(w.location.pathname === "/admin/website/settings/", `address ${w.location.pathname}`);
-  assert(d.getElementById("pageHeading").innerHTML === "Site <b>settings</b>", d.getElementById("pageHeading").innerHTML);
+  assert(d.getElementById("pageHeading").innerHTML === "Site <b>Settings</b>", d.getElementById("pageHeading").innerHTML);
   assert(/^Settings ·/.test(d.title), d.title);
   assert(d.querySelector('[data-web-tab="settings"]').getAttribute("aria-current") === "page", "not marked current");
 });

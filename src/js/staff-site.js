@@ -1965,14 +1965,19 @@
     }
     if (!en) return text;
     var ws = String(text || '').split(/(\s+)/), real = [];
-    ws.forEach(function (w, i) { if (/\S/.test(w)) real.push(i); });
+    ws.forEach(function (w, i) { if (/\p{L}/u.test(w)) real.push(i); });
     /* a word starting a sentence is capitalized like the first (model.js) */
     var opens = real.filter(function (i, k) { return k > 0 && /[.!?:]["'”’)\]]*$/.test(ws[real[k - 1]]); });
     return ws.map(function (w, i) {
       if (!/\S/.test(w)) return w;
       var bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
       if (i !== real[0] && i !== real[real.length - 1] && opens.indexOf(i) === -1 && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
-      return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+      if (/\p{Lu}/u.test(w.slice(1))) return w;
+      var parts = w.split('-');
+      return parts.map(function (part, k) {
+        var b = part.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
+        return k > 0 && k < parts.length - 1 && SMALL_EN.indexOf(b) !== -1 ? part.toLowerCase() : part.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+      }).join('-');
     }).join('');
   }
   function autoDesc(p, l) { return titleOf(autoDesc0(p, l), l); }

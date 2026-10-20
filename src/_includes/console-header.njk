@@ -49,7 +49,7 @@
         </div>
         <ol class="console-bell-items" id="consoleBellItems"></ol>
         <div class="console-bell-foot">
-          <button type="button" class="console-bell-act" id="consoleBellPast" data-i18n="bell.past">Past notifications</button>
+          <button type="button" class="console-bell-act" id="consoleBellPast" data-i18n="bell.past">Past Notifications</button>
           <a href="/staff/settings/#notifications" data-i18n="bell.settings">Choose what arrives</a>
         </div>
       </div>
@@ -118,16 +118,16 @@
               two "site ↗" lines read as the same link twice. Administrators
               and communications keep both (staff.css). -#}
           <a class="console-site area-mysite" id="consoleMySite" href="#" target="_blank" rel="noopener" hidden>
-            <span data-i18n="nav.mySite">Your site</span> <span class="area-arrow" aria-hidden="true">&#8599;</span></a>
+            <span data-i18n="nav.mySite">Your Site</span> <span class="area-arrow" aria-hidden="true">&#8599;</span></a>
           <a class="console-site area-public" href="/" target="_blank" rel="noopener">
-            <span data-i18n="nav.viewSite">Public site</span> <span class="area-arrow" aria-hidden="true">&#8599;</span></a>
+            <span data-i18n="nav.viewSite">Public Site</span> <span class="area-arrow" aria-hidden="true">&#8599;</span></a>
           {%- for p in consoleNav.menu %}
           <a href="{{ p.url }}" class="r-{{ p.roles | join(' r-') }}"
              data-roles="{{ p.roles | join(' ') }}"
              {% if p.slug == staffPage %}aria-current="page"{% endif %}
              data-i18n="nav.{{ p.slug }}">{{ p.label }}</a>
           {%- endfor %}
-          <a href="/cdn-cgi/access/logout" class="console-signout" data-i18n="nav.signout">Sign out</a>
+          <a href="/cdn-cgi/access/logout" class="console-signout" data-i18n="nav.signout">Sign Out</a>
         </div>
       </div>
     </div>

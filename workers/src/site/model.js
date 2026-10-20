@@ -450,7 +450,8 @@ export function titleCase(text, lang) {
   }
   if (!en) return text;
   const ws = String(text || "").split(/(\s+)/);
-  const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
+  /* the first and last WORDS: an arrow or a dash at the end is not one */
+  const real = ws.map((w, i) => (/\p{L}/u.test(w) ? i : -1)).filter((i) => i >= 0);
   const first = real[0], last = real[real.length - 1];
   /* a word starting a sentence (after . ! ? or :) is capitalized like the
      first: "…simple to state. The Need Is…", never ". the need" */
@@ -460,7 +461,13 @@ export function titleCase(text, lang) {
     const bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
     if (i !== first && i !== last && !opens.has(i) && SMALL_EN.has(bare)) return w.toLowerCase();
     /* a word already capitalized inside (iPhone, McDonald) is left alone */
-    return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, (c) => c.toUpperCase());
+    if (/\p{Lu}/u.test(w.slice(1))) return w;
+    /* each part of a hyphenated word, as its own word: On-Site, One-to-One */
+    const parts = w.split("-");
+    return parts.map((part, k) => {
+      const b = part.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
+      return k > 0 && k < parts.length - 1 && SMALL_EN.has(b) ? part.toLowerCase() : part.replace(/\p{L}/u, (c) => c.toUpperCase());
+    }).join("-");
   }).join("");
 }
 

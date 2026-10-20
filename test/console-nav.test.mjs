@@ -136,13 +136,13 @@ const menu = (w) => visible(w, ".console-me-menu a").map((a) => a.textContent.tr
 
 await check("Settings and Activity are under your name, not in the row", async () => {
   const w = boot(STAFF_PAGE, { roles: ["staff"] });
-  eq(menu(w), ["Public site ↗", "Activity", "Settings", "What's new", "Sign out"], "the name menu");
+  eq(menu(w), ["Public Site ↗", "Activity", "Settings", "What's New", "Sign Out"], "the name menu");
   for (const p of ["Settings", "Activity"]) assert(!links(w, "staff").includes(p), `${p} still in the row`);
 });
 
 await check("an administrator has What's new and Sign out there — their Activity is in their row", async () => {
   const w = boot(STAFF_PAGE, { roles: ["admin"] });
-  eq(menu(w), ["Public site ↗", "What's new", "Sign out"], "the name menu");
+  eq(menu(w), ["Public Site ↗", "What's New", "Sign Out"], "the name menu");
   assert(links(w, "admin").includes("Activity"), "admin Activity left the row");
 });
 
@@ -155,11 +155,11 @@ await check("the sites are the first lines under your name, and the header holds
   assert(!staff.document.querySelector(".console-actions > a"), "a link still sits in the header beside your name");
   mine.hidden = false; mine.href = "https://chase.thauma.one/";
   mine.parentNode.classList.add("has-mysite");
-  eq(menu(staff).slice(0, 2), ["Your site ↗", "Activity"], "staff with a site of their own: their site, not Thauma's");
+  eq(menu(staff).slice(0, 2), ["Your Site ↗", "Activity"], "staff with a site of their own: their site, not Thauma's");
   const admin = boot(STAFF_PAGE, { roles: ["admin"] });
   const a = admin.document.getElementById("consoleMySite");
   a.hidden = false; a.parentNode.classList.add("has-mysite");
-  eq(menu(admin).slice(0, 2), ["Your site ↗", "Public site ↗"], "an administrator keeps both");
+  eq(menu(admin).slice(0, 2), ["Your Site ↗", "Public Site ↗"], "an administrator keeps both");
 });
 
 await check("the name opens its menu, and Escape or a click elsewhere closes it", async () => {
@@ -377,12 +377,12 @@ await check("the bell: a number since you last opened it, one line each that ope
   eq(lis().length, 2, "cleared from the list");
   d.getElementById("consoleBellClearAll").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   await wait();
-  eq([calls.at(-1)[2], lis().length, lis()[0].className], [{ clear: "all" }, 1, "console-bell-empty"], "Clear all");
+  eq([calls.at(-1)[2], lis().length, lis()[0].className], [{ clear: "all" }, 1, "console-bell-empty"], "Clear All");
   d.getElementById("consoleBellPast").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   await wait();
   eq([d.getElementById("consoleBellTitle").textContent, lis().map((li) => li.querySelector(".console-bell-s").textContent),
       !!d.querySelector("[data-bell-clear]"), d.getElementById("consoleBellBack").hidden],
-     ["Past notifications", ["Older"], false, false], "Past: still there to find");
+     ["Past Notifications", ["Older"], false, false], "Past: still there to find");
   d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   eq(d.getElementById("consoleBellBtn").getAttribute("aria-expanded"), "false", "Escape closes it");
   w.close();

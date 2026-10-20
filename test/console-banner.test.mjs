@@ -11,7 +11,7 @@
  * rendered anywhere. For a one-row account the stale number was close enough
  * that nothing showed. For an admin+staff account the real header is about
  * 94px, so the banner sat across the second nav row; and because the toast
- * carried only "Try again", an account whose problem needed an administrator
+ * carried only "Try Again", an account whose problem needed an administrator
  * could not clear it. The banner reporting that you cannot reach the console
  * was itself blocking the link to the page that fixes it.
  *
@@ -180,7 +180,7 @@ await check("the banner can be dismissed", async () => {
   const toast = w.document.querySelector(".problem-toast");
   assert(toast, "no problem toast was created");
   const close = toast.querySelector(".toast-x");
-  assert(close, "the banner has no dismiss button — 'Try again' is not a way out " +
+  assert(close, "the banner has no dismiss button — 'Try Again' is not a way out " +
                 "of a condition that needs an administrator");
 
   assert(toast.hidden === false, "banner should be showing first");
@@ -188,7 +188,7 @@ await check("the banner can be dismissed", async () => {
   assert(!toast.classList.contains("in"), "dismiss did not start hiding the banner");
 });
 
-await check("'Try again' is still there for the problems that are worth retrying", async () => {
+await check("'Try Again' is still there for the problems that are worth retrying", async () => {
   const w = boot(STAFF, { roles: ["staff"] }, 47);
   let retried = 0;
   w.StaffProblem("The database did not answer.", () => { retried++; });

@@ -416,9 +416,9 @@ check("the palette tones and the extra-large size survive and render per light/d
 });
 
 check("a name variable survives saving; unknown ones and fallbacks do not", () => {
-  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>' +
+  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First Name</span>' +
                      ' <span data-var="password">X</span></p>');
-  assert(s.includes('<span data-var="first_name">First name</span>'), "variable lost: " + s);
+  assert(s.includes('<span data-var="first_name">First Name</span>'), "variable lost: " + s);
   assert(!s.includes("password") && !s.includes("data-fallback"),
     "something unknown survived: " + s);
 });
@@ -435,7 +435,7 @@ check("any #rrggbb color is kept and inlined; anything else is dropped", () => {
 
 check("each reader gets their own name, escaped; no name drops it and its space; never the label", () => {
   assert(typeof NL.fillVariables === "function", "fillVariables is missing");
-  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First name</span>, ' +
+  const s = sanitise('<p>Hi <span data-var="first_name" data-fallback="friend">First Name</span>, ' +
                      '<span data-var="name">Name</span>.</p>');
   eq(NL.fillVariables(s, "Ana <b>Marić</b>"), "<p>Hi Ana, Ana &lt;b&gt;Marić&lt;/b&gt;.</p>", "named");
   eq(NL.fillVariables(s, null), "<p>Hi,.</p>", "unnamed");

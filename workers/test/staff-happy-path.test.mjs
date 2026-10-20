@@ -582,7 +582,7 @@ await check("someone it was shared with as Can edit may save it, and it stays th
   } finally { EXTRA = {}; }
 });
 
-/* Chase's review, 2026-10-03: "Where it goes" could not be changed once a
+/* Chase's review, 2026-10-03: "Where It Goes" could not be changed once a
    resource was saved, and personal resources could not be deleted. */
 const resArgs = (db, q) => {
   const a = argsOf(db, q);

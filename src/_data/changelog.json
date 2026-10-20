@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-20-title-case-everywhere",
+      "date": "2026-10-20",
+      "page": "console",
+      "text": {
+        "en": "English titles are in Title Case everywhere: the console's page headings, section headings, dialog titles, tabs, labels and buttons; the website's headings and small lines above them; and email subjects, headings and buttons. Hyphenated words are capitalized in each part (On-Site, Sign-Up).",
+        "hr": "Engleski naslovi svugdje su napisani velikim početnim slovima riječi (Title Case): naslovi stranica i odjeljaka u konzoli, naslovi dijaloga, kartice, oznake i gumbi; naslovi na web-stranici i mali redovi iznad njih; te predmeti, naslovi i gumbi e-poruka.",
+        "sr": "Енглески наслови свугдје су написани великим почетним словима ријечи (Title Case): наслови страница и одјељака у конзоли, наслови дијалога, картице, ознаке и гумби; наслови на веб-сајту и мали редови изнад њих; те предмети, наслови и гумби е-порука."
+      }
+    },
+    {
       "id": "2026-10-20-website-area-bar",
       "date": "2026-10-20",
       "page": "admin:website",

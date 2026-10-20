@@ -98,7 +98,7 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   assert(own > 0, "Give has its own sections");
   click(d.querySelector("[data-tabs-add]"));
   const chips = () => [...d.querySelectorAll(".ws-tabchip")].map((c) => c.textContent);
-  eq(chips(), ["The page", "Tab 1", "Tab 2", "+"], "the strip");
+  eq(chips(), ["The Page", "Tab 1", "Tab 2", "+"], "the strip");
   eq(d.querySelector(".ws-tabchip.is-on").textContent, "Tab 1", "the first tab is open");
   eq(d.querySelectorAll(".ws-acc").length, 0, "a new tab has no sections of its own");
   assert(!d.querySelector(".ws-tabstyle"), "the bar's look is out of the way");
@@ -111,7 +111,7 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   click(d.querySelector('[data-tab-view=""]'));
   eq(d.querySelectorAll(".ws-acc:not(.ws-tabsrow)").length, own, "the page: its own sections");
   click(d.querySelector("[data-tab-add]"));
-  eq(chips(), ["The page", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
+  eq(chips(), ["The Page", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
 });
 
 await check("the tabs are a row among the page's sections: a section can go below them, and the row drags", async () => {
