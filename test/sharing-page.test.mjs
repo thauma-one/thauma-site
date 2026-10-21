@@ -294,7 +294,7 @@ await check("Discard puts everything back", async () => {
   eq(sent.length, 0, "Discard sent something");
 });
 
-await check("Sharing is the ministry's alone; Thauma's forms are in Website › Forms", async () => {
+await check("Sharing is the ministry's alone; Thauma's forms are in the administrators' Sharing", async () => {
   /* Chase, 2026-09-27: staff pages for staff work, admin for admin. */
   const { d, sent } = await boot();
   assert(!d.getElementById("shScope") && !d.querySelector("[data-scope]"), "a Thauma switch is still on Sharing");
@@ -309,7 +309,7 @@ await check("Sharing is the ministry's alone; Thauma's forms are in Website › 
               replace: (u) => { went = u; } };
   w.eval(readFileSync("src/js/color-pair.js", "utf8"));
   w.eval("(function (location) {" + readFileSync("src/js/staff-sharing.js", "utf8") + "\n})(window.__loc);");
-  eq(went, "/admin/website/forms/", "an old link to Thauma's forms");
+  eq(went, "/admin/sharing/", "an old link to Thauma's forms");
 });
 
 await check("the roadmap's code is Full or Condensed, and nothing is saved by choosing", async () => {

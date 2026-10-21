@@ -137,7 +137,13 @@ const rows = (d) => [...d.querySelectorAll("#cRows .c-row")].map((r) => r.datase
 const names = (d) => Object.fromEntries([...d.querySelectorAll("#cRows .c-row")]
   .map((r) => [r.dataset.row, r.querySelector(".c-name").textContent]));
 const count = (d) => Number((d.getElementById("cDown").textContent.match(/\d+/) || [0])[0]);
-const view = (d, v) => { d.querySelector(`[data-view="${v}"]`).click(); };
+/* A page from the list of pages (2026-10-20, as the staff Site Creator):
+   back to the list first when a page is open. */
+const view = (d, v) => {
+  const back = d.querySelector('#cCrumb [data-view=""]');
+  if (back) back.click();
+  d.querySelector(`#cRows [data-view="${v}"]`).click();
+};
 
 /* ------------------------------------------------------------- the lines */
 
@@ -150,7 +156,7 @@ await check("each line is named for what it is, its block named by its own headi
   assert(n["split:site:home.h1"] === "Headline", n["split:site:home.h1"]);
   assert(n["split:site:home.who_h2"] === "The need · Heading", n["split:site:home.who_h2"]);
   assert(n["site:home.who_img_tag"] === "The need · Photo description", n["site:home.who_img_tag"]);
-  view(d, "section:emails");
+  view(d, "section:e:confirm");
   assert(names(d)["emails:confirm.helloAnon"] === "Confirmation email · Greeting, without a name",
     names(d)["emails:confirm.helloAnon"]);
 });
@@ -203,10 +209,15 @@ await check("a heading keeps the line break typed into it; a page's words take f
     "saved with its breaks and its italic: " + JSON.stringify(items));
 });
 
-await check("another language opens on what needs work, beside English", async () => {
+await check("another language's list of pages starts with what needs work, beside English", async () => {
+  /* the list of pages first, as the staff Site Creator (2026-10-20), with
+     Needs Work at its head */
   const { w, d } = await boot();
   await pick(w, d, "hr");
-  assert(d.querySelector('[data-view="needs"]').classList.contains("is-on"), "did not open on Needs work");
+  const first = d.querySelector("#cRows [data-view]");
+  assert(first && first.dataset.view === "needs" && /2/.test(first.textContent), "Needs Work does not lead the list");
+  view(d, "needs");
+  assert(d.querySelector("#cCrumb [data-page-pick]").value === "needs", "the menu does not say Needs Work");
   assert(rows(d).join() === "site:home.title,emails:confirm.helloAnon", `shown: ${rows(d)}`);
   assert(d.querySelector("#cRows .c-ref").textContent === "Home", "the English is not above the line");
   assert(!d.getElementById("cBesideWrap").hidden, "no beside choice");
@@ -227,6 +238,8 @@ await check("English has a Reference too, and nothing to send out", async () => 
 await check("the file holds exactly what is on screen, and More says how many", async () => {
   const { w, d, sent } = await boot();
   await pick(w, d, "hr");
+  assert(count(d) === 10, `the list of pages offers ${count(d)}, not every line`);
+  view(d, "needs");
   assert(count(d) === 2, `Needs work offers ${count(d)}`);
   view(d, "section:home");
   assert(count(d) === 8, `Home offers ${count(d)} (two-part headings count as two lines)`);
@@ -252,6 +265,7 @@ async function type(w, d, id, value) {
 await check("an edit is held until Save, which sends only it and asks nothing", async () => {
   const { w, d, sent, asked } = await boot();
   await pick(w, d, "hr");
+  view(d, "needs");
   await type(w, d, "site:home.title", "Naslovnica");
   assert(!d.getElementById("cSaveBar").hidden, "no save bar");
   assert(!sent.length, "saved before Save");
@@ -267,6 +281,7 @@ await check("a line the server refuses is marked, and stays unsaved", async () =
   const { w, d } = await boot({ answers: { save: () => ({ ok: false, status: 400,
     json: async () => ({ error: "x", code: "problems", ids: ["site:home.title"] }) }) } });
   await pick(w, d, "hr");
+  view(d, "needs");
   await type(w, d, "site:home.title", "broken");
   d.getElementById("cSave").click();
   await tick(150);
@@ -375,6 +390,7 @@ await check("a line changed on dev and not published shows dev's text, marked, a
   try {
     const ctx = await boot();
     const { d } = ctx;
+    view(d, "section:home");
     const box = d.querySelector('[data-thin="site:home.who_h2_thin"]');
     assert(box, "the heading's box is missing");
     assert(/Real<br>churches,/.test(box.innerHTML), `the box shows ${box.innerHTML}, not dev's two lines`);
@@ -393,6 +409,28 @@ await check("a line changed on dev and not published shows dev's text, marked, a
     const item = save && save.body.items.find((i) => i.id === "site:home.who_h2_thin");
     assert(item && item.waiting === true && item.was === "Real churches,", `saved as ${JSON.stringify(item)}`);
   } finally { EN_LINES[6] = was; }
+});
+
+await check("a page's search title is on Advanced, not among its words; the emails are pages of their own", async () => {
+  /* Chase, 2026-10-20: "move all meta options to its own advanced tab" and
+     show "the pages that I don't see normally" */
+  EN_LINES.push(L("site:home.seo_title", "Thauma | Home", "Thauma | Home"));
+  try {
+    const { w, d } = await boot();
+    view(d, "section:home");
+    assert(!rows(d).includes("site:home.seo_title"), "the search title is among Home's words");
+    d.getElementById("webArea").setAttribute("data-tab", "advanced");
+    d.dispatchEvent(new w.CustomEvent("web:panel", { detail: "advanced" }));
+    assert(d.querySelector('#cAdv [data-adv-page]').value === "home", "Advanced is not on the page open in Pages");
+    assert(d.querySelector('#cAdv .c-row[data-row="site:home.seo_title"]'), "the search title is not on Advanced");
+    const box = d.querySelector('#cAdv [data-id="site:home.seo_title"]');
+    box.value = "Thauma — Home";
+    box.dispatchEvent(new w.Event("input", { bubbles: true }));
+    assert(d.querySelector("#cAdv [data-seo-title]").textContent === "Thauma — Home", "the search card does not follow the typing");
+    assert(d.getElementById("cSaveBar").getAttribute("data-tabs") === "advanced", "the change is not marked on Advanced");
+    view(d, "section:e:confirm");
+    assert(rows(d).join() === "emails:confirm.helloAnon", `the confirmation email's page shows ${rows(d)}`);
+  } finally { EN_LINES.pop(); }
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

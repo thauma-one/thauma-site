@@ -121,8 +121,8 @@ check("site copy only points editors at admin pages that exist", () => {
     const m = read(f).match(/^permalink:\s*(\S+)/m);
     return m ? m[1].replace(/index\.html$/, "") : null;
   }).filter(Boolean));
-  /* The Website area is one template written at every tab's address. */
-  for (const t of createRequire(import.meta.url)("../src/_data/consoleNav.js").website) pages.add(t.url);
+  /* The areas are one template written at every tab's address. */
+  for (const t of createRequire(import.meta.url)("../src/_data/consoleNav.js").areaTabs) pages.add(t.url);
   const langs = readdirSync(new URL("../src/_data/i18n/", import.meta.url)).filter((f) => f.endsWith(".json"));
   const bad = [];
   for (const f of langs) {

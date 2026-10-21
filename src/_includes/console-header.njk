@@ -82,7 +82,7 @@
           {%- for p in list %}
           <a href="{{ p.url }}" class="r-{{ p.roles | join(' r-') }}"
              data-roles="{{ p.roles | join(' ') }}"
-             {% if p.slug == current or (area == "admin" and p.slug == "website" and websiteTab) %}aria-current="page"{% endif %}
+             {% if p.slug == current %}aria-current="page"{% endif %}
              data-i18n="{{ ('nav.' + ('home' if p.slug == 'index' else p.slug)) if area == 'staff' else ('adm.nav.' + p.slug) }}">{{ p.label }}</a>
           {%- endfor %}
         </nav>
@@ -135,3 +135,15 @@
 
   </div>
 </header>
+
+{#- A PAGE OPENS AT ONCE, AGAIN AND AGAIN (Chase, 2026-10-20: "once this
+   Website page opens the first time, if you navigated away to People and
+   back to Website, Website should open quickly again. Right now, it reloads
+   every time"). A link in the header held for a moment (hover, or a press
+   on a phone) has its page drawn behind the one on screen — its words, its
+   data, its preview — so the click shows a page already loaded, where the
+   browser can (Chrome and Edge). Not the page you are on, and not a link
+   to another site. Loading a console page only reads; nothing it does on
+   arrival changes anything, which is what makes drawing it early safe —
+   keep it so. -#}
+<script type="speculationrules">{"prerender":[{"where":{"and":[{"selector_matches":".console-row nav a"},{"not":{"selector_matches":"[aria-current]"}}]},"eagerness":"moderate"}]}</script>

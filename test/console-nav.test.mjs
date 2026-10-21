@@ -121,7 +121,7 @@ await check("a site editor spans both rows, without the private pages", async ()
   eq(rows(w), ["staff", "admin"], "rows");
   assert(!links(w, "staff").includes("Stewardship"), "reached supporter records");
   assert(!links(w, "admin").includes("People"), "reached account management");
-  for (const p of ["Website"]) {
+  for (const p of ["Updates", "Mail", "Sharing", "Site Creator"]) {
     assert(links(w, "admin").includes(p), `missing ${p}`);
   }
 });

@@ -13,8 +13,8 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const PAGE = ["_site", "_site_next", "_site_prod"]
-  .map((d) => `${d}/admin/website/forms/index.html`)
-  .find((p) => existsSync(p)) || "_site/admin/website/forms/index.html";
+  .map((d) => `${d}/admin/sharing/index.html`)
+  .find((p) => existsSync(p)) || "_site/admin/sharing/index.html";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -47,7 +47,7 @@ async function boot() {
   const sent = [], asked = [];
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only", pretendToBeVisual: true,
-    url: "https://next.thauma.one/admin/website/forms/",
+    url: "https://next.thauma.one/admin/sharing/",
   });
   const w = dom.window;
   w.fetch = async (url, opts = {}) => {
@@ -80,7 +80,9 @@ await check("Thauma's forms, read as Thauma's", async () => {
 await check("no words here: they are the page's, in Pages", async () => {
   const { d } = await boot();
   eq(d.querySelectorAll("#wfRoot [data-word], #wfRoot textarea").length, 0, "a word field on Forms");
-  const link = d.querySelector('#wfRoot [data-web-go="pages"][data-pages-section="contact"]');
+  /* Pages is in Site Creator since 2026-10-20: an ordinary link, which
+     opens on the contact page's words */
+  const link = d.querySelector('#wfRoot a[href="/admin/website/?page=contact"]');
   assert(link, "no way to the contact page's words");
 });
 

@@ -13,7 +13,7 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
-  existsSync(`${d}/admin/website/resources/index.html`));
+  existsSync(`${d}/admin/updates/resources/index.html`));
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -38,9 +38,12 @@ async function boot(opts = {}) {
   const { resources = [], gatherings = [], truncated = false } = opts;
   const page = opts.page || ("gatherings" in opts ? "events" : "resources");
   const posts = [], asked = [];
-  const dom = new JSDOM(readFileSync(`${build}/admin/website/${page}/index.html`, "utf8"), {
+  /* Updates in the administrators' header (2026-10-20): Events at its own
+     address, Resources under it */
+  const at = page === "events" ? "/admin/updates/" : `/admin/updates/${page}/`;
+  const dom = new JSDOM(readFileSync(`${build}${at}index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
-    url: `https://dev.thauma.one/admin/website/${page}/`,
+    url: `https://dev.thauma.one${at}`,
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
         getItem: () => JSON.stringify({ roles: ["admin"] }), setItem: () => {} } });

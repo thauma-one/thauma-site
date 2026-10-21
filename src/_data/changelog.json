@@ -12,13 +12,13 @@
       }
     },
     {
-      "id": "2026-10-20-website-area-bar",
+      "id": "2026-10-20-admin-areas",
       "date": "2026-10-20",
       "page": "admin:website",
       "text": {
-        "en": "Website: its screens (Pages, Forms, Mail and the rest) now run across the top, like tabs, so each screen has the full width. On Pages, the preview sits beside the words as a tall panel that stays in view, the page widens to fit it, and it opens by itself on a wide screen.",
-        "hr": "Web-stranica: njezini zasloni (Stranice, Obrasci, Pošta i ostali) sada stoje na vrhu, kao kartice, pa svaki zaslon ima punu širinu. Na Stranicama je pregled pokraj riječi kao visoka ploča koja ostaje na zaslonu, stranica se proširi da stane, a na širokom zaslonu se otvori sama.",
-        "sr": "Веб-сајт: његови екрани (Странице, Обрасци, Пошта и остали) сада стоје на врху, као картице, па сваки екран има пуну ширину. На Страницама је преглед поред ријечи као висока плоча која остаје на екрану, страница се прошири да стане, а на широком екрану се отвори сама."
+        "en": "Website is now four pages in the header, named as on the staff side: Updates (events and resources), Mail (Thauma's lists), Sharing (what Thauma's forms do) and Site Creator. Site Creator works like a ministry's own: Pages, Photos, Links, Arcade, Advanced and Settings down the left, and on Pages a list of every page, then one page's words with a menu to switch, and the page itself beside them. The list includes the pages and emails people only see after signing up or unsubscribing, shown in the preview as you type. Pressing a link in the preview opens that page's words. Search titles, descriptions and share pictures are on Advanced. Pages you have opened come back quickly.",
+        "hr": "Web-stranica su sada četiri stranice u zaglavlju, nazvane kao kod osoblja: Novosti (događanja i resursi), Pošta (popisi Thaume), Dijeljenje (što rade obrasci Thaume) i Kreator stranice. Kreator stranice radi kao onaj službe: Stranice, Fotografije, Poveznice, Arkada, Napredno i Postavke s lijeve strane, a na Stranicama popis svih stranica, zatim riječi jedne stranice s izbornikom za prebacivanje i sama stranica pokraj njih. Popis uključuje stranice i e-poruke koje ljudi vide tek nakon prijave ili odjave, prikazane u pregledu dok pišete. Klik na poveznicu u pregledu otvara riječi te stranice. Naslovi i opisi za pretraživanje te slike za dijeljenje su u Napredno. Stranice koje ste već otvorili brzo se ponovno otvaraju.",
+        "sr": "Веб-сајт су сада четири странице у заглављу, назване као код особља: Новости (догађаји и ресурси), Пошта (спискови Thaume), Дијељење (шта раде обрасци Thaume) и Креатор странице. Креатор странице ради као онај службе: Странице, Фотографије, Везе, Аркада, Напредно и Подешавања с лијеве стране, а на Страницама списак свих страница, затим ријечи једне странице с менијем за пребацивање и сама страница поред њих. Списак укључује странице и е-поруке које људи виде тек након пријаве или одјаве, приказане у прегледу док пишете. Клик на везу у прегледу отвара ријечи те странице. Наслови и описи за претраживање те слике за дијељење су у Напредно. Странице које сте већ отворили брзо се поново отварају."
       }
     },
     {

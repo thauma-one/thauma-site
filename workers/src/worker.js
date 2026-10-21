@@ -274,10 +274,17 @@ const AREAS = ["/staff", "/admin"];
  */
 export const MOVED = {
   "/admin/content/": "/admin/website/",
-  "/admin/library/": "/admin/website/resources/",
+  "/admin/library/": "/admin/updates/resources/",
   // Library became two pages; its Gatherings tab (#gatherings) is sent on
   // to Events by the Resources page itself — a fragment never reaches here.
-  "/admin/website/library/": "/admin/website/resources/",
+  "/admin/website/library/": "/admin/updates/resources/",
+  // Website became four areas in the header (2026-10-20): its Resources
+  // and Events are Updates, its Forms Sharing, its Mail Mail; Pages and the
+  // rest are Site Creator, which kept Website's address.
+  "/admin/website/resources/": "/admin/updates/resources/",
+  "/admin/website/events/": "/admin/updates/",
+  "/admin/website/forms/": "/admin/sharing/",
+  "/admin/website/mail/": "/admin/mail/",
   "/admin/site/": "/admin/website/settings/",
   // Ministry became Updates (mockup board 7). Its tabs (#goals…) ride along.
   "/staff/ministry/": "/staff/updates/",

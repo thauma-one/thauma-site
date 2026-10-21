@@ -50,7 +50,7 @@
   /* THE REASONS IN EVERY LANGUAGE the site publishes (0041). English is
      thauma.one's own and each reason's fallback name (`label`); the rest are
      `labels`. The site's languages are the ones this build publishes
-     (#libLangs, website.njk). */
+     (#libLangs, areas.njk). */
   var HOME = 'en';
   var LANGS = (function () {
     try { return JSON.parse(document.getElementById('libLangs').textContent) || [HOME]; }

@@ -83,12 +83,21 @@ const admin = [
   { slug: "users", url: "/admin/users/", label: "People", roles: ["admin"] },
   { slug: "partners", url: "/admin/partners/", label: "Partners",
     roles: ["admin", "board"] },
-  /* THE PUBLIC SITE, IN ONE PLACE (mockup board 13, built 2026-09-27).
-     Content, Library, Site and Publish were four links doing one job —
-     change the public site, then publish it. Now one link, with its own
-     side list (`website` below) and a publish bar along the foot of every
-     screen in it, so publishing is never a page you have to remember. */
-  { slug: "website", url: "/admin/website/", label: "Website",
+  /* THE PUBLIC SITE, AS THE STAFF HEADER HAS IT (Chase, 2026-10-20: "we can
+     restructure it entirely so it matches similar to the staff header").
+     Website was one link with nine tabs under it; now its work is four
+     links with the staff console's names — Updates (the site's events and
+     resources), Mail (Thauma's lists), Sharing (what Thauma's forms do) and
+     Site Creator (pages, photos, links, the arcade, settings), each with
+     its own tabs (`areas` below). Site Creator keeps Website's address, so
+     every old link to Pages still lands on Pages. */
+  { slug: "updates", url: "/admin/updates/", label: "Updates",
+    roles: ["admin", "communications"] },
+  { slug: "mail", url: "/admin/mail/", label: "Mail",
+    roles: ["admin", "communications"] },
+  { slug: "sharing", url: "/admin/sharing/", label: "Sharing",
+    roles: ["admin", "communications"] },
+  { slug: "website", url: "/admin/website/", label: "Site Creator",
     roles: ["admin", "communications"] },
   { slug: "activity", url: "/admin/activity/", label: "Activity",
     roles: ["admin", "board"] },
@@ -102,39 +111,61 @@ const admin = [
 const inRow = (pages) => pages.filter((p) => !p.menu);
 const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || []))];
 
-/* The Website area's own side list. The Website is ONE page with a panel per
-   tab (Chase, 2026-09-27: "have all tabs load all the content at once. Then
-   nav through the tabs can happen at once"): src/adminarea/website.njk writes
-   it at every tab's address, each opening on its own tab, so a reload or a
-   bookmark comes back to where you were. `page` is the tab's i18n page key
-   (adm.page.<page>.heading); `heading` is its English heading. A tab is never
-   listed before its page exists. */
-const website = [
-  { tab: "pages", url: "/admin/website/", label: "Pages",
-    page: "content", heading: "The Site's <b>Words</b>" },
-  /* Thauma's own forms and mail (Chase, 2026-09-27): what happens to what a
-     visitor sends, and Thauma's lists — admin work, so off the staff pages. */
-  { tab: "forms", url: "/admin/website/forms/", label: "Forms",
-    page: "forms", heading: "Thauma's <b>Forms</b>" },
-  { tab: "mail", url: "/admin/website/mail/", label: "Mail",
-    page: "orgmail", heading: "Who Hears from <b>Thauma</b>" },
-  { tab: "resources", url: "/admin/website/resources/", label: "Resources",
-    page: "resources", heading: "The Site's <b>Resources</b>" },
-  { tab: "events", url: "/admin/website/events/", label: "Events",
-    page: "events", heading: "What Is <b>Coming Up</b>" },
-  { tab: "photos", url: "/admin/website/photos/", label: "Photos",
-    page: "photos", heading: "Frame What <b>Matters</b>" },
-  /* The hidden arcade's control room (Chase, 2026-10-06): games open or out
-     of order, the high scores, blocked names. Saves at once, like Forms. */
-  /* The footer's social and own links (2026-10-07), as a partner site's
-     Links tab has them. Saves at once, like Settings. */
-  { tab: "links", url: "/admin/website/links/", label: "Links",
-    page: "links", heading: "Where the Site <b>Links</b>" },
-  { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade",
-    page: "arcade", heading: "The <b>Arcade</b>" },
-  { tab: "settings", url: "/admin/website/settings/", label: "Settings",
-    page: "site", heading: "Site <b>Settings</b>" },
-];
+/* EACH AREA'S TABS. An area is ONE page with a panel per tab (Chase,
+   2026-09-27: "have all tabs load all the content at once. Then nav through
+   the tabs can happen at once"): src/adminarea/areas.njk writes it at every
+   tab's address, each opening on its own tab, so a reload or a bookmark
+   comes back to where you were. Only the area's own tabs load with it, so a
+   page asks for what it shows and no more.
+
+   A tab's markup is src/_includes/website/<tab>.njk. The area's heading
+   stays as you move between its tabs, as on the staff pages. A tab is
+   never listed before its page exists. `side` lays the tabs out as the
+   staff Site Creator does (a list down the left); otherwise they are the
+   staff Updates page's row, and an area of one tab shows none. `publish`
+   puts the publish bar along its foot (what it changes waits for Publish);
+   `scripts` are what its tabs run, the shell last. */
+const areas = {
+  updates: { heading: "What the Site <b>Publishes</b>", publish: true,
+    scripts: ["admin-library", "admin-publish", "admin-dbsync", "admin-website"], tabs: [
+    { tab: "events", url: "/admin/updates/", label: "Events" },
+    { tab: "resources", url: "/admin/updates/resources/", label: "Resources" },
+  ] },
+  /* Thauma's own mail (Chase, 2026-09-27): Thauma's lists, admin work, so
+     off the staff pages. */
+  mail: { heading: "Who Hears from <b>Thauma</b>",
+    scripts: ["staff-mailing", "admin-website"], tabs: [
+    { tab: "mail", url: "/admin/mail/", label: "Mail" },
+  ] },
+  /* What happens to what a visitor sends: where it goes, the reasons, the
+     lists on the sign-up form. */
+  sharing: { heading: "Thauma's <b>Forms</b>",
+    scripts: ["admin-forms", "admin-website"], tabs: [
+    { tab: "forms", url: "/admin/sharing/", label: "Forms" },
+  ] },
+  /* THE SITE CREATOR, as a ministry's own is laid out (Chase, 2026-10-20):
+     its tabs down the left, the page as it will look on the right. */
+  website: { heading: "Site <b>Creator</b>", side: true, publish: true,
+    scripts: ["admin-content", "admin-photos", "admin-site", "admin-links", "admin-arcade",
+              "admin-publish", "admin-dbsync", "admin-website"], tabs: [
+    { tab: "pages", url: "/admin/website/", label: "Pages" },
+    { tab: "photos", url: "/admin/website/photos/", label: "Photos" },
+    /* The footer's social and own links (2026-10-07), as a partner site's
+       Links tab has them. Saves at once, like Settings. */
+    { tab: "links", url: "/admin/website/links/", label: "Links" },
+    /* The hidden arcade's control room (Chase, 2026-10-06): games open or
+       out of order, the high scores, blocked names. Saves at once. */
+    { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade" },
+    /* How each page shows in a search and when shared (Chase, 2026-10-20:
+       "move all meta options to its own advanced tab"). */
+    { tab: "advanced", url: "/admin/website/advanced/", label: "Advanced" },
+    { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
+  ] },
+};
+/* Every tab of every area, one per address, for the pages to be written. */
+const areaTabs = Object.entries(areas).flatMap(([area, a]) =>
+  a.tabs.map((t) => ({ ...t, area, heading: a.heading,
+    areaLabel: admin.find((p) => p.slug === area).label })));
 
 module.exports = {
   staff,
@@ -145,5 +176,6 @@ module.exports = {
   /* What each row shows, and what goes under the name instead. */
   row: { staff: inRow(staff), admin: inRow(admin) },
   menu: [...staff, ...admin].filter((p) => p.menu),
-  website,
+  areas,
+  areaTabs,
 };

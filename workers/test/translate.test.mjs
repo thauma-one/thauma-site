@@ -439,5 +439,19 @@ await check("a file's approval cannot clear a line", async () => {
   eq(res.status, 400, "status");
 });
 
+await check("the pages after an email link, and the emails, draw with the words being written", async () => {
+  /* Chase, 2026-10-20: "including showing the pages that I don't see
+     normally like the subscribed confirmation page" */
+  const { previewOf, PREVIEWS } = await import("../src/admin-translate.js");
+  const page = previewOf("e:confirmed", "hr", { "confirmed.heading": "Hvala vam" }, "https://dev.thauma.one");
+  assert(/Hvala (<b>)?vam/.test(page.html) && /lang="hr"/.test(page.html), "typed heading, in Croatian");
+  const mail = previewOf("e:confirm", "en", { "confirm.subject": "Say Yes to {list}" }, "https://dev.thauma.one");
+  eq(mail.subject, "Say Yes to Thauma Updates", "the subject as typed, its placeholder filled");
+  const plain = previewOf("e:confirm", "en", {}, "https://dev.thauma.one");
+  assert(!/Say Yes/.test(plain.subject), "the typed words do not outlive the preview");
+  for (const p of PREVIEWS) assert(previewOf(p, "sr", {}, "https://x").html.length > 200, `${p} draws`);
+  eq(previewOf("e:app", "en", {}, "https://x"), null, "no preview where there is none");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

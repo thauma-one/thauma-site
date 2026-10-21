@@ -25,11 +25,11 @@
 
   if (!document.getElementById('shList')) return;
 
-  /* THE MINISTRY'S ALONE. Thauma's own forms moved to Website › Forms in the
-     admin console (Chase, 2026-09-27: staff pages for staff work, admin for
+  /* THE MINISTRY'S ALONE. Thauma's own forms moved to Sharing in the admin
+     console (Chase, 2026-09-27: staff pages for staff work, admin for
      admin); an old link to them lands there. */
   if (/(\?|&)scope=organization\b/.test(location.search)) {
-    location.replace('/admin/website/forms/');
+    location.replace('/admin/sharing/');
     return;
   }
 

@@ -305,67 +305,65 @@
   font-family:var(--font-display);font-weight:var(--w-bold)}
 .c-pick select{min-width:150px}
 
-.adm-content{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);
-  gap:24px;align-items:start;margin-top:24px}
-
-/* ITS OWN SCROLL (Chase, 2026-10-19: "I can't scroll down on the tabs without
-   scrolling the entire words interface down to the bottom") */
-.c-sections{display:flex;flex-direction:column;gap:2px;position:sticky;top:88px;
-  max-height:calc(100vh - 180px);max-height:calc(100dvh - 180px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.c-sec{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
-  background:none;border:1px solid transparent;border-radius:var(--radius);
-  padding:9px 12px;cursor:pointer;color:var(--dim);font-family:var(--font-body);
-  font-size:var(--fs-sm);font-weight:var(--w-body);transition:.18s var(--ease-main)}
-.c-sec-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.c-sec-c{font-size:var(--fs-micro);opacity:.5;font-variant-numeric:tabular-nums}
+/* THE LIST OF PAGES (admin-content.js overviewHtml), as the staff Site
+   Creator's "Your Pages": a row a page — its name, how many lines, what
+   still needs translating, which other languages are behind, the dot for
+   changes — in groups: Thauma's site, the pages after a link in an email,
+   the emails, what goes on other websites, a ministry's own site. */
+.c-group{margin:26px 0 10px;font:var(--w-bold) var(--fs-micro) var(--font-display);letter-spacing:var(--ls-caps);
+  text-transform:uppercase;color:var(--dim)}
+.c-rows.is-list{display:block;background:none;border:0}
+.c-rows.is-list > .c-group:first-child{margin-top:4px}
+.c-pages{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.c-pages li + li{border-top:1px solid var(--line)}
+.c-pages-needs{border-color:rgba(245,184,69,.45);margin-bottom:6px}
+.c-page{display:grid;grid-template-columns:minmax(0,1fr) auto auto 14px;gap:14px;align-items:center;width:100%;
+  padding:13px 16px;background:none;border:0;color:var(--text);text-align:left;cursor:pointer;font:300 15px var(--font-display)}
+@media(hover:hover){ .c-page:hover{background:var(--bg2)} }
+.c-page:focus-visible{outline:2px solid var(--console-admin);outline-offset:-2px}
+.c-page-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-page-c{font:12.5px var(--font-body);color:var(--dim);font-variant-numeric:tabular-nums}
+.c-page-x{display:flex;align-items:center;gap:8px;justify-content:flex-end;min-width:0}
+.c-page-go{color:var(--dim);font-size:18px;line-height:1}
+.c-everyline{margin-top:16px}
+@media (max-width:560px){ .c-page{grid-template-columns:minmax(0,1fr) auto 14px}.c-page-c{display:none} }
 /* Empty strings are the thing you are looking for when translating, so the
-   count of them is on the section rather than only inside it. */
+   count of them is on the page rather than only inside it. */
 .c-sec-empty{font-size:var(--fs-micro);color:var(--warn,#F5B845);
   background:var(--warn-dim,rgba(245,184,69,.14));border-radius:999px;
   padding:1px 7px;font-variant-numeric:tabular-nums}
 /* the other languages still behind on this page: their codes, quietly */
 .c-sec-miss{font-size:var(--fs-micro);letter-spacing:.04em;color:var(--warn,#F5B845);opacity:.85;font-variant-numeric:tabular-nums}
-@media(hover:hover){ .c-sec:hover{color:var(--text);border-color:var(--line-hard)} }
-.c-sec.is-on{color:var(--text);background:var(--panel);border-color:var(--line-hard)}
-.c-sec.is-dirty{box-shadow:inset 3px 0 0 var(--warn,#F5B845)}
-/* words not published yet: the Site Creator's dot (admin-website.js asks) */
-.c-sec-dot{display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
-
+/* "← All Pages" and the menu of pages, over one page's lines */
+.c-crumb{margin:0}
+.c-crumb[hidden]{display:none}
+.c-crumb select{max-width:100%}
+/* the language row above Pages and Advanced, and finding a word */
+.c-writing{margin:0}
+.c-writing .c-tools-end{margin-left:auto}
+.c-find-row input[type="search"]{flex:1 1 200px;min-width:0}
+.c-writing .ghost-btn:disabled,.c-find-row .ghost-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+.adm-content{display:flex;flex-direction:column;gap:14px;margin-top:4px}
 .c-panel{min-width:0}
+/* Advanced: the page's card in a search and when shared, then its lines */
+.c-adv{display:flex;flex-direction:column;gap:14px}
+.c-adv .ws-head{margin:0}
+.c-adv .c-row{grid-template-columns:1fr}
 
-/* WITH THE PREVIEW (admin-content.js): the pages, the words, and the page
-   they are on, side by side, the list and the page held in view while the
-   words scroll. The screen widens for it (Chase, 2026-10-19: "without it
-   feeling cramped"); where three columns no longer fit, the pages run
-   across the top instead. */
-body:has(.web-panel:not([hidden]) .adm-content.has-preview) main{max-width:min(1720px,100%)}
-.adm-content.has-preview{grid-template-columns:minmax(160px,190px) minmax(0,1fr) minmax(0,1.1fr);
-  grid-template-areas:"sections panel preview"}
-.adm-content.has-preview .c-sections{grid-area:sections}
-.adm-content.has-preview .c-panel{grid-area:panel}
-.adm-content.has-preview .c-row{grid-template-columns:1fr}
-@media (max-width:1320px){
-  .adm-content.has-preview{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
-    grid-template-areas:"sections sections" "panel preview"}
-  .adm-content.has-preview .c-sections{position:static;flex-direction:row;flex-wrap:wrap;gap:4px;max-height:none;overflow:visible}
-  .adm-content.has-preview .c-sec{width:auto;padding:6px 11px}
-  .adm-content.has-preview .c-sec-rule{display:none}
-}
-.c-preview{grid-area:preview;position:sticky;top:88px;display:flex;flex-direction:column;gap:8px;min-width:0}
+/* THE PREVIEW, beside the words as the staff Site Creator has it: the
+   third column of the Site Creator (AREAS below), held in view while the
+   words scroll. */
+.c-preview{position:sticky;top:calc(var(--header-h,64px) + 16px);display:flex;flex-direction:column;gap:8px;min-width:0}
 .c-preview[hidden]{display:none}
 .c-prev-bar{display:flex;align-items:center;gap:10px;font-size:var(--fs-micro);color:var(--dim)}
 .c-prev-url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono,ui-monospace,monospace)}
 .c-prev-open{color:var(--dim);text-decoration:none;font-size:14px;padding:2px 6px;border-radius:6px}
 .c-prev-open:hover,.c-prev-open:focus-visible{color:var(--text);background:var(--line)}
-.c-prev-frame{height:calc(100vh - 200px);height:calc(100dvh - 200px);min-height:420px;border:1px solid var(--line-hard);border-radius:var(--radius);overflow:hidden;background:#0B0F15}
-.c-prev-frame{position:relative}
+.c-prev-frame{position:relative;height:calc(100vh - 200px);height:calc(100dvh - 200px);min-height:420px;max-height:860px;border:1px solid var(--line-hard);border-radius:var(--radius);overflow:hidden;background:#0B0F15}
 .c-prev-frame iframe{width:100%;height:100%;border:0;display:block;margin:0 auto;transform-origin:0 0}
 .c-preview[data-device="phone"] .c-prev-frame iframe{width:390px;max-width:100%;transform:none;border-left:1px solid var(--line-hard);border-right:1px solid var(--line-hard)}
-.c-prev-gone{margin:0}
-@media (max-width:1100px){
-  .adm-content.has-preview{grid-template-columns:minmax(0,1fr);grid-template-areas:"sections" "preview" "panel"}
-  .c-preview{position:static}.c-prev-frame{height:60vh}
-}
+.c-prev-gone,.c-prev-none{margin:0}
+.c-preview.is-none .c-prev-frame{display:none}
 .c-count{font-size:var(--fs-tiny);color:var(--dim);white-space:nowrap}
 
 .c-rows{display:flex;flex-direction:column;gap:2px;background:var(--line);
@@ -386,9 +384,6 @@ body:has(.web-panel:not([hidden]) .adm-content.has-preview) main{max-width:min(1
   color:var(--dim);font-size:var(--fs-tiny)}
 
 @media (max-width:900px){
-  .adm-content{grid-template-columns:1fr}
-  .c-sections{position:static;flex-direction:row;flex-wrap:wrap}
-  .c-sec{width:auto}
   .c-row{grid-template-columns:1fr}
 }
 
@@ -871,7 +866,6 @@ body:has(.web-panel:not([hidden]) .adm-content.has-preview) main{max-width:min(1
 
 /* "Needs work" and "All" are views, the pages below them are places; a
    hairline keeps the two kinds apart without a heading to read. */
-.c-sec-rule{display:block;height:1px;background:var(--line);margin:6px 12px}
 
 .c-edit textarea{field-sizing:content;max-height:420px}
 .c-key .tl-st{margin-top:2px}
@@ -959,7 +953,6 @@ body:has(.web-panel:not([hidden]) .adm-content.has-preview) main{max-width:min(1
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap}
 
-@media (max-width:900px){ .c-sec-rule{display:none} }
 @media (max-width:640px){
   .c-gap{display:none}
   .c-tools .ghost-btn{padding:9px 12px;font-size:10px}
@@ -979,14 +972,14 @@ body:has(.web-panel:not([hidden]) .adm-content.has-preview) main{max-width:min(1
   .ln-table td:nth-child(3){grid-column:2;grid-row:1 / span 2;align-self:center;width:auto}
 }
 
-/* ============================================================ WEBSITE AREA
-   Mockup board 13: the public site in one place, and a publish bar along
-   the foot of every screen. ITS SCREENS ARE A BAR UNDER THE HEADING
-   (Chase, 2026-10-19: "a preview window, but without it feeling cramped
-   … revamp it like the Site Creator … sub-nav"): the side list took a
-   column, and Pages has its own list of pages beside its words — three
-   columns before the preview. Now the screens run across the top, and the
-   width below is the screen's own. */
+/* ============================================================ AREAS
+   The public site's work, as four areas in the header (Chase, 2026-10-20:
+   "restructure it entirely so it matches similar to the staff header";
+   consoleNav.js `areas`). An area's tabs run across the top under its
+   heading, as the staff Updates page's do — except Site Creator's, which
+   are a list down the left as the staff Site Creator's are, with the page
+   as it will look in a third column beside Pages. Same width as every
+   other console page, so nothing moves sideways once it has loaded. */
 .web{display:block}
 .web-side{display:flex;gap:2px;margin:0 0 26px;border-bottom:1px solid var(--line);
   overflow-x:auto;scrollbar-width:none}
@@ -995,13 +988,33 @@ body:has(.web-panel:not([hidden]) .adm-content.has-preview) main{max-width:min(1
   text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .web-side a:hover{color:var(--text)}
 .web-side a[aria-current]{color:var(--text);border-bottom-color:var(--console-admin)}
-.web-main{min-width:0}
+.web-main{min-width:0;display:flex;flex-direction:column;gap:18px}
 /* a form reads best at a form's width, not the screen's */
 .web-panel[data-web-panel="settings"]{max-width:900px}
 /* The screens inside keep their own top spacing from before they were
    screens of one area; here the bar already sets the line. */
-.web-main > :first-child{margin-top:0}
-.web-main .adm-content{margin-top:20px}
+.web-main > :first-child,.web-panel > :first-child{margin-top:0}
+.web-panel[hidden]{display:none}
+
+.web.is-side{display:grid;grid-template-columns:180px minmax(0,1fr);gap:28px;align-items:start}
+.web.is-side.with-preview{grid-template-columns:180px minmax(0,1fr) minmax(0,.8fr)}
+.web.is-side .web-side{flex-direction:column;margin:0;border-bottom:0;overflow:visible;
+  position:sticky;top:calc(var(--header-h,64px) + 16px)}
+.web.is-side .web-side a{display:flex;align-items:center;padding:10px 14px;margin:0;font-size:14px;
+  border-bottom:0;border-left:2px solid transparent}
+.web.is-side .web-side a[aria-current]{background:var(--bg2);border-left-color:var(--console-admin)}
+/* the words' one save bar, only on the tabs that write them */
+#webArea:not([data-tab="pages"]):not([data-tab="advanced"]) #cSaveBar{display:none}
+@media (max-width:1180px){
+  .web.is-side.with-preview{grid-template-columns:180px minmax(0,1fr)}
+  .web.is-side .c-preview{display:none!important}
+}
+@media (max-width:760px){
+  .web.is-side,.web.is-side.with-preview{grid-template-columns:1fr;gap:18px}
+  .web.is-side .web-side{flex-direction:row;overflow-x:auto;position:static;border-bottom:1px solid var(--line)}
+  .web.is-side .web-side a{border-left:0;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .web.is-side .web-side a[aria-current]{background:none;border-bottom-color:var(--console-admin)}
+}
 
 /* The publish bar: quieter than a save bar, because nothing on it is
    unsaved — it says what is waiting and opens the review. */
@@ -1013,7 +1026,8 @@ body.has-webbar{padding-bottom:72px}
 /* Unsaved edits first: while the tab on screen has its save bar up, this
    steps aside. The tab on screen only — the Website is one page, and another
    tab can be holding unsaved changes out of sight (its link says so). */
-body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar{display:none}
+body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar,
+body:has(#webArea:is([data-tab="pages"],[data-tab="advanced"]) #cSaveBar:not([hidden])) .web-bar{display:none}
 .web-side a.is-dirty::after,.web-side a.has-changes::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
   border-radius:50%;background:var(--warn);vertical-align:middle}
 

@@ -101,6 +101,23 @@ await check("a changed word marks Pages and its line; a changed event marks Even
   eq(out.lines, ["site:mission.h2_thin"], "lines");
 });
 
+await check("a changed search title or share picture marks Advanced, not Pages", async () => {
+  /* 2026-10-20: a page's search and sharing are on the Advanced tab */
+  const live = { about: { seo_title: "About" } }, dev = { about: { seo_title: "About Thauma" } };
+  const siteLive = { share: { about: "" } }, siteDev = { share: { about: "/media/a.jpg" } };
+  const gh = async (url) => {
+    const u = new URL(url);
+    if (/\/actions\/workflows\//.test(u.pathname)) return Response.json({ workflow_runs: [{ head_sha: "livesha" }] });
+    if (/\/compare\//.test(u.pathname)) return Response.json({ files: ["src/_data/i18n/en.json", "src/_data/site.json"].map((filename) => ({ filename })), merge_base_commit: { sha: "livesha" } });
+    const ref = u.searchParams.get("ref"), path = decodeURIComponent(u.pathname.replace(/.*contents\//, ""));
+    const doc = path.endsWith("en.json") ? (ref === "livesha" ? live : dev) : (ref === "livesha" ? siteLive : siteDev);
+    return Response.json({ type: "file", content: b64(doc), sha: ref });
+  };
+  const out = await changes(env, gh);
+  eq(out.tabs, ["advanced"], "tabs");
+  eq(out.lines, ["site:about.seo_title"], "lines");
+});
+
 await check("never published, or GitHub failing: no dots, no error", async () => {
   eq(await changes(env, async () => Response.json({ workflow_runs: [] })), { tabs: [], lines: [] }, "never");
   eq(await changes(env, async () => new Response("x", { status: 500 })), { tabs: [], lines: [] }, "failing");

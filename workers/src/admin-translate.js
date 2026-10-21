@@ -3,7 +3,8 @@
  *
  *   GET                            the site's languages
  *   GET  ?summary                  every language's progress: total lines,
- *                                  missing, outdated
+ *                                  missing, outdated, and which lines
+ *                                  (`needs`)
  *   GET  ?lang=hr                  every translatable line for Croatian, with
  *                                  its status: missing, outdated or done
  *   POST { action: "file", lang, ids? }
@@ -50,6 +51,11 @@ import { getFile, getFileAt, putFile, compareBranches, githubConfig, lastSuccess
 import { PROD_WORKFLOW } from "./admin-publish.js";
 import { EDITORS } from "./admin-content.js";
 import { loadNotes, briefFor } from "./lib/translation-notes.js";
+import { withWords } from "./lib/mail-i18n.js";
+import { siteOrigin } from "./lib/origin.js";
+import { listConfirmEmail, contactReceiptEmail } from "./lib/mail.js";
+import { confirmedHtml } from "./confirm.js";
+import { doneHtml, backHtml } from "./unsubscribe.js";
 import {
   SOURCES, linesFor, leafMap, withStatus, buildFile, readFile, checkLine, cleanValue, setLine, hashText,
 } from "./lib/translation-file.js";
@@ -262,9 +268,12 @@ export default {
           const code = codes[i], r = results[i];
           if (r.error) { out.push({ code, error: r.error }); continue; }
           const count = (st) => r.lines.filter((l) => l.status === st).length;
+          /* `needs`: which lines, so Pages can mark the pages each language
+             is behind on without reading every language's words itself */
           out.push({ code, name: r.name, total: r.lines.length,
                      missing: code === "en" ? 0 : count("missing"),
-                     outdated: code === "en" ? 0 : count("outdated") });
+                     outdated: code === "en" ? 0 : count("outdated"),
+                     needs: code === "en" ? [] : r.lines.filter((l) => l.status === "missing" || l.status === "outdated").map((l) => l.id) });
         }
         return json({ languages: out });
       }
@@ -304,6 +313,13 @@ export default {
     if (request.method !== "POST") return json({ error: `${request.method} is not supported here.` }, 405);
     const body = await readJson(request);
     if (!body) return json({ error: "The request body was not valid JSON." }, 400);
+
+    /* ---- a page or an email, as the words being written draw it ---- */
+    if (body.action === "preview") {
+      const out = previewOf(String(body.page || ""), String(body.lang || "en").toLowerCase(),
+        body.words && typeof body.words === "object" ? body.words : {}, siteOrigin(env, request));
+      return out ? json(out) : json({ error: "There is no preview of that page.", code: "no-preview" }, 404);
+    }
 
     /* ---- the file ---- */
     if (body.action === "file") {
@@ -475,3 +491,32 @@ export default {
     return json({ error: "Unknown action." }, 400);
   },
 };
+
+/* THE PAGES AND EMAILS A VISITOR ONLY MEETS AFTER SOMETHING HAPPENS (Chase,
+   2026-10-20: "including showing the pages that I don't see normally like
+   the subscribed confirmation page"), drawn by the very functions that
+   send them, with made-up details where a real one would be, and with the
+   words as they are being written on Pages (`words`, "confirmed.heading" →
+   text) in place of the saved ones. Page ids as Pages has them. */
+export const PREVIEWS = ["e:confirmed", "e:unsub", "e:back", "e:confirm", "e:brand", "e:receipt"];
+export function previewOf(page, lang, words, origin) {
+  const draw = (fn) => withWords(lang, words, fn);
+  const sample = { name: "Ana", list: "Thauma Updates", ministry: "Thauma" };
+  switch (page) {
+    case "e:confirmed": return { html: draw(() => confirmedHtml(lang, [sample.list])) };
+    case "e:unsub": return { html: draw(() => doneHtml("", "", lang)) };
+    case "e:back": return { html: draw(() => backHtml("", "", lang)) };
+    case "e:confirm":
+    case "e:brand": {
+      const m = draw(() => listConfirmEmail({ name: sample.name, listName: sample.list, confirmUrl: origin + "/",
+        fromName: sample.ministry, origin, lang }));
+      return { html: m.html, subject: m.subject };
+    }
+    case "e:receipt": {
+      const m = draw(() => contactReceiptEmail({ name: sample.name, ministry: sample.ministry, topic: "", subject: "",
+        message: "…", origin, lang }));
+      return { html: m.html, subject: m.subject };
+    }
+    default: return null;
+  }
+}

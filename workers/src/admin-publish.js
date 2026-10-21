@@ -149,7 +149,9 @@ const TAB_OF_FILE = [
   [/^src\/content\/gatherings\//, "events"],
   [/^src\/content\/resources\//, "resources"],
 ];
-const SITE_KEY_TAB = { socials: "links", links: "links", images: "photos", share: "pages" };
+const SITE_KEY_TAB = { socials: "links", links: "links", images: "photos", share: "advanced" };
+/* a page's search title and description are on Advanced; every other word on Pages */
+const tabOfWord = (k) => (/\.seo_(title|desc)$/.test(k) ? "advanced" : "pages");
 export async function changes(env, fetchImpl = fetch) {
   const live = await lastSuccessfulRun(env, PROD_WORKFLOW, fetchImpl);
   if (live.error || live.never) return { tabs: [], lines: [] };
@@ -175,7 +177,7 @@ export async function changes(env, fetchImpl = fetch) {
   const jobs = [];
   for (const f of files) {
     if (/^src\/_data\/i18n\/[a-z-]+\.json$/.test(f)) {
-      jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("site:" + k)); }));
+      jobs.push(differ(f).then((ks) => ks.forEach((k) => { tabs.add(tabOfWord(k)); lines.add("site:" + k); })));
     } else if (f === "src/_data/emailsAndForms.json") {
       /* { en: {...}, hr: {...} } — the line is the key under the language */
       jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("emails:" + k.split(".").slice(1).join("."))); }));

@@ -272,8 +272,14 @@ await check("an old console address leads to where the page moved", async () => 
   eq(go("/admin/content/"), "https://x/admin/website/", "Content");
   eq(go("/admin/site"), "https://x/admin/website/settings/", "without the slash");
   eq(go("/admin/publish/"), "https://x/admin/website/?review", "Publish opens the review");
-  eq(go("/admin/library/?tab=gatherings"), "https://x/admin/website/resources/?tab=gatherings", "keeps the query");
-  eq(go("/admin/website/library/"), "https://x/admin/website/resources/", "Library became Resources and Events");
+  eq(go("/admin/library/?tab=gatherings"), "https://x/admin/updates/resources/?tab=gatherings", "keeps the query");
+  eq(go("/admin/website/library/"), "https://x/admin/updates/resources/", "Library became Resources and Events");
+  /* Website became four areas in the header (2026-10-20) */
+  eq(go("/admin/website/events/"), "https://x/admin/updates/", "Events are Updates");
+  eq(go("/admin/website/resources/"), "https://x/admin/updates/resources/", "Resources are Updates");
+  eq(go("/admin/website/forms/"), "https://x/admin/sharing/", "Forms are Sharing");
+  eq(go("/admin/website/mail/#composer"), "https://x/admin/mail/", "Mail is Mail");
+  eq(go("/admin/website/photos/"), null, "Photos stayed in Site Creator");
   eq(go("/staff/ministry/"), "https://x/staff/updates/", "Ministry became Updates");
   eq(go("/staff/mailing/?scope=organization"), "https://x/staff/mail/?scope=organization",
     "Mailing became Mail, still Thauma's");

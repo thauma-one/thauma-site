@@ -77,9 +77,22 @@ const has = (table, key) => typeof table[key] === "string" && table[key] !== "";
 export function t(lang, key, vars = {}) {
   const table = STRINGS[String(lang || "").toLowerCase()] || STRINGS.en;
   let s = (has(table, key) ? table : STRINGS.en)[key];
+  /* words being written in the console, for its preview (withWords) */
+  if (OVER && OVER.lang === String(lang || "en").toLowerCase() && typeof OVER.words[key] === "string" && OVER.words[key] !== "") s = OVER.words[key];
   if (s === undefined) return key;
   for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
   return s;
+}
+
+/* THE CONSOLE'S PREVIEW OF A PAGE OR AN EMAIL (Website › Pages, 2026-10-20):
+   drawn with the words as they are being written, before they are saved.
+   For the length of `fn` only, and `fn` must not wait on anything — a
+   Worker serves other requests between awaits, and they must get the real
+   words. */
+let OVER = null;
+export function withWords(lang, words, fn) {
+  OVER = { lang: String(lang || "en").toLowerCase(), words: words || {} };
+  try { return fn(); } finally { OVER = null; }
 }
 
 /** The languages this file actually carries. */

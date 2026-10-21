@@ -103,7 +103,7 @@
       if (res.status === 403 && url.indexOf(CONTENT) === 0 && (!method || method === 'GET')) {
         if ($('notAdmin')) $('notAdmin').hidden = false;
         $('cRoot').hidden = true;
-        document.querySelector('.c-tools').hidden = true;
+        hideTools();
       } else if ((!method || method === 'GET') && !quiet && window.StaffProblem) {
         window.StaffProblem(res.status === 401 ? tr('err.expired')
           : tr('err.refused') + ' (' + res.status + ')' + (data.error ? ' — ' + data.error : ''),
@@ -140,10 +140,28 @@
 
   /* ---- where a line lives, and what it is called ----------------------
 
-     THE PAGES, in the order the site has them; the menu and the footer are
-     one entry, as on the board. */
-  var PAGE_ORDER = ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact', 'stay',
-                    'events', 'team', 'menu', 'coming', 'notFound', 'closed', 'arcade', 'staff', 'emails', '_general'];
+     THE PAGES, in groups, in the order the site has them; the menu and the
+     footer are one entry, as on the board. Every word a visitor can meet
+     is on a page here (Chase, 2026-10-20: "including showing the pages
+     that I don't see normally like the subscribed confirmation page"): the
+     ones after a link in an email, the emails, the forms and widgets on
+     other websites, and a ministry's own site — each its own page, where
+     they were one long "Emails and forms". Their ids are `e:` and the
+     words' first part (emailsAndForms.json), so the contact form on other
+     websites is not taken for Thauma's own contact page. */
+  var GROUPS = [
+    ['site', ['home', 'about', 'mission', 'values', 'resources', 'give', 'contact', 'stay', 'events', 'team',
+              'menu', 'arcade', 'coming', 'notFound', 'staff', '_general']],
+    ['after', ['e:confirmed', 'e:unsub', 'e:back']],
+    ['emails', ['e:confirm', 'e:receipt', 'e:brand', 'e:notify']],
+    ['embeds', ['e:form', 'e:contact', 'e:widget', 'e:dates']],
+    ['ministry', ['e:site', 'closed', 'e:app']]
+  ];
+  var PAGE_ORDER = [].concat.apply([], GROUPS.map(function (g) { return g[1]; }));
+  function groupOf(sec) {
+    for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].indexOf(sec) !== -1) return GROUPS[i][0];
+    return sec.indexOf('e:') === 0 ? 'emails' : 'site';
+  }
 
   function sectionOf(line) {
     /* THE CLOSED PAGE (a ministry site switched off; serve.js closedSite):
@@ -151,14 +169,14 @@
        own (Chase, 2026-10-19: "I don't see the Closed page in the Admin
        Website Pages tab") */
     if (line.source === 'emails' && /^site\.closed/.test(line.key)) return 'closed';
-    if (line.source === 'emails') return 'emails';
+    if (line.source === 'emails') return 'e:' + line.key.split('.')[0];
     if (line.key.indexOf('.') === -1) return '_general';
     var s = line.key.split('.')[0];
     return s === 'nav' || s === 'footer' ? 'menu' : s;
   }
   function sectionLabel(s) {
     if (s === '_general') return tr('lbl.s.general');
-    if (s === 'emails') return tr('tl.src.emails');
+    if (s.indexOf('e:') === 0) return has('lbl.s.e.' + s.slice(2)) ? tr('lbl.s.e.' + s.slice(2)) : humanize(s.slice(2));
     return has('lbl.s.' + s) ? tr('lbl.s.' + s) : humanize(s);
   }
 
@@ -289,27 +307,89 @@
      trip to GitHub (about 100–140ms, measured); asked one after another
      they were most of the second the page took to appear. The language is
      guessed from last time and checked against the list when it arrives. */
+  /* OPENS AT ONCE ON A RETURN VISIT (Chase, 2026-10-20: "if you navigated
+     away to People and back to Website, Website should open quickly
+     again"). What the last visit in this tab read — the settings, the
+     notes, one language's words, the summary — is kept for the session
+     and drawn first; the page then reads them again behind it. Nothing
+     can be saved from the kept copy: Save waits for the fresh one, so a
+     save is always checked against what the repository holds now. */
+  var SNAP = 'thauma.content.snap', SNAP_AGE = 30 * 60 * 1000;
+  function snapGet() {
+    try {
+      var v = JSON.parse(sessionStorage.getItem(SNAP) || 'null');
+      return v && Date.now() - v.at < SNAP_AGE ? v : null;
+    } catch (e) { return null; }
+  }
+  function snapPut(part, data) {
+    try {
+      var v = snapGet() || {};
+      v[part] = data; v.at = Date.now();
+      sessionStorage.setItem(SNAP, JSON.stringify(v));
+    } catch (e) { /* private mode, or full: the next visit reads afresh */ }
+  }
+
+  /* EVERYTHING THE FIRST DRAW NEEDS, ASKED FOR AT ONCE. The settings, the
+     notes and the words of the language you were last writing each cost a
+     trip to GitHub (about 100–140ms, measured); asked one after another
+     they were most of the second the page took to appear. The language is
+     guessed from last time and checked against the list when it arrives. */
   async function boot() {
     var remembered = null;
     try { remembered = localStorage.getItem('thauma.content.lang'); } catch (e) { /* private mode */ }
     var guess = state.lang || remembered || 'en';
-    var both = await Promise.all([
+    var asking = Promise.all([
       send(CONTENT + '?file=site'),
       send(NOTES, 'GET', null, true),
       send(WORDS + '?lang=' + encodeURIComponent(guess), 'GET', null, true)
     ]);
-    var site = both[0], notes = both[1], words = both[2];
-    if (!site || site.failed) return;
-    if (site.configured === false) return notConfigured(site.reason || site.error || '');
+    var snap = state.lang ? null : snapGet();
+    if (snap && snap.site && snap.words && snap.words.lang === guess) {
+      var done;
+      state.fresh = new Promise(function (r) { done = r; });
+      await start(snap.site, snap.notes, snap.words.data, guess);
+      if (snap.summary) takeSummary(snap.summary);
+      var both = await asking;
+      await refresh(both, guess, snap);
+      done();
+      state.fresh = null;
+      return;
+    }
+    var got = await asking;
+    if (await start(got[0], got[1], got[2], guess)) loadSummary();   // names and progress, after the first draw
+  }
+  async function start(site, notes, words, guess) {
+    if (!site || site.failed) return false;
+    if (site.configured === false) { notConfigured(site.reason || site.error || ''); return false; }
+    snapPut('site', site);
     takeSite(site);
-    if (notes && !notes.failed) takeNotes(notes);
-
+    if (notes && !notes.failed) { snapPut('notes', notes); takeNotes(notes); }
     var want = state.langs.indexOf(guess) !== -1 ? guess : state.langs[0];
     fillPickers();
     $('cLang').disabled = false;
     $('cLangs').disabled = false;
     await openLang(want, false, want === guess && words && !words.failed ? words : null);
-    loadSummary();               // names and progress, after the first draw
+    return true;
+  }
+  /* The fresh copy, behind the kept one: nothing to do when they agree
+     (nearly always); otherwise drawn in its place, keeping the page you are
+     on and anything typed meanwhile. */
+  async function refresh(both, guess, snap) {
+    var site = both[0], notes = both[1], words = both[2];
+    if (!site || site.failed || site.configured === false) return;
+    var same = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
+    snapPut('site', site);
+    if (notes && !notes.failed) { snapPut('notes', notes); takeNotes(notes); }
+    var siteSame = same(site.data, snap.site.data);
+    takeSite(site);
+    if (words && !words.failed && state.lang === guess && (!siteSame || !same(words, snap.words.data))) {
+      var typed = {};
+      dirtyIds().forEach(function (id) { typed[id] = state.draft[id]; });
+      await openLang(guess, true, words);
+      Object.keys(typed).forEach(function (id) { if (id in state.draft) state.draft[id] = typed[id]; });
+      if (Object.keys(typed).length) render();
+    } else if (!siteSame) fillPickers();
+    loadSummary();
   }
 
   function takeSite(site) {
@@ -323,12 +403,18 @@
   async function loadSummary() {
     var data = await send(WORDS + '?summary', 'GET', null, true);
     if (!data || data.failed) return;
+    snapPut('summary', data);
+    takeSummary(data);
+  }
+  function takeSummary(data) {
     state.summary = {};
     (data.languages || []).forEach(function (l) {
       state.summary[l.code] = l;
       if (l.name && l.name !== l.code) state.names[l.code] = l.name;
     });
     fillPickers();
+    takeOthers();
+    if (state.rows.length && !state.review) { renderCrumb(); if (!state.view && !state.find) renderRows(); }
     if (!$('cSet').hidden) renderTable();
   }
 
@@ -337,7 +423,12 @@
     el.innerHTML = '<b>' + esc(tr('con.notConnected')) + '</b> ' + esc(reason);
     el.hidden = false;
     $('cRoot').hidden = true;
-    document.querySelector('.c-tools').hidden = true;
+    hideTools();
+  }
+  function hideTools() {
+    state.noTools = true;
+    $('cWriting').hidden = true;
+    document.querySelector('.c-find-row').hidden = true;
   }
 
   function fillPickers() {
@@ -359,26 +450,28 @@
     $('cBesideWrap').hidden = !others.length;
   }
 
-  /* Every other language's gaps by page, read quietly after a language opens
-     and after a save; the marks wait for it rather than hold the page up. */
-  async function loadOthers() {
+  /* EVERY OTHER LANGUAGE'S GAPS BY PAGE, from the summary: which of its
+     lines are missing or outdated (`needs`). It was every language's whole
+     word list, read again after each language opened — four answers of
+     125KB for a count. */
+  function takeOthers() {
     var out = {};
-    await Promise.all(state.langs.filter(function (c) { return c !== 'en'; }).map(async function (c) {
-      var data = await send(WORDS + '?lang=' + encodeURIComponent(c), 'GET', null, true);
-      if (!data || data.failed) return;
-      var by = {};
-      (data.lines || []).forEach(function (l) {
-        if (l.status === 'missing' || l.status === 'outdated') { var sec = sectionOf(l); by[sec] = (by[sec] || 0) + 1; }
+    Object.keys(state.summary).forEach(function (c) {
+      var l = state.summary[c], by = {};
+      if (c === 'en' || !l.needs) return;
+      l.needs.forEach(function (id) {
+        var line = state.byId[id];
+        if (line) { var sec = sectionOf(line); by[sec] = (by[sec] || 0) + 1; }
       });
       out[c] = by;
-    }));
+    });
     state.others = out;
-    renderSections();
   }
 
   async function openLang(code, keepView, already) {
     var data = already || await send(WORDS + '?lang=' + encodeURIComponent(code));
     if (!data || data.failed) { $('cLang').value = state.lang || ''; return false; }
+    snapPut('words', { lang: code, data: data });
     state.lang = code;
     if (data.name && data.name !== code) state.names[code] = data.name;
     state.lines = data.lines || [];
@@ -398,20 +491,21 @@
 
     /* Where to start: what needs doing, if anything does; otherwise the first
        page — or, after a save, wherever you were. */
-    if (!keepView || !viewExists(state.view)) {
-      /* Where you were, if this language has it — a reload returns there
-         (Chase, 2026-09-27) — otherwise what needs doing, otherwise the
-         first page. */
+    if (!keepView || (state.view && !viewExists(state.view))) {
+      /* The page a link asked for (?page=contact, from Sharing), else where
+         you were if this language has it — a reload returns there (Chase,
+         2026-09-27) — else the list of pages. */
+      var asked = new URLSearchParams(location.search).get('page');
       var was = null;
       try { was = sessionStorage.getItem('thauma.content.view.' + code); } catch (e) { /* private mode */ }
-      state.view = viewExists(was) ? was
-        : state.rows.some(needsWork) ? 'needs' : 'section:' + (orderedSections()[0] || '_general');
+      state.view = asked && viewExists('section:' + asked) ? 'section:' + asked : viewExists(was) ? was : null;
+      if (asked) try { history.replaceState(history.state, '', location.pathname + location.hash); } catch (e) { /* file: */ }
     }
     fillPickers();
     await loadBeside();
     $('cRoot').hidden = !!state.review;
+    takeOthers();
     render();
-    loadOthers();
     return true;
   }
 
@@ -442,6 +536,9 @@
 
   /* ---- drawing -------------------------------------------------------- */
 
+  /* What a view holds. The list of pages (no view) holds no lines on
+     screen; what it would download is every line. A page's own view leaves
+     its search title and description to Advanced. */
   function visible() {
     if (state.find) {
       var q = state.find.toLowerCase();
@@ -453,9 +550,9 @@
           });
       });
     }
-    if (state.view === 'all') return state.rows;
+    if (!state.view || state.view === 'all') return state.rows;
     if (state.view === 'needs') return state.rows.filter(needsWork);
-    return state.rows.filter(function (r) { return 'section:' + r.section === state.view; });
+    return state.rows.filter(function (r) { return 'section:' + r.section === state.view && !isSeo(r); });
   }
   function visibleLineIds() {
     var ids = [];
@@ -464,10 +561,22 @@
   }
 
   function render() {
-    renderSections();
+    renderCrumb();
     renderRows();
+    renderAdvanced();
     renderMore();
     renderSaveBar();
+    previewSync();
+  }
+
+  /* ---- which tab is on screen -------------------------------------------
+     The words are written on two tabs, Pages and Advanced; the language row
+     above them and their save bar belong to both (website/writing.njk). */
+  var areaEl = document.getElementById('webArea');
+  function onTab() { return areaEl ? areaEl.getAttribute('data-tab') : 'pages'; }
+  function tabShown() {
+    var t = onTab();
+    if (!state.noTools) $('cWriting').hidden = t !== 'pages' && t !== 'advanced';
     previewSync();
   }
 
@@ -478,12 +587,20 @@
      words with the key it came from (<span data-k>, site-rich.js); a
      change is drawn into those with the very function the build uses
      (SiteRich.richHtml), so the preview and the page cannot disagree.
-     Focusing a line scrolls the preview to it and lights it up. */
+     Focusing a line scrolls the preview to it and lights it up.
+
+     BESIDE PAGES, AS THE STAFF SITE CREATOR HAS IT (2026-10-20): always
+     there where the window has room for it (admin.css AREAS), and it goes
+     where you go — a page opened in the list shows in it, and a link
+     pressed in it opens that page's words. */
   var PAGE_OF = { home: '', about: 'about/', mission: 'mission/', values: 'values/', resources: 'resources/',
     give: 'give/', contact: 'contact/', events: 'events/', team: 'team/', coming: 'coming-soon/' };
-  var prev = { on: false, url: null, device: 'wide', section: null };
-  /* Remembered; until it is, open on a screen wide enough for it beside the words */
-  try { var pvSaved = localStorage.getItem('thauma.pages.preview'); prev.on = pvSaved === null ? window.innerWidth >= 1500 : pvSaved === '1'; } catch (e) { prev.on = window.innerWidth >= 1500; }
+  var prev = { url: null, device: 'wide', section: null, timer: null };
+  /* THE PAGES AND EMAILS THE SERVER DRAWS (admin-translate.js previewOf):
+     after a link in an email, and the emails themselves — asked for with
+     the words as they are on screen, and asked again as they are typed. */
+  var SERVED = ['e:confirmed', 'e:unsub', 'e:back', 'e:confirm', 'e:brand', 'e:receipt'];
+  function prevKind(sec) { return PAGE_OF[sec] != null ? 'site' : SERVED.indexOf(sec) !== -1 ? 'served' : 'none'; }
   function prevSection() {
     if (prev.section) return prev.section;
     var v = state.view || '';
@@ -497,10 +614,17 @@
     var f = $('cPrevFrame');
     try { return f && f.contentDocument; } catch (e) { return null; }
   }
-  /* One line's words, drawn wherever the page shows them. */
+  /* One line's words, drawn wherever the page shows them — in the language
+     being written, never into another language's page. */
   function prevDraw(id) {
     var doc = prevDoc(), line = state.byId[id];
+    if (line && line.source === 'emails' && prevKind(prevSection()) === 'served' && sectionOf(line) === prevSection()) {
+      clearTimeout(prev.timer);
+      prev.timer = setTimeout(served, 450);
+      return;
+    }
     if (!doc || !line || line.source !== 'site' || !window.SiteRich) return;
+    if ((doc.documentElement.getAttribute('lang') || state.lang) !== state.lang) return;
     [].forEach.call(doc.querySelectorAll('[data-k="' + line.key + '"]'), function (el) {
       el.innerHTML = window.SiteRich.richHtml(state.draft[id]);
     });
@@ -521,46 +645,102 @@
     var box = $('cPreview') && $('cPreview').querySelector('.c-prev-frame'), f = $('cPrevFrame');
     if (!box || !f) return;
     if (prev.device === 'phone') { f.style.width = ''; f.style.height = ''; f.style.transform = ''; return; }
-    var k = Math.min(1, box.clientWidth / 1280);
-    f.style.width = '1280px';
+    /* an email is read at an email's width, not a desktop's */
+    var w = prevKind(prevSection()) === 'served' && /^e:(confirm|brand|receipt)$/.test(prevSection()) ? 720 : 1280;
+    var k = Math.min(1, box.clientWidth / w);
+    f.style.width = w + 'px';
     f.style.height = Math.round(box.clientHeight / k) + 'px';
     f.style.transform = 'scale(' + k + ')';
   }
-  window.addEventListener('resize', function () { if (prev.on) prevFit(); });
+  window.addEventListener('resize', function () { if (!$('cPreview').hidden) prevFit(); });
   function previewSync() {
     var box = $('cPreview');
     if (!box) return;
-    $('cRoot').classList.toggle('has-preview', prev.on);
-    box.hidden = !prev.on;
-    $('cPrevBtn').setAttribute('aria-pressed', prev.on ? 'true' : 'false');
-    if (!prev.on) return;
+    var on = onTab() === 'pages' && !state.review && !!state.lang;
+    if (areaEl) areaEl.classList.toggle('with-preview', on);
+    box.hidden = !on;
+    if (!on) return;
     prevFit();
+    var sec = prevSection(), kind = prevKind(sec);
+    $('cPrevNone').hidden = kind !== 'none';
+    $('cPreview').classList.toggle('is-none', kind === 'none');
+    if (kind === 'none') { prev.url = 'none:' + sec; $('cPrevUrl').textContent = sectionLabel(sec); $('cPrevGone').hidden = true; return; }
+    if (kind === 'served') {
+      if (prev.url === 'served:' + sec + ':' + state.lang) return;
+      prev.url = 'served:' + sec + ':' + state.lang;
+      $('cPrevUrl').textContent = sectionLabel(sec);
+      $('cPrevGone').hidden = true;
+      $('cPrevOpen').hidden = true;
+      prevFit();
+      return served();
+    }
+    $('cPrevOpen').hidden = false;
     var url = prevUrl();
     if (url !== prev.url) {
       prev.url = url;
       $('cPrevUrl').textContent = url;
       $('cPrevOpen').href = url;
       $('cPrevGone').hidden = true;
+      $('cPrevFrame').removeAttribute('srcdoc');
       $('cPrevFrame').src = url;
     } else prevDrawAll();
+  }
+  /* One of the server's pages or emails, with this page's words as they are
+     on screen; an email shows its subject line above it. */
+  var servedAsk = 0;
+  async function served() {
+    var sec = prevSection(), ask = ++servedAsk, words = {};
+    state.lines.forEach(function (l) {
+      if (l.source === 'emails' && sectionOf(l) === sec) words[l.key] = state.draft[l.id];
+    });
+    var data = await send(WORDS, 'POST', { action: 'preview', page: sec, lang: state.lang, words: words }, true);
+    if (ask !== servedAsk || !data || data.failed || prev.url !== 'served:' + sec + ':' + state.lang) return;
+    var html = data.html;
+    if (data.subject) {
+      html = html.replace(/<body([^>]*)>/i, '<body$1><div style="font:14px/1.5 Helvetica,Arial,sans-serif;color:#93a1b2;background:#0B0F15;' +
+        'padding:14px 22px;border-bottom:1px solid #1A222D"><span style="color:#5e6b7a">' + esc(tr('con.subject')) + '</span> &nbsp;' +
+        '<b style="color:#EDF2F8;font-weight:600">' + esc(data.subject) + '</b></div>');
+    }
+    var f = $('cPrevFrame'), y = 0;
+    try { y = f.contentWindow.scrollY || 0; } catch (e) { /* not drawn yet */ }
+    f.removeAttribute('src');
+    f.dataset.keep = String(y);
+    f.srcdoc = html;
+  }
+  /* Which of the site's pages an address is, or null. */
+  function pageAt(path) {
+    var m = String(path).match(/^\/[a-z]{2,3}(?:-[a-z0-9]+)?\/(.*)$/);
+    if (!m) return null;
+    for (var k in PAGE_OF) if (PAGE_OF[k] === m[1]) return k;
+    return null;
   }
   if ($('cPreview')) {
     $('cPrevFrame').addEventListener('load', function () {
       var doc = prevDoc();
       /* A page this build does not have (a coming-soon site builds only its
          landing page): said, not shown as a blank. */
+      if (doc && $('cPrevFrame').hasAttribute('srcdoc')) {
+        var keep = Number($('cPrevFrame').dataset.keep || 0);
+        if (keep) try { $('cPrevFrame').contentWindow.scrollTo(0, keep); } catch (e) { /* gone */ }
+        return;
+      }
       var missing = !doc || !doc.querySelector('[data-k]') || /404/.test(doc.title || '');
       $('cPrevGone').hidden = !missing;
       if (!doc) return;
+      /* THE WORDS FOLLOW THE PREVIEW (as the staff Site Creator's do,
+         2026-10-04): a page opened by pressing a link in it becomes the
+         page being written, so the two never show different pages. */
+      var path = doc.location.pathname, seen = pageAt(path);
+      if (path !== prev.url && seen) {
+        prev.url = path;
+        $('cPrevUrl').textContent = path;
+        $('cPrevOpen').href = path;
+        if (seen !== prevSection() && onTab() === 'pages' && viewExists('section:' + seen)) openView('section:' + seen, true);
+      }
       var st = doc.createElement('style');
       st.textContent = '.c-prev-on{outline:2px solid #2FD8FF;outline-offset:6px;border-radius:3px;transition:outline-color .3s}';
       doc.head.appendChild(st);
       prevDrawAll();
-    });
-    $('cPrevBtn').addEventListener('click', function () {
-      prev.on = !prev.on;
-      try { localStorage.setItem('thauma.pages.preview', prev.on ? '1' : '0'); } catch (e) { /* private mode */ }
-      previewSync();
     });
     [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (b) {
       b.addEventListener('click', function () {
@@ -570,57 +750,93 @@
         [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
       });
     });
-    /* A line from another page (a search, Needs work) shows its own page. */
+    /* A line from another page (a search, Needs Work) shows its own page. */
     $('cRows').addEventListener('focusin', function (e) {
-      if (!prev.on) return;
+      if ($('cPreview').hidden) return;
       var rowEl = e.target.closest && e.target.closest('.c-row');
       var row = rowEl && state.rows.filter(function (r) { return r.id === rowEl.getAttribute('data-row'); })[0];
       if (!row) return;
-      var sec = PAGE_OF[row.section] != null ? row.section : 'home';
+      var sec = prevKind(row.section) !== 'none' ? row.section : prevSection();
       if (sec !== prevSection()) { prev.section = sec; previewSync(); setTimeout(function () { prevShow(row.lines[0].id); }, 700); return; }
       prevShow(row.lines[0].id);
     });
   }
 
-  function renderSections() {
-    var counts = {};
-    orderedSections().forEach(function (s) { counts[s] = { n: 0, needs: 0, dirty: 0 }; });
+  /* ---- the list of pages, and the menu over one page ------------------
+     As the staff Site Creator's Pages tab (Chase, 2026-10-20): every page
+     as a row — how many lines, what still needs translating, which other
+     languages are behind, and the dot for changes not published yet —
+     then one page's lines, with "← All Pages" and a menu of every page at
+     the top. */
+  function pageStats() {
+    var out = {};
+    orderedSections().forEach(function (s) { out[s] = { n: 0, needs: 0, dirty: 0 }; });
     state.rows.forEach(function (r) {
-      var c = counts[r.section];
+      var c = out[r.section];
       c.n++;
       if (needsWork(r)) c.needs++;
       if (rowDirty(r)) c.dirty++;
     });
-    var needs = state.rows.filter(needsWork).length;
-    var on = state.find ? null : state.view;
-    /* WHICH OTHER LANGUAGES ARE BEHIND on this page (2026-10-07, suggestion 2:
-       the Site Creator's "missing HR, SR"): missing or outdated lines in
-       each language other than the one being written. */
-    var behind = function (sec) {
-      var codes = Object.keys(state.others).filter(function (c) { return c !== state.lang && (state.others[c][sec] || 0) > 0; });
-      if (!codes.length) return '';
-      return '<span class="c-sec-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
-        esc(codes.join(' ').toUpperCase()) + '</span>';
+    return out;
+  }
+  /* which other languages are behind on a page: their codes, quietly */
+  function behindOn(sec) {
+    return Object.keys(state.others).filter(function (c) { return c !== state.lang && (state.others[c][sec] || 0) > 0; });
+  }
+  function overviewHtml() {
+    var stats = pageStats(), needs = state.rows.filter(needsWork).length, by = {};
+    orderedSections().forEach(function (s) { var g = groupOf(s); (by[g] = by[g] || []).push(s); });
+    var row = function (view, label, n, extra, dot) {
+      return '<li><button type="button" class="c-page" data-view="' + esc(view) + '">' +
+        '<span class="c-page-n">' + esc(label) + (dot ? '<i class="ws-dot" title="' + esc(tr('ws.unpublished')) + '"></i>' : '') + '</span>' +
+        '<span class="c-page-c tnum">' + esc(n === 1 ? tr('con.oneLine') : fill('con.nLines', { n: n })) + '</span>' +
+        '<span class="c-page-x">' + (extra || '') + '</span>' +
+        '<span class="c-page-go" aria-hidden="true">›</span></button></li>';
     };
-
-    function button(view, label, n, extra, dirty) {
-      var sec = view.indexOf('section:') === 0 ? view.slice(8) : null;
-      var pub = sec && state.changedSecs[sec];
-      return '<button type="button" class="c-sec' + (view === on ? ' is-on' : '') + (dirty ? ' is-dirty' : '') +
-        '" data-view="' + esc(view) + '"' + (view === on ? ' aria-current="true"' : '') + '>' +
-        '<span class="c-sec-n">' + esc(label) + (pub ? '<span class="c-sec-dot" title="' + esc(tr('ws.unpublished')) + '" aria-label="' + esc(tr('ws.unpublished')) + '"></span>' : '') + '</span>' +
-        '<span class="c-sec-c tnum">' + n + '</span>' + (extra || '') + '</button>';
-    }
-
-    $('cSections').innerHTML =
-      (needs ? button('needs', tr('con.needsWork'), needs, '', false) : '') +
-      button('all', tr('con.all'), state.rows.length, '', false) +
-      '<span class="c-sec-rule" aria-hidden="true"></span>' +
-      orderedSections().map(function (s) {
-        var c = counts[s];
-        return button('section:' + s, sectionLabel(s), c.n,
-          (c.needs ? '<span class="c-sec-empty">' + c.needs + '</span>' : '') + behind(s), c.dirty);
-      }).join('');
+    var html = needs ? '<ul class="c-pages c-pages-needs">' + row('needs', tr('con.needsWork'), needs, '', false) + '</ul>' : '';
+    GROUPS.map(function (g) { return g[0]; }).concat(Object.keys(by).filter(function (g) {
+      return !GROUPS.some(function (x) { return x[0] === g; });
+    })).forEach(function (g) {
+      if (!by[g]) return;
+      html += '<h3 class="c-group">' + esc(tr('lbl.g.' + g)) + '</h3><ul class="c-pages">' + by[g].map(function (s) {
+        var c = stats[s], codes = behindOn(s);
+        return row('section:' + s, sectionLabel(s), c.n,
+          (c.needs ? '<span class="c-sec-empty" title="' + esc(tr('con.needsWork')) + '">' + c.needs + '</span>' : '') +
+          (codes.length ? '<span class="c-sec-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
+            esc(codes.join(' ').toUpperCase()) + '</span>' : ''),
+          !!state.changedSecs[s] || c.dirty > 0);
+      }).join('') + '</ul>';
+    });
+    html += '<button type="button" class="link-btn c-everyline" data-view="all">' + esc(fill('con.everyLine', { n: state.rows.length })) + '</button>';
+    return html;
+  }
+  /* The menu of pages: the same groups as the list. A mark after a name
+     says it has changes. */
+  function pageMenu(selected, only) {
+    var stats = pageStats(), by = {};
+    orderedSections().forEach(function (s) { if (!only || only(s)) { var g = groupOf(s); (by[g] = by[g] || []).push(s); } });
+    var opt = function (v, label) { return '<option value="' + esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + esc(label) + '</option>'; };
+    return Object.keys(by).sort(function (a, b) {
+      var ia = GROUPS.map(function (g) { return g[0]; }).indexOf(a), ib = GROUPS.map(function (g) { return g[0]; }).indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    }).map(function (g) {
+      return '<optgroup label="' + esc(tr('lbl.g.' + g)) + '">' + by[g].map(function (s) {
+        var c = stats[s];
+        return opt('section:' + s, sectionLabel(s) + (state.changedSecs[s] || c.dirty ? ' •' : ''));
+      }).join('') + '</optgroup>';
+    }).join('');
+  }
+  function renderCrumb() {
+    var box = $('cCrumb');
+    var open = !!state.view && !state.find;
+    box.hidden = !open;
+    if (!open) { box.innerHTML = ''; return; }
+    var needs = state.rows.filter(needsWork).length;
+    var sel = (state.view === 'needs' || needs ? '<option value="needs"' + (state.view === 'needs' ? ' selected' : '') + '>' + esc(tr('con.needsWork')) + ' (' + needs + ')</option>' : '') +
+      '<option value="all"' + (state.view === 'all' ? ' selected' : '') + '>' + esc(fill('con.everyLine', { n: state.rows.length })) + '</option>';
+    box.innerHTML = '<button type="button" class="ghost-btn sm" data-view="">← ' + esc(tr('ws.allPages')) + '</button>' +
+      '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('web.pages')) + '</span>' +
+        '<select data-page-pick>' + sel + pageMenu(state.view) + '</select></label>';
   }
 
   /* FORMATTED WORDS (2026-10-07, Chase: "allowing the text controls that the
@@ -653,6 +869,7 @@
     /* In a view that mixes pages — Needs work, All, a search — "Intro" alone
        does not say which page; there the page leads the name. */
     var mixed = !!state.find || state.view === 'needs' || state.view === 'all';
+    if (isSeo(r) && onTab() === 'advanced') mixed = false;
     var name = mixed && r.section !== '_general' ? sectionLabel(r.section) + ' · ' + r.label : r.label;
     var dirty = rowDirty(r);
     var mark = needsWork(r) && !dirty ? rowStatus(r) : '';
@@ -709,7 +926,7 @@
   }
   /* the card follows what is typed */
   function seoLive(id) {
-    var line = state.byId[id], card = document.querySelector('.c-seo');
+    var line = state.byId[id], card = $('cAdv').querySelector('.c-seo');
     if (!line || !card || !/\.seo_(title|desc)$/.test(line.key)) return;
     var which = /seo_title$/.test(line.key) ? '[data-seo-title]' : '[data-seo-desc]';
     [].forEach.call(card.querySelectorAll(which), function (el) { el.textContent = plainOf(state.draft[id]); });
@@ -719,7 +936,7 @@
      the file it is given), and saved to site.json at once, like the other
      settings. "Use the Thauma card" goes back to the default. */
   async function seoPicture(page, file) {
-    var status = document.querySelector('.c-seo [data-seo-status]');
+    var status = $('cAdv').querySelector('.c-seo [data-seo-status]');
     var say = function (k) { if (status) status.textContent = tr(k); };
     try {
       var url = URL.createObjectURL(file), v = null;
@@ -732,18 +949,32 @@
         headers: { 'Content-Type': blob.type || 'image/jpeg', 'X-File-Name': 'share-' + page }, body: blob });
       var body = await res.json().catch(function () { return {}; });
       if (!res.ok) throw new Error(body.error || tr('err.refused'));
-      if (await saveSetting('share.' + page, body.url)) renderRows();
+      if (await saveSetting('share.' + page, body.url)) renderAdvanced();
     } catch (e) { if (status) status.textContent = e.message; }
   }
-  $('cRows').addEventListener('change', function (e) {
+  $('cAdv').addEventListener('change', function (e) {
     var t = e.target;
     if (t.dataset && t.dataset.seoPic && t.files && t.files[0]) seoPicture(t.dataset.seoPic, t.files[0]);
+    if (t.hasAttribute('data-adv-page')) {
+      state.advPage = t.value;
+      try { sessionStorage.setItem('thauma.content.adv', state.advPage); } catch (e2) { /* private mode */ }
+      renderAdvanced();
+    }
   });
-  $('cRows').addEventListener('click', async function (e) {
+  $('cAdv').addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('[data-seo-unpic]');
+    if (b && await saveSetting('share.' + b.dataset.seoUnpic, '')) renderAdvanced();
+  });
+  /* The list of pages, a page from it, "← All Pages", the menu, and one
+     page's way back. */
+  $('cRoot').addEventListener('click', function (e) {
     var pb = e.target.closest && e.target.closest('[data-page-back]');
     if (pb) return pageBack(pb.dataset.pageBack);
-    var b = e.target.closest && e.target.closest('[data-seo-unpic]');
-    if (b && await saveSetting('share.' + b.dataset.seoUnpic, '')) renderRows();
+    var v = e.target.closest && e.target.closest('[data-view]');
+    if (v) openView(v.getAttribute('data-view') || null);
+  });
+  $('cCrumb').addEventListener('change', function (e) {
+    if (e.target.hasAttribute('data-page-pick')) openView(e.target.value);
   });
 
   async function pageBack(page) {
@@ -764,30 +995,62 @@
   }
 
   function renderRows() {
+    /* THE LIST OF PAGES, until one is opened (or a search is typed). */
+    if (!state.view && !state.find) {
+      $('cCount').textContent = '';
+      $('cRows').className = 'c-rows is-list';
+      $('cRows').innerHTML = overviewHtml();
+      return;
+    }
+    $('cRows').className = 'c-rows';
     var rows = visible();
     $('cCount').textContent = state.find ? rows.length + ' ' + tr('con.matches') : '';
     /* THE CONTACT PAGE'S FORM: its words are here, like the rest of the
-       page; where its messages go is Website › Forms. */
+       page; where its messages go is Sharing. */
     var forms = !state.find && state.view === 'section:contact'
-      ? '<a class="up-share-link c-formslink" href="/admin/website/forms/" data-web-go="forms">' +
-          esc(tr('con.formsLink')) + '</a>' : '';
-    /* SEARCH AND SHARING (2026-10-07, suggestion 4): on a page's own view,
-       how it shows in a search and when shared, first, with its two lines
-       under it and its picture beside — the rest of the page's words after. */
-    var seo = '', page = !state.find && /^section:/.test(state.view || '') ? state.view.slice(8) : null;
-    if (page && PAGE_OF[page] != null && rows.some(isSeo)) {
-      seo = seoCard(page) + rows.filter(isSeo).map(rowHtml).join('') + '<div class="c-seo-end"></div>';
-      rows = rows.filter(function (r) { return !isSeo(r); });
-    }
+      ? '<a class="up-share-link c-formslink" href="/admin/sharing/">' + esc(tr('con.formsLink')) + '</a>' : '';
     /* ONE PAGE BACK (Chase, 2026-10-19: "we need the ability to discard
        changes of certain section"): this page's lines go back to what
        visitors see now — typed words and saved ones not yet published. They
        come back as unsaved, to look over and Save like any change. */
-    $('cRows').innerHTML = '<div class="ws-revert" data-back-line hidden></div>' + forms + seo + (rows.length ? rows.map(rowHtml).join('')
+    $('cRows').innerHTML = '<div class="ws-revert" data-back-line hidden></div>' + forms + (rows.length ? rows.map(rowHtml).join('')
       : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>');
     $('cRows').querySelectorAll('textarea').forEach(autosize);
     drawBack();
   }
+
+  /* ---- Advanced: search and sharing ------------------------------------
+     SEARCH AND SHARING (2026-10-07, suggestion 4; on its own tab since
+     2026-10-20, as the staff Site Creator has it): a page from the menu,
+     how it shows in a search and when shared, then its two lines and its
+     picture. */
+  function advPages() {
+    return orderedSections().filter(function (sec) {
+      return PAGE_OF[sec] != null && state.rows.some(function (r) { return r.section === sec && isSeo(r); });
+    });
+  }
+  function renderAdvanced() {
+    var box = $('cAdv');
+    if (!state.rows.length) return;
+    var pages = advPages();
+    if (!pages.length) { box.innerHTML = '<p class="empty">' + esc(tr('con.noMatches')) + '</p>'; return; }
+    if (pages.indexOf(state.advPage) === -1) {
+      var was = null;
+      try { was = sessionStorage.getItem('thauma.content.adv'); } catch (e) { /* private mode */ }
+      state.advPage = pages.indexOf(was) !== -1 ? was : pages[0];
+    }
+    var page = state.advPage;
+    var rows = state.rows.filter(function (r) { return r.section === page && isSeo(r); });
+    box.innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.adv.title')) + '</h2>' +
+      '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('web.pages')) + '</span><select data-adv-page>' +
+        pages.map(function (sec) {
+          var dirty = state.rows.some(function (r) { return r.section === sec && isSeo(r) && rowDirty(r); });
+          return '<option value="' + esc(sec) + '"' + (sec === page ? ' selected' : '') + '>' + esc(sectionLabel(sec)) + (dirty ? ' •' : '') + '</option>';
+        }).join('') + '</select></label></div>' +
+      seoCard(page) + '<div class="c-rows">' + rows.map(rowHtml).join('') + '</div>';
+    box.querySelectorAll('textarea').forEach(autosize);
+  }
+
   function drawBack() {
     var box = $('cRows').querySelector('[data-back-line]');
     if (!box) return;
@@ -815,6 +1078,13 @@
 
   function renderSaveBar() {
     var d = dirtyIds();
+    /* which tabs hold them, for the marks on the tabs (admin-website.js) */
+    var tabs = [];
+    d.forEach(function (id) {
+      var l = state.byId[id], t = l && /\.seo_(title|desc)$/.test(l.key) && l.source === 'site' ? 'advanced' : 'pages';
+      if (tabs.indexOf(t) === -1) tabs.push(t);
+    });
+    $('cSaveBar').setAttribute('data-tabs', tabs.join(' ') || 'pages');
     $('cSaveBar').hidden = !d.length;
     document.body.classList.toggle('has-savebar', !!d.length);
     if (!d.length) return;
@@ -837,13 +1107,15 @@
     var badge = rowEl.querySelector('.c-key .tl-st');
     if (badge) badge.hidden = dirty;
     renderSaveBar();
-    renderSections();
+    renderCrumb();
     drawBack();
   }
 
   /* ---- editing -------------------------------------------------------- */
 
-  $('cRows').addEventListener('input', function (e) {
+  var BOXES = [$('cRows'), $('cAdv')];
+  function onBoxes(type, fn) { BOXES.forEach(function (b) { b.addEventListener(type, fn); }); }
+  onBoxes('input', function (e) {
     var t = e.target;
     if (t.tagName === 'TEXTAREA') {
       state.draft[t.getAttribute('data-id')] = t.value;
@@ -875,13 +1147,13 @@
 
   /* Enter is a new line, never a new paragraph block; a paste brings the
      words (and their line breaks), not another page's formatting. */
-  $('cRows').addEventListener('keydown', function (e) {
+  onBoxes('keydown', function (e) {
     var box = e.target.closest && e.target.closest('.c-rt');
     if (!box || e.key !== 'Enter') return;
     e.preventDefault();
     document.execCommand('insertLineBreak');
   });
-  $('cRows').addEventListener('paste', function (e) {
+  onBoxes('paste', function (e) {
     var box = e.target.closest && e.target.closest('.c-rt');
     if (!box) return;
     e.preventDefault();
@@ -890,26 +1162,30 @@
   });
   /* Leaving a heading shows it as it will be saved: where its bold half
      really begins. */
-  $('cRows').addEventListener('focusout', function (e) {
+  onBoxes('focusout', function (e) {
     var box = e.target.closest && e.target.closest('.c-splitbox');
     if (!box) return;
     var html = splitHtml(state.draft[box.getAttribute('data-thin')], state.draft[box.getAttribute('data-bold')]);
     if (box.innerHTML !== html) box.innerHTML = html;
   });
 
-  function openView(view) {
-    state.view = view;
+  /* A page, Needs Work, every line, or (null) the list of pages. `quiet`:
+     the preview is already there, having been pressed into. */
+  function openView(view, quiet) {
+    state.view = view || null;
     prev.section = null;
-    try { sessionStorage.setItem('thauma.content.view.' + state.lang, state.view); } catch (e2) { /* private mode */ }
+    try {
+      if (state.view) sessionStorage.setItem('thauma.content.view.' + state.lang, state.view);
+      else sessionStorage.removeItem('thauma.content.view.' + state.lang);
+    } catch (e2) { /* private mode */ }
     // A page and a search are two ways of choosing what is on screen;
     // leaving both on shows neither.
     if (state.find) { state.find = ''; $('cFind').value = ''; }
-    renderSections(); renderRows(); renderMore();
+    renderCrumb(); renderRows(); renderMore();
+    if (!quiet) previewSync();
+    var top = $('cRoot').getBoundingClientRect().top;
+    if (top < 0) window.scrollBy(0, top - 100);
   }
-  $('cSections').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-view]');
-    if (b) openView(b.getAttribute('data-view'));
-  });
   /* Another tab asking for one page's words — Forms' "Its words → Pages ›
      Contact" (admin-website.js). */
   document.addEventListener('content:section', function (e) {
@@ -922,7 +1198,7 @@
     var v = e.target.value.trim();
     findTimer = setTimeout(function () {
       state.find = v;
-      renderSections(); renderRows(); renderMore();
+      renderCrumb(); renderRows(); renderMore();
     }, 150);
   });
 
@@ -1009,6 +1285,8 @@
     if (!ids.length) return;
     var btn = this;
     btn.disabled = true; $('cDiscard').disabled = true;
+    if (state.fresh) await state.fresh;       // never saved against the kept copy
+    ids = dirtyIds();
     var data = await send(WORDS, 'POST', { action: 'save', lang: state.lang, items: ids.map(function (id) {
       var it = { id: id, value: state.draft[id], was: state.base[id] };
       if (state.waiting[id]) it.waiting = true;
@@ -1048,7 +1326,7 @@
     changedLines.forEach(function (id) { set[id] = true; });
     state.changedSecs = {};
     state.lines.forEach(function (l) { if (set[l.id]) state.changedSecs[sectionOf(l)] = true; });
-    if (state.rows.length) { renderSections(); drawBack(); }
+    if (state.rows.length && !state.review) { renderCrumb(); if (!state.view && !state.find) renderRows(); drawBack(); }
   }
   document.addEventListener('web:changes', function (e) { changedLines = (e.detail && e.detail.lines) || []; markChanged(); });
 
@@ -1060,6 +1338,13 @@
      hidden measured nothing, so measure again. */
   document.addEventListener('web:panel', function (e) {
     if (e.detail === 'pages') $('cRows').querySelectorAll('textarea').forEach(autosize);
+    /* Advanced opens on the page open on Pages, where it has a search card */
+    if (e.detail === 'advanced') {
+      var sec = /^section:/.test(state.view || '') ? state.view.slice(8) : null;
+      if (sec && advPages().indexOf(sec) !== -1) state.advPage = sec;
+      renderAdvanced();
+    }
+    tabShown();
   });
 
   /* ---- the file for a translator, and what comes back ---------------- */
@@ -1643,5 +1928,6 @@
     if (again) again.focus();
   });
 
+  tabShown();
   boot();
 })();
