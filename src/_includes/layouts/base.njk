@@ -79,13 +79,10 @@
      that was not built is a 404 with the site's own navigation pointing at
      it, which is worse than the page simply not being offered. -#}
   <div class="links">
-    {% if visible.pages.about %}<a href="/{{ lang }}/about/">{{ t.nav.about | rich("nav.about") }}</a>{% endif %}
-    {% if visible.pages.mission %}<a href="/{{ lang }}/mission/">{{ t.nav.mission | rich("nav.mission") }}</a>{% endif %}
-    {% if visible.pages.values %}<a href="/{{ lang }}/values/">{{ t.nav.values | rich("nav.values") }}</a>{% endif %}
-    {% if visible.pages.team %}<a href="/{{ lang }}/team/">{{ t.nav.team | rich("nav.team") }}</a>{% endif %}
-    {% if visible.pages.resources %}<a href="/{{ lang }}/resources/">{{ t.nav.resources | rich("nav.resources") }}</a>{% endif %}
-    {% if visible.pages.events %}<a href="/{{ lang }}/events/">{{ t.nav.events | rich("nav.events") }}</a>{% endif %}
-    {% if visible.pages.contact %}<a href="/{{ lang }}/contact/">{{ t.nav.contact | rich("nav.contact") }}</a>{% endif %}
+    {#- IN THE MENU'S ORDER (pageSections.json `nav`, Website › Site Creator ›
+        Navigation). -#}
+    {%- for slug in pageSections.nav %}{% if visible.pages[slug] %}
+    <a href="/{{ lang }}/{{ slug }}/">{{ t.nav[slug] | rich("nav." ~ slug) }}</a>{% endif %}{% endfor %}
   </div>
   <div class="nav-actions">
     {{ langDropdown() }}

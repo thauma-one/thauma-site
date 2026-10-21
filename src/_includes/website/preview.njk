@@ -1,10 +1,14 @@
 {#- THE PAGE AS IT WILL LOOK, beside the words (2026-10-07; beside Pages as
    the staff Site Creator has it, 2026-10-20): the page these words are on,
-   with what is typed drawn into it before it is saved. A link pressed in
-   it opens that page's words (admin-content.js). Shown where there is room
-   for it (admin.css AREAS). -#}
-<aside class="c-preview" id="cPreview" data-device="wide" hidden>
+   with what is typed drawn into it before it is saved, and its sections as
+   they are arranged (2026-10-21). A link pressed in it opens that page; a
+   section pressed in it opens that section (admin-content.js). Shown where
+   there is room for it (admin.css AREAS). `data-v` is the version of what
+   draws the sections in it — the templates, Nunjucks, the frame's
+   arithmetic — so a change to them is fetched fresh. -#}
+<aside class="c-preview" id="cPreview" data-device="wide" data-v="{{ previewV }}" hidden>
   <div class="c-prev-bar">
+    <span class="c-prev-on-site" data-i18n="ws.onSite">On the Site</span>
     <span class="c-prev-url" id="cPrevUrl"></span>
     <span class="ws-dev" role="group" data-i18n-attr="aria-label:con.previewSize" aria-label="Preview size">
       <button type="button" data-prev-dev="wide" aria-pressed="true" data-i18n="emb.desktop">Desktop</button>

@@ -147,7 +147,7 @@
         asking = null;
         if (!d || !d.tabs) return;
         links.forEach(function (a) { a.classList.toggle('has-changes', d.tabs.indexOf(a.getAttribute('data-web-tab')) !== -1); });
-        document.dispatchEvent(new CustomEvent('web:changes', { detail: { lines: d.lines || [] } }));
+        document.dispatchEvent(new CustomEvent('web:changes', { detail: { lines: d.lines || [], pages: d.pages || [] } }));
       })
       .catch(function () { asking = null; });
   }

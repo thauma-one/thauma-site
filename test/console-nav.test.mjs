@@ -121,8 +121,23 @@ await check("a site editor spans both rows, without the private pages", async ()
   eq(rows(w), ["staff", "admin"], "rows");
   assert(!links(w, "staff").includes("Stewardship"), "reached supporter records");
   assert(!links(w, "admin").includes("People"), "reached account management");
+  /* the public site is one link, Website; its four parts are a row of their
+     own under its heading (Chase, 2026-10-21) */
+  assert(links(w, "admin").includes("Website"), "missing Website");
   for (const p of ["Updates", "Mail", "Sharing", "Site Creator"]) {
-    assert(links(w, "admin").includes(p), `missing ${p}`);
+    assert(!links(w, "admin").includes(p), `${p} is in the header again`);
+  }
+});
+
+await check("Website's own row: Updates, Mail, Sharing and Site Creator, the one you are on marked", () => {
+  for (const [file, on] of [["website/index.html", "Site Creator"], ["website/updates/index.html", "Updates"],
+                            ["website/mail/index.html", "Mail"], ["website/sharing/index.html", "Sharing"]]) {
+    const html = readFileSync(`${build}/admin/${file}`, "utf8");
+    const d = new JSDOM(html).window.document;
+    const row = [...d.querySelectorAll(".web-areas a")];
+    eq(row.map((a) => a.textContent.trim()), ["Updates", "Mail", "Sharing", "Site Creator"], `${file}'s row`);
+    eq(row.filter((a) => a.hasAttribute("aria-current")).map((a) => a.textContent.trim()), [on], `${file}'s marked part`);
+    assert(d.querySelector('.console-row nav a[aria-current][href="/admin/website/"]'), `${file}: Website is not marked in the header`);
   }
 });
 

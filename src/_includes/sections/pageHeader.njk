@@ -1,0 +1,13 @@
+{#- A PAGE'S HEADER (sectionKinds.js pageHeader): the line above, the
+    headline, and an introduction if it has one. The top of a page, where
+    the .rise entrance belongs (main.js skips it after a transition). -#}
+{%- set wd = sec.words %}{% set foam = " foam" if (sec.look and sec.look.voice == "ministry") else "" %}
+<header class="page"><div class="wrap">
+  {%- if wd.cue %}
+  <div class="cue{{ foam }} rise">{{ t | w(wd.cue) | rich(wd.cue) }}</div>
+  {%- endif %}
+  <h1 class="page-h1 rise-2">{{ t | w(wd.heading ~ "_thin") | rich(wd.heading ~ "_thin") }} <b>{{ t | w(wd.heading ~ "_bold") | rich(wd.heading ~ "_bold") }}</b></h1>
+  {%- if wd.lede %}
+  <p class="lede rise-3">{{ t | w(wd.lede) | rich(wd.lede) }}</p>
+  {%- endif %}
+</div></header>

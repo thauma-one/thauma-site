@@ -58,8 +58,17 @@
     beside: 'en', besideLines: {},
     view: null, find: '',
     notes: { keep: [], glossary: [], guides: {} }, notesWrite: false, openNotes: null,
-    review: null
+    review: null,
+    /* THE PAGES AS SECTIONS (pageSections.json, /api/admin/sections): the
+       arrangement on screen, as saved (a string, to compare), its SHA; which
+       section each word belongs to; the section open, and its tab; words of
+       parts added since the last save, in every language (`fresh`); photos
+       chosen for a section's own frame, not saved yet. */
+    doc: null, docSaved: null, docSha: null, keyAt: {}, idAt: {}, changedIds: {}, shown: {},
+    open: null, sectab: 'words', fresh: {}, photos: {}, needIds: {}, structSaved: false
   };
+  var SS = window.SiteSections;
+  var SECTIONS_API = '/api/admin/sections';
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -164,6 +173,11 @@
   }
 
   function sectionOf(line) {
+    /* A SECTION'S OWN WORDS (`blocks.<id>.…`) are on the page the section is on. */
+    if (line.source === 'site' && line.key.indexOf('blocks.') === 0) {
+      var at = state.idAt[line.key.split('.')[1]];
+      return at ? at.page : '_unused';
+    }
     /* THE CLOSED PAGE (a ministry site switched off; serve.js closedSite):
        its words live with the partner-site words, but it is a page of its
        own (Chase, 2026-10-19: "I don't see the Closed page in the Admin
@@ -188,7 +202,7 @@
      label for it; only a new KIND of part needs a word. */
   var PART_KEY = {
     img_tag: 'lbl.p.img_tag', placeholder: 'lbl.p.placeholder', title: 'lbl.p.title', cue: 'lbl.p.cue',
-    h1: 'lbl.p.h1', h2: 'lbl.p.h2', line: 'lbl.p.line', sub: 'lbl.p.intro', lede: 'lbl.p.intro',
+    h1: 'lbl.p.h1', h2: 'lbl.p.h2', h: 'lbl.p.h2', line: 'lbl.p.line', sub: 'lbl.p.intro', lede: 'lbl.p.intro',
     text: 'lbl.p.text', body: 'lbl.p.body', label: 'lbl.p.label', link: 'lbl.p.link', word: 'lbl.p.word',
     ipa: 'lbl.p.ipa', def: 'lbl.p.def', note: 'lbl.p.note', cta: 'lbl.p.cta', hint: 'lbl.p.tip'
   };
@@ -222,7 +236,40 @@
     return (has('lbl.e.' + b) ? tr('lbl.e.' + b) : humanize(b)) + ' · ' + part;
   }
 
+  /* A SECTION'S WORDS ARE NAMED FOR THEIR PART OF IT ("Heading",
+     "Paragraph 2", "Point 3 · Title"), as the staff Site Creator names a
+     section's fields; where pages are mixed, the section's kind leads. */
+  function kindName(kind) { return tr('sec.kind.' + kind); }
+  /* the word a part is called by: Home's line under its headline, and an
+     introduction (the console's dictionary keeps "lede" out of its names) */
+  function partWord(sec, f) { return sec.kind === 'homeHero' && f === 'text' ? 'under' : f === 'lede' ? 'intro' : f; }
+  function partOf(sec, key) {
+    var k = SS.KINDS[sec.kind], wd = sec.words || {}, base = key.replace(/_(thin|bold)$/, ''), i, j;
+    for (i = 0; i < (k.words || []).length; i++) {
+      var f = k.words[i];
+      if (wd[f] === base || wd[f] === key) return tr('sec.part.' + partWord(sec, f));
+    }
+    if (k.list && wd[k.list]) {
+      i = wd[k.list].indexOf(key);
+      if (i !== -1) return fill('sec.part.' + k.list, { n: i + 1 });
+    }
+    if (wd.alt === key) return tr('sec.part.alt');
+    if (wd.placeholder === key) return tr('sec.part.placeholder');
+    for (i = 0; i < (sec.items || []).length; i++) {
+      for (j = 0; j < (k.items || []).length; j++) {
+        if (sec.items[i][k.items[j]] === key) return fill('sec.item.' + sec.kind, { n: i + 1 }) + ' · ' + tr('sec.part.i' + k.items[j]);
+      }
+    }
+    for (i = 0; i < (sec.buttons || []).length; i++) {
+      if (sec.buttons[i].label === key) return (sec.buttons.length > 1 ? fill('sec.part.buttonN', { n: i + 1 }) : tr('sec.part.button'));
+    }
+    return null;
+  }
   function labelFor(row) {
+    if (row.place && row.place.sec && state.idAt[row.place.sec]) {
+      var sec = state.idAt[row.place.sec].sec, part = partOf(sec, row.lines[0].key);
+      if (part) { row.part = part; return kindName(sec.kind) + ' · ' + part; }
+    }
     if (row.source === 'emails') return emailLabel(row.key);
     if (/\.seo_title$/.test(row.key)) return tr('con.seoTitle');
     if (/\.seo_desc$/.test(row.key)) return tr('con.seoText');
@@ -255,6 +302,44 @@
     return us === -1 ? humanize(rest) : blockName(section, rest.slice(0, us)) + ' · ' + humanize(rest.slice(us + 1));
   }
 
+  /* ---- which section a word is in --------------------------------------
+     On a page made of sections, each word is named by one of them
+     (site-sections.js keysOf). The page's own lines — its name in the
+     browser's tab, how it shows in a search — are the page's; the rest of a
+     page whose fixed part is drawn from elsewhere (the team, the form…) are
+     that part's. A word no section names any more (a section taken away)
+     is not on the page, and is not shown. */
+  function takeDoc(doc) {
+    state.doc = doc;
+    state.keyAt = {}; state.idAt = {};
+    Object.keys(doc.pages).forEach(function (page) {
+      doc.pages[page].forEach(function (sec, i) {
+        state.idAt[sec.id] = { page: page, sec: sec, at: i };
+        SS.keysOf(sec).forEach(function (k) { state.keyAt[k] = sec.id; });
+      });
+    });
+  }
+  function isSectioned(page) { return !!(state.doc && state.doc.pages[page]); }
+  /* The fixed part of a page that takes its leftover words (the team, the
+     library…): one with no words of its own. */
+  function leftoverOf(page) {
+    var list = state.doc.pages[page] || [];
+    for (var i = 0; i < list.length; i++) if (SS.KINDS[list[i].kind].fixed && !SS.KINDS[list[i].kind].words) return list[i].id;
+    return null;
+  }
+  /* { page, sec } for a row on a page of sections, `sec` null for the page's
+     own lines; `gone` for a word nothing names. */
+  function placeOf(row) {
+    var key = row.lines[0].key, sec = row.lines[0].source === 'site' ? state.keyAt[key] : null;
+    var page = row.section;
+    if (sec) return { page: state.idAt[sec].page, sec: sec };
+    if (row.lines[0].source === 'site' && key.indexOf('blocks.') === 0) return { page: page, sec: null, gone: true };
+    if (row.lines[0].source !== 'site' || !isSectioned(page)) return { page: page, sec: null };
+    if (/\.(title|seo_title|seo_desc)$/.test(key) && key.split('.').length === 2) return { page: page, sec: null };
+    var left = leftoverOf(page);
+    return left ? { page: page, sec: left } : { page: page, sec: null, gone: true };
+  }
+
   /* ---- rows ------------------------------------------------------------- */
 
   function buildRows() {
@@ -277,8 +362,10 @@
       used[l.id] = true;
       rows.push({ id: l.id, source: l.source, key: l.key, line: l, lines: [l] });
     });
-    rows.forEach(function (r) { r.label = labelFor(r); r.section = sectionOf(r.lines[0]); });
-    state.rows = rows;
+    rows.forEach(function (r) { r.section = sectionOf(r.lines[0]); r.place = placeOf(r); r.label = labelFor(r); });
+    state.rows = rows.filter(function (r) { return !r.place.gone && r.section !== '_unused'; });
+    state.shown = {};
+    state.rows.forEach(function (r) { r.lines.forEach(function (l) { state.shown[l.id] = true; }); });
   }
 
   var isEn = function () { return state.lang === 'en'; };
@@ -289,15 +376,20 @@
   function needsWork(row) { return !isEn() && rowStatus(row) !== 'done'; }
   function lineDirty(l) { return state.draft[l.id] !== state.saved[l.id]; }
   function rowDirty(row) { return row.lines.some(lineDirty); }
+  /* Only words that are on a page: a word of a part taken away is not
+     saved, whatever was typed into it. */
   function dirtyIds() {
-    return state.lines.filter(lineDirty).map(function (l) { return l.id; });
+    return state.lines.filter(function (l) { return state.shown[l.id] && lineDirty(l); }).map(function (l) { return l.id; });
   }
 
   function orderedSections() {
     var seen = [];
     state.rows.forEach(function (r) { if (seen.indexOf(r.section) === -1) seen.push(r.section); });
-    return PAGE_ORDER.filter(function (s) { return seen.indexOf(s) !== -1; })
-      .concat(seen.filter(function (s) { return PAGE_ORDER.indexOf(s) === -1; }));
+    /* the site's own pages in the menu's order */
+    var own = state.doc ? ['home'].concat(state.doc.nav, ['give']) : [];
+    var order = own.concat(PAGE_ORDER.filter(function (s) { return own.indexOf(s) === -1; }));
+    return order.filter(function (s) { return seen.indexOf(s) !== -1; })
+      .concat(seen.filter(function (s) { return order.indexOf(s) === -1; }));
   }
 
   /* ---- loading -------------------------------------------------------- */
@@ -338,31 +430,54 @@
     var remembered = null;
     try { remembered = localStorage.getItem('thauma.content.lang'); } catch (e) { /* private mode */ }
     var guess = state.lang || remembered || 'en';
+    /* THE LANGUAGE BESIDE IT, asked for at the same time (Chase, 2026-10-21:
+       Pages "still loads slowly" — it was asked for only once the first had
+       come back, and the page waited for both). English comes with every
+       answer; another is the one chosen last time. */
+    var besideWas = null;
+    try { besideWas = localStorage.getItem('thauma.content.beside'); } catch (e) { /* private mode */ }
+    if (besideWas && besideWas !== 'en' && besideWas !== guess && !state.besideLines[besideWas]) {
+      state.besidePre = { lang: besideWas, data: send(WORDS + '?lang=' + encodeURIComponent(besideWas), 'GET', null, true) };
+      state.beside = besideWas;
+    }
     var asking = Promise.all([
       send(CONTENT + '?file=site'),
       send(NOTES, 'GET', null, true),
-      send(WORDS + '?lang=' + encodeURIComponent(guess), 'GET', null, true)
+      send(WORDS + '?lang=' + encodeURIComponent(guess) + '&quick', 'GET', null, true),
+      send(SECTIONS_API, 'GET', null, true)
     ]);
+    askWaiting(guess);
     var snap = state.lang ? null : snapGet();
     if (snap && snap.site && snap.words && snap.words.lang === guess) {
       var done;
-      state.fresh = new Promise(function (r) { done = r; });
-      await start(snap.site, snap.notes, snap.words.data, guess);
+      state.ready = new Promise(function (r) { done = r; });
+      await start(snap.site, snap.notes, snap.words.data, guess, snap.sections);
       if (snap.summary) takeSummary(snap.summary);
       var both = await asking;
       await refresh(both, guess, snap);
       done();
-      state.fresh = null;
+      state.ready = null;
       return;
     }
     var got = await asking;
-    if (await start(got[0], got[1], got[2], guess)) loadSummary();   // names and progress, after the first draw
+    if (await start(got[0], got[1], got[2], guess, got[3])) loadSummary();   // names and progress, after the first draw
   }
-  async function start(site, notes, words, guess) {
+  /* The pages' sections, as saved. What is on screen is kept when it has
+     changes of its own (a fresh copy read behind the kept one). */
+  function takeSections(data) {
+    if (!data || data.failed || !data.doc || !data.doc.pages) return;
+    snapPut('sections', data);
+    var dirty = state.doc && docDirty();
+    state.docSha = data.sha;
+    state.docSaved = JSON.stringify(data.doc);
+    if (!dirty) takeDoc(JSON.parse(state.docSaved));
+  }
+  async function start(site, notes, words, guess, sections) {
     if (!site || site.failed) return false;
     if (site.configured === false) { notConfigured(site.reason || site.error || ''); return false; }
     snapPut('site', site);
     takeSite(site);
+    takeSections(sections);
     if (notes && !notes.failed) { snapPut('notes', notes); takeNotes(notes); }
     var want = state.langs.indexOf(guess) !== -1 ? guess : state.langs[0];
     fillPickers();
@@ -375,8 +490,11 @@
      (nearly always); otherwise drawn in its place, keeping the page you are
      on and anything typed meanwhile. */
   async function refresh(both, guess, snap) {
-    var site = both[0], notes = both[1], words = both[2];
+    var site = both[0], notes = both[1], words = both[2], sections = both[3];
     if (!site || site.failed || site.configured === false) return;
+    var docWas = state.docSaved;
+    takeSections(sections);
+    if (state.docSaved !== docWas && state.lines.length) { buildRows(); render(); }
     var same = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
     snapPut('site', site);
     if (notes && !notes.failed) { snapPut('notes', notes); takeNotes(notes); }
@@ -459,7 +577,9 @@
     Object.keys(state.summary).forEach(function (c) {
       var l = state.summary[c], by = {};
       if (c === 'en' || !l.needs) return;
+      state.needIds[c] = {};
       l.needs.forEach(function (id) {
+        state.needIds[c][id] = true;
         var line = state.byId[id];
         if (line) { var sec = sectionOf(line); by[sec] = (by[sec] || 0) + 1; }
       });
@@ -468,8 +588,41 @@
     state.others = out;
   }
 
+  /* WHAT DEV CHANGED AND HAS NOT PUBLISHED, behind the words (?waiting):
+     the slowest thing GitHub is asked, so the words are drawn first and these
+     few lines are marked when it answers. A Save waits for it. */
+  state.waitingData = {};
+  function askWaiting(code) {
+    delete state.waitingData[code];
+    var p = send(WORDS + '?waiting=' + encodeURIComponent(code), 'GET', null, true).then(function (data) {
+      if (!data || data.failed) return;
+      state.waitingData[code] = data;
+      if (code === state.lang && takeWaiting(data) && state.rows.length && !state.review) { buildRows(); renderAll(); }
+    });
+    state.waitingAsk = p;
+    return p;
+  }
+  /* returns whether anything on screen changed */
+  function takeWaiting(data) {
+    var mine = (data && data.mine) || {}, eng = (data && data.english) || {}, any = false;
+    state.lines.forEach(function (l) {
+      if (l.source !== 'site') return;
+      if (l.key in eng && l.english !== eng[l.key]) { l.english = eng[l.key]; any = true; }
+      if (l.key in mine && !state.waiting[l.id]) {
+        var untouched = state.draft[l.id] === state.saved[l.id];
+        l.waiting = mine[l.key];
+        state.waiting[l.id] = true;
+        state.saved[l.id] = mine[l.key];
+        if (untouched) state.draft[l.id] = mine[l.key];
+        any = true;
+      }
+    });
+    return any;
+  }
+
   async function openLang(code, keepView, already) {
-    var data = already || await send(WORDS + '?lang=' + encodeURIComponent(code));
+    if (!already) askWaiting(code);
+    var data = already || await send(WORDS + '?lang=' + encodeURIComponent(code) + '&quick');
     if (!data || data.failed) { $('cLang').value = state.lang || ''; return false; }
     snapPut('words', { lang: code, data: data });
     state.lang = code;
@@ -485,6 +638,8 @@
       state.saved[l.id] = v; state.draft[l.id] = v; state.base[l.id] = l.current;
       if (l.waiting != null) state.waiting[l.id] = true;
     });
+    if (state.waitingData[code]) takeWaiting(state.waitingData[code]);
+    addFreshLines();
     buildRows();
     markChanged();
     try { localStorage.setItem('thauma.content.lang', code); } catch (e) { /* private mode */ }
@@ -502,11 +657,49 @@
       if (asked) try { history.replaceState(history.state, '', location.pathname + location.hash); } catch (e) { /* file: */ }
     }
     fillPickers();
-    await loadBeside();
     $('cRoot').hidden = !!state.review;
     takeOthers();
     render();
+    document.dispatchEvent(new CustomEvent('sections:ready'));
+    /* drawn first; the language beside it fills in when it arrives */
+    if (state.beside && state.beside !== 'en' && !state.besideLines[state.beside]) loadBeside().then(function () { if (!state.review) renderAll(); });
     return true;
+  }
+
+  /* THE WORDS OF A PART ADDED SINCE THE LAST SAVE (a section, a point, a
+     paragraph): not in the language files yet, so lines of their own here,
+     in the language being written, beside the stand-in words every other
+     language has. They are written into every language file with the
+     section, in one commit (Save). `fresh[key]` is what each language holds
+     now, `freshBase[key]` what it started as. */
+  state.freshBase = {};
+  function addFreshLines() {
+    Object.keys(state.fresh).forEach(function (key) {
+      var id = 'site:' + key;
+      if (state.lines.some(function (l) { return l.id === id; })) return;
+      var f = state.fresh[key], base = state.freshBase[key] || {};
+      state.lines.push({ id: id, source: 'site', key: key, english: f.en || '', current: '', fresh: true,
+                         status: state.lang === 'en' ? 'done' : SS.isLorem(f[state.lang]) ? 'missing' : 'done' });
+      state.saved[id] = base[state.lang] != null ? base[state.lang] : '';
+      state.draft[id] = f[state.lang] != null ? f[state.lang] : '';
+    });
+  }
+  function freshKeys(keys) {
+    keys.forEach(function (key) {
+      var f = {}, b = {};
+      state.langs.forEach(function (l) { f[l] = b[l] = SS.lorem(key); });
+      state.fresh[key] = f; state.freshBase[key] = b;
+    });
+    addFreshLines();
+  }
+  function dropFresh(keys) {
+    keys.forEach(function (key) {
+      if (!state.fresh[key]) return;
+      delete state.fresh[key]; delete state.freshBase[key];
+      var id = 'site:' + key;
+      state.lines = state.lines.filter(function (l) { return l.id !== id; });
+      delete state.saved[id]; delete state.draft[id];
+    });
   }
 
   /* The language shown above each line. English comes with every answer;
@@ -514,13 +707,16 @@
   async function loadBeside() {
     var b = state.beside;
     if (!b || b === 'en' || state.besideLines[b]) return;
-    var data = await send(WORDS + '?lang=' + encodeURIComponent(b), 'GET', null, true);
+    var pre = state.besidePre && state.besidePre.lang === b ? state.besidePre.data : null;
+    state.besidePre = null;
+    var data = await (pre || send(WORDS + '?lang=' + encodeURIComponent(b), 'GET', null, true));
     if (!data || data.failed) return;
     var map = {};
     (data.lines || []).forEach(function (l) { map[l.id] = l.waiting != null ? l.waiting : l.current; });
     state.besideLines[b] = map;
   }
   function besideText(line) {
+    if (line.fresh) return (state.fresh[line.key] || {})[state.beside] || '';
     if (state.beside === 'en') return line.english;
     /* Not read yet: nothing, rather than English beside English. */
     if (!state.besideLines[state.beside]) return '';
@@ -563,6 +759,8 @@
   function render() {
     renderCrumb();
     renderRows();
+    renderNav();
+    renderFoot();
     renderAdvanced();
     renderMore();
     renderSaveBar();
@@ -573,10 +771,14 @@
      The words are written on two tabs, Pages and Advanced; the language row
      above them and their save bar belong to both (website/writing.njk). */
   var areaEl = document.getElementById('webArea');
+  /* the tabs words are written on, under the one language row */
+  var WRITTEN = ['pages', 'navigation', 'footer', 'advanced'];
+  /* the tabs with the page beside them */
+  var PREVIEWED = ['pages', 'navigation', 'footer'];
   function onTab() { return areaEl ? areaEl.getAttribute('data-tab') : 'pages'; }
   function tabShown() {
     var t = onTab();
-    if (!state.noTools) $('cWriting').hidden = t !== 'pages' && t !== 'advanced';
+    if (!state.noTools) $('cWriting').hidden = WRITTEN.indexOf(t) === -1;
     previewSync();
   }
 
@@ -623,7 +825,7 @@
       prev.timer = setTimeout(served, 450);
       return;
     }
-    if (!doc || !line || line.source !== 'site' || !window.SiteRich) return;
+    if (!doc || !doc.documentElement || !line || line.source !== 'site' || !window.SiteRich) return;
     if ((doc.documentElement.getAttribute('lang') || state.lang) !== state.lang) return;
     [].forEach.call(doc.querySelectorAll('[data-k="' + line.key + '"]'), function (el) {
       el.innerHTML = window.SiteRich.richHtml(state.draft[id]);
@@ -656,7 +858,7 @@
   function previewSync() {
     var box = $('cPreview');
     if (!box) return;
-    var on = onTab() === 'pages' && !state.review && !!state.lang;
+    var on = PREVIEWED.indexOf(onTab()) !== -1 && !state.review && !!state.lang;
     if (areaEl) areaEl.classList.toggle('with-preview', on);
     box.hidden = !on;
     if (!on) return;
@@ -684,6 +886,12 @@
       $('cPrevFrame').removeAttribute('srcdoc');
       $('cPrevFrame').src = url;
     } else prevDrawAll();
+  }
+  /* The footer, on Footer. */
+  function prevToFoot() {
+    var f = $('cPrevFrame'), doc = prevDoc();
+    if (!doc || !doc.body || onTab() !== 'footer') return;
+    try { f.contentWindow.scrollTo({ top: doc.body.scrollHeight, behavior: 'smooth' }); } catch (e) { /* not drawn yet */ }
   }
   /* One of the server's pages or emails, with this page's words as they are
      on screen; an email shows its subject line above it. */
@@ -738,9 +946,13 @@
         if (seen !== prevSection() && onTab() === 'pages' && viewExists('section:' + seen)) openView('section:' + seen, true);
       }
       var st = doc.createElement('style');
-      st.textContent = '.c-prev-on{outline:2px solid #2FD8FF;outline-offset:6px;border-radius:3px;transition:outline-color .3s}';
+      st.textContent = '.c-prev-on{outline:2px solid #2FD8FF;outline-offset:6px;border-radius:3px;transition:outline-color .3s}' +
+        '.c-prev-sec{outline:2px solid rgba(245,184,69,.75);outline-offset:-2px}main > *{cursor:default}';
       doc.head.appendChild(st);
       prevDrawAll();
+      prevArrange();
+      doc.addEventListener('click', function (ev) { prevPress(doc, ev); });
+      if (onTab() === 'footer') prevToFoot();
     });
     [].forEach.call(document.querySelectorAll('[data-prev-dev]'), function (b) {
       b.addEventListener('click', function () {
@@ -783,38 +995,76 @@
   function behindOn(sec) {
     return Object.keys(state.others).filter(function (c) { return c !== state.lang && (state.others[c][sec] || 0) > 0; });
   }
+  /* THE LIST OF PAGES, as the staff Site Creator's "Your Pages": the site's
+     own pages first, in the menu's order, each with how many sections it
+     has, the languages it is still missing and the dot for changes; then
+     the pages a visitor meets another way — Stay Connected, the landing
+     page, the arcade, after a link in an email, the emails, the forms on
+     other websites — each with how many lines it has. */
+  function pageDirty(page) {
+    if (!isSectioned(page)) return false;
+    if (state.unpubPages && state.unpubPages[page]) return true;
+    var d = savedDoc();
+    if (d && JSON.stringify(d.pages[page]) !== JSON.stringify(state.doc.pages[page])) return true;
+    return state.doc.pages[page].some(secChanged) ||
+      state.rows.some(function (r) { return r.place.page === page && !r.place.sec && (rowDirty(r) || rowUnpub(r)); });
+  }
+  function pageMissing(page) {
+    var out = {};
+    state.doc.pages[page].forEach(function (sec) {
+      var m = secMissing(sec);
+      Object.keys(m).forEach(function (c) { out[c] = 1; });
+    });
+    return out;
+  }
+  function liveOff(page) {
+    var v = state.site && state.site.visibility && state.site.visibility.pages && state.site.visibility.pages[page];
+    return v != null && (typeof v === 'object' ? !v.live : !v);
+  }
   function overviewHtml() {
     var stats = pageStats(), needs = state.rows.filter(needsWork).length, by = {};
-    orderedSections().forEach(function (s) { var g = groupOf(s); (by[g] = by[g] || []).push(s); });
-    var row = function (view, label, n, extra, dot) {
-      return '<li><button type="button" class="c-page" data-view="' + esc(view) + '">' +
-        '<span class="c-page-n">' + esc(label) + (dot ? '<i class="ws-dot" title="' + esc(tr('ws.unpublished')) + '"></i>' : '') + '</span>' +
-        '<span class="c-page-c tnum">' + esc(n === 1 ? tr('con.oneLine') : fill('con.nLines', { n: n })) + '</span>' +
-        '<span class="c-page-x">' + (extra || '') + '</span>' +
-        '<span class="c-page-go" aria-hidden="true">›</span></button></li>';
+    var own = state.doc ? ['home'].concat(state.doc.nav, ['give']).filter(isSectioned) : [];
+    orderedSections().forEach(function (s) {
+      if (s === 'menu' || own.indexOf(s) !== -1) return;
+      var g = groupOf(s); (by[g] = by[g] || []).push(s);
+    });
+    var prow = function (view, label, sub, note, changed, aside) {
+      return '<li class="ws-prow"><button type="button" class="ws-prow-open" data-view="' + esc(view) + '">' +
+        '<b>' + esc(label) + dot(changed) + '</b>' +
+        '<span class="ws-prow-sub"><span>' + esc(sub) + '</span>' + (note || '') + '</span>' +
+        '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' + (aside || '') + '</li>';
     };
-    var html = needs ? '<ul class="c-pages c-pages-needs">' + row('needs', tr('con.needsWork'), needs, '', false) + '</ul>' : '';
+    var html = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>';
+    if (own.length) {
+      html += '<ol class="ws-plist">' + own.map(function (page) {
+        var n = state.doc.pages[page].length;
+        return prow('section:' + page, sectionLabel(page), n === 1 ? tr('ws.nSections1') : fill('ws.nSections', { n: n }),
+          missingNote(pageMissing(page)), pageDirty(page),
+          liveOff(page) ? '<span class="ws-always">' + esc(tr('sec.offLive')) + '</span>' : '');
+      }).join('') + '</ol>';
+    }
     GROUPS.map(function (g) { return g[0]; }).concat(Object.keys(by).filter(function (g) {
       return !GROUPS.some(function (x) { return x[0] === g; });
     })).forEach(function (g) {
       if (!by[g]) return;
-      html += '<h3 class="c-group">' + esc(tr('lbl.g.' + g)) + '</h3><ul class="c-pages">' + by[g].map(function (s) {
-        var c = stats[s], codes = behindOn(s);
-        return row('section:' + s, sectionLabel(s), c.n,
-          (c.needs ? '<span class="c-sec-empty" title="' + esc(tr('con.needsWork')) + '">' + c.needs + '</span>' : '') +
-          (codes.length ? '<span class="c-sec-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
-            esc(codes.join(' ').toUpperCase()) + '</span>' : ''),
-          !!state.changedSecs[s] || c.dirty > 0);
-      }).join('') + '</ul>';
+      html += '<h3 class="c-group">' + esc(tr(g === 'site' && own.length ? 'lbl.g.more' : 'lbl.g.' + g)) + '</h3><ol class="ws-plist">' + by[g].map(function (s) {
+        var c = stats[s], codes = behindOn(s), miss = {};
+        if (!isEn() && c.needs) miss[state.lang] = 1;
+        codes.forEach(function (x) { miss[x] = 1; });
+        return prow('section:' + s, sectionLabel(s), c.n === 1 ? tr('con.oneLine') : fill('con.nLines', { n: c.n }),
+          missingNote(miss), !!state.changedSecs[s] || c.dirty > 0);
+      }).join('') + '</ol>';
     });
-    html += '<button type="button" class="link-btn c-everyline" data-view="all">' + esc(fill('con.everyLine', { n: state.rows.length })) + '</button>';
+    html += '<div class="c-everyline">' +
+      (needs ? '<button type="button" class="link-btn" data-view="needs">' + esc(tr('con.needsWork')) + ' (' + needs + ')</button>' : '') +
+      '<button type="button" class="link-btn" data-view="all">' + esc(fill('con.everyLine', { n: state.rows.length })) + '</button></div>';
     return html;
   }
   /* The menu of pages: the same groups as the list. A mark after a name
      says it has changes. */
   function pageMenu(selected, only) {
     var stats = pageStats(), by = {};
-    orderedSections().forEach(function (s) { if (!only || only(s)) { var g = groupOf(s); (by[g] = by[g] || []).push(s); } });
+    orderedSections().forEach(function (s) { if (s !== 'menu' && (!only || only(s))) { var g = groupOf(s); (by[g] = by[g] || []).push(s); } });
     var opt = function (v, label) { return '<option value="' + esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + esc(label) + '</option>'; };
     return Object.keys(by).sort(function (a, b) {
       var ia = GROUPS.map(function (g) { return g[0]; }).indexOf(a), ib = GROUPS.map(function (g) { return g[0]; }).indexOf(b);
@@ -822,7 +1072,7 @@
     }).map(function (g) {
       return '<optgroup label="' + esc(tr('lbl.g.' + g)) + '">' + by[g].map(function (s) {
         var c = stats[s];
-        return opt('section:' + s, sectionLabel(s) + (state.changedSecs[s] || c.dirty ? ' •' : ''));
+        return opt('section:' + s, sectionLabel(s) + (state.changedSecs[s] || c.dirty || pageDirty(s) ? ' •' : ''));
       }).join('') + '</optgroup>';
     }).join('');
   }
@@ -865,13 +1115,16 @@
     return wordsHtml(thin) + gap + (bold ? '<b>' + wordsHtml(bold) + '</b>' : '');
   }
 
-  function rowHtml(r) {
+  /* `opts`: the name it has where it is drawn (a section's "Heading"), and
+     `drop`, a part of a section it can be taken away as. */
+  function rowHtml(r, opts) {
+    opts = opts || {};
     /* In a view that mixes pages — Needs work, All, a search — "Intro" alone
        does not say which page; there the page leads the name. */
     var mixed = !!state.find || state.view === 'needs' || state.view === 'all';
     if (isSeo(r) && onTab() === 'advanced') mixed = false;
-    var name = mixed && r.section !== '_general' ? sectionLabel(r.section) + ' · ' + r.label : r.label;
-    var dirty = rowDirty(r);
+    var name = opts.label || (mixed && r.section !== '_general' ? sectionLabel(r.section) + ' · ' + r.label : r.label);
+    var dirty = rowDirty(r), unpub = !dirty && rowUnpub(r);
     var mark = needsWork(r) && !dirty ? rowStatus(r) : '';
     var blocked = r.lines.some(function (l) { return state.blocked[l.id]; });
     var waits = r.lines.some(function (l) { return state.waiting[l.id]; });
@@ -893,7 +1146,12 @@
             ' data-rt="one" data-id="' + esc(r.line.id) + '" aria-label="' + aria + '">' + wordsHtml(state.draft[r.line.id]) + '</div>'
         : '<textarea rows="1" data-id="' + esc(r.line.id) + '" lang="' + lang + '" spellcheck="true"' +
             ' aria-label="' + aria + '">' + esc(state.draft[r.line.id]) + '</textarea>';
-    return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (mark ? ' is-' + mark : '') +
+    /* DISCARD CHANGES, ON THE BOX ITSELF (Chase, 2026-10-21: "each text box
+       to have the option to discard the changes if changes happen. Like a
+       'Discard Changes' fades in if edits are made"): what was typed goes
+       back to what is saved; a saved change not published yet goes back to
+       what visitors see. */
+    return '<div class="c-row' + (dirty ? ' is-dirty' : '') + (unpub ? ' is-unpub' : '') + (mark ? ' is-' + mark : '') +
         (blocked ? ' is-blocked' : '') + (waits ? ' is-waiting' : '') + '" data-row="' + esc(r.id) + '">' +
       '<div class="c-key">' +
         '<span class="c-name">' + esc(name) + '</span>' +
@@ -901,6 +1159,8 @@
         (mark ? '<span class="tl-st is-' + mark + '">' + esc(tr('tl.status.' + mark)) + '</span>' : '') +
         (dirty ? '<span class="badge unsaved">' + esc(tr('ms.unsaved')) + '</span>' : '') +
         (waits ? '<span class="badge waiting">' + esc(tr('con.waiting')) + '</span>' : '') +
+        (opts.drop ? '<button type="button" class="link-btn c-drop" data-drop-part="' + esc(opts.drop) + '">' + esc(tr('sec.takeAway')) + '</button>' : '') +
+        '<button type="button" class="link-btn c-undo" data-undo="' + esc(r.id) + '"' + (dirty || unpub ? '' : ' tabindex="-1"') + '>' + esc(tr('con.discardBox')) + '</button>' +
       '</div>' + ref + field +
     '</div>';
   }
@@ -968,8 +1228,6 @@
   /* The list of pages, a page from it, "← All Pages", the menu, and one
      page's way back. */
   $('cRoot').addEventListener('click', function (e) {
-    var pb = e.target.closest && e.target.closest('[data-page-back]');
-    if (pb) return pageBack(pb.dataset.pageBack);
     var v = e.target.closest && e.target.closest('[data-view]');
     if (v) openView(v.getAttribute('data-view') || null);
   });
@@ -977,21 +1235,35 @@
     if (e.target.hasAttribute('data-page-pick')) openView(e.target.value);
   });
 
-  async function pageBack(page) {
-    var ok = await window.StaffConfirm({ title: tr('ws.revert.title'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true });
-    if (!ok) return;
-    var mine = state.lines.filter(function (l) { return sectionOf(l) === page; });
-    var live = {};
-    if (state.changedSecs[page]) {
-      var data = await send(WORDS + '?live=' + encodeURIComponent(state.lang));
-      if (!data) return;
-      live = data.lines || {};
-    }
-    /* a line visitors never had (new since) keeps what is saved */
-    mine.forEach(function (l) { state.draft[l.id] = l.id in live ? live[l.id] : state.saved[l.id]; delete state.blocked[l.id]; });
-    prev.url = null;
-    render();
-    toast(tr(dirtyIds().length ? 'con.backSave' : 'toast.discarded'), 'ok');
+  /* ONE BOX BACK: its Discard Changes (rowHtml). What visitors see is read
+     once per language, when first asked for. */
+  var liveCache = {};
+  async function liveLines() {
+    if (liveCache[state.lang]) return liveCache[state.lang];
+    var data = await send(WORDS + '?live=' + encodeURIComponent(state.lang));
+    if (!data || data.failed) return null;
+    return (liveCache[state.lang] = data.lines || {});
+  }
+  document.addEventListener('web:changes', function () { liveCache = {}; });
+  async function undoRow(id) {
+    var row = state.rows.filter(function (r) { return r.id === id; })[0];
+    if (!row) return;
+    if (rowDirty(row)) {
+      row.lines.forEach(function (l) { state.draft[l.id] = state.saved[l.id]; delete state.blocked[l.id]; freshTyped(l.id); });
+    } else if (rowUnpub(row)) {
+      var live = await liveLines();
+      if (!live) return;
+      /* a line visitors never had (new since) keeps what is saved */
+      row.lines.forEach(function (l) { if (l.id in live) state.draft[l.id] = live[l.id]; });
+      toast(tr('con.backSave'), 'ok');
+    } else return;
+    renderAll();
+    row.lines.forEach(function (l) { prevDraw(l.id); });
+  }
+  /* Everything the words are drawn on, again (after a change that is not
+     a keystroke). */
+  function renderAll() {
+    renderRows(); renderAdvanced(); renderNav(); renderFoot(); renderSaveBar(); renderCrumb();
   }
 
   function renderRows() {
@@ -1002,21 +1274,755 @@
       $('cRows').innerHTML = overviewHtml();
       return;
     }
+    /* A PAGE OF SECTIONS, as the staff Site Creator shows one. */
+    var page = !state.find && viewPage();
+    if (page && isSectioned(page)) {
+      $('cCount').textContent = '';
+      $('cRows').className = 'c-sections';
+      if (state.open && (!state.idAt[state.open] || state.idAt[state.open].page !== page)) state.open = null;
+      $('cRows').innerHTML = pageHtml(page);
+      $('cRows').querySelectorAll('textarea').forEach(autosize);
+      return;
+    }
     $('cRows').className = 'c-rows';
     var rows = visible();
     $('cCount').textContent = state.find ? rows.length + ' ' + tr('con.matches') : '';
     /* THE CONTACT PAGE'S FORM: its words are here, like the rest of the
        page; where its messages go is Sharing. */
     var forms = !state.find && state.view === 'section:contact'
-      ? '<a class="up-share-link c-formslink" href="/admin/sharing/">' + esc(tr('con.formsLink')) + '</a>' : '';
+      ? '<a class="up-share-link c-formslink" href="/admin/website/sharing/">' + esc(tr('con.formsLink')) + '</a>' : '';
     /* ONE PAGE BACK (Chase, 2026-10-19: "we need the ability to discard
        changes of certain section"): this page's lines go back to what
        visitors see now — typed words and saved ones not yet published. They
        come back as unsaved, to look over and Save like any change. */
-    $('cRows').innerHTML = '<div class="ws-revert" data-back-line hidden></div>' + forms + (rows.length ? rows.map(rowHtml).join('')
+    $('cRows').innerHTML = forms + (rows.length ? rows.map(function (r) { return rowHtml(r); }).join('')
       : '<p class="empty">' + esc(tr('con.noMatches')) + '</p>');
     $('cRows').querySelectorAll('textarea').forEach(autosize);
-    drawBack();
+  }
+
+  /* ---- THE PAGES AS SECTIONS ---------------------------------------------
+     Chase, 2026-10-21: "should we just have the site creator operate almost
+     exactly the same?" — as the staff Site Creator: a page is its sections,
+     each opened to its words, its photo, its buttons and its look, with a
+     place between any two to add one, a grip to move one, and ✕ to take one
+     away. The kinds are the site's own designs (site-sections.js), so the
+     site looks as it did; the arrangement is saved with the words, by Save
+     (/api/admin/sections, one commit). The head of a page stays where it
+     is, and the parts drawn from elsewhere (the team, the form, the
+     gatherings…) can be moved but not taken away. */
+  function docDirty() { return !!state.doc && JSON.stringify(state.doc) !== state.docSaved; }
+  function savedDoc() { try { return state.docSaved ? JSON.parse(state.docSaved) : null; } catch (e) { return null; } }
+  function secOf(id) { return state.idAt[id] ? state.idAt[id].sec : null; }
+  function savedSecOf(id) {
+    var d = savedDoc(), out = null;
+    if (d) Object.keys(d.pages).forEach(function (p) { d.pages[p].forEach(function (s, i) { if (s.id === id) out = { sec: s, at: i }; }); });
+    return out;
+  }
+  /* How many things about the arrangement are not saved: a section added,
+     taken away, changed or moved, and the menu's order. */
+  function structChanges() {
+    var d = savedDoc();
+    if (!state.doc || !d) return 0;
+    var n = JSON.stringify(state.doc.nav) !== JSON.stringify(d.nav) ? 1 : 0;
+    Object.keys(state.doc.pages).forEach(function (p) {
+      var now = state.doc.pages[p], was = d.pages[p] || [];
+      var ids = now.map(function (s) { return s.id; }), old = was.map(function (s) { return s.id; });
+      now.forEach(function (s) {
+        var w = was[old.indexOf(s.id)];
+        if (!w || JSON.stringify(w) !== JSON.stringify(s)) n++;
+      });
+      old.forEach(function (id) { if (ids.indexOf(id) === -1) n++; });
+      var kept = ids.filter(function (id) { return old.indexOf(id) !== -1; });
+      if (kept.join() !== old.filter(function (id) { return ids.indexOf(id) !== -1; }).join()) n++;
+    });
+    return n;
+  }
+  /* A section's rows, in the order its words are read. */
+  function secRows(sec) {
+    var order = SS.keysOf(sec);
+    return state.rows.filter(function (r) { return r.place.sec === sec.id && !isSeo(r); }).sort(function (a, b) {
+      var ia = order.indexOf(a.lines[0].key), ib = order.indexOf(b.lines[0].key);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+  }
+  function rowUnpub(r) { return r.lines.some(function (l) { return state.changedIds[l.id]; }); }
+  function secChanged(sec) {
+    var was = savedSecOf(sec.id);
+    if (!was || JSON.stringify(was.sec) !== JSON.stringify(sec)) return true;
+    return secRows(sec).some(function (r) { return rowDirty(r) || rowUnpub(r); });
+  }
+  /* Which other languages a section's words are still missing in — stand-in
+     words, or a line the summary says needs work. */
+  function secMissing(sec) {
+    var out = {}, rows = secRows(sec);
+    state.langs.forEach(function (c) {
+      if (c === state.lang) {
+        if (rows.some(needsWork)) out[c] = 1;
+        return;
+      }
+      var need = state.needIds[c] || {};
+      if (rows.some(function (r) { return r.lines.some(function (l) { return need[l.id] || (l.fresh && SS.isLorem((state.fresh[l.key] || {})[c])); }); })) out[c] = 1;
+    });
+    return out;
+  }
+  function missingNote(out) {
+    var codes = state.langs.filter(function (l) { return out[l]; });
+    if (!codes.length) return '';
+    return '<span class="ws-miss" title="' + esc(tr('ms.missing') + ' ' + codes.map(langName).join(', ')) + '">' +
+      esc(tr('ms.missing') + ' ' + codes.join(', ').toUpperCase()) + '</span>';
+  }
+  function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
+  /* What a section says, in a line: its heading, else its first words. */
+  function secSummary(sec) {
+    var rows = secRows(sec);
+    for (var i = 0; i < rows.length; i++) {
+      var t = rows[i].lines.map(function (l) { return plainOf(state.draft[l.id]); }).join(' ').trim();
+      if (t) return t.length > 80 ? t.slice(0, 78) + '…' : t;
+    }
+    var k = SS.KINDS[sec.kind];
+    return k.fixed ? tr('sec.what.' + sec.kind) : '';
+  }
+
+  /* THE SKETCHES, as the staff Site Creator draws its kinds: the shape of
+     the section in a few blocks — text light, words dim, the accent where
+     the small line above and the buttons are, a photo gray. */
+  var SKETCH = {
+    homeHero: [[34,12,32,5,'a'],[14,24,72,20,'t'],[26,54,48,9,'l'],[32,70,36,6,'l']],
+    pageHeader: [[8,20,22,6,'a'],[8,36,62,14,'t'],[8,60,70,6,'l'],[8,72,52,6,'l']],
+    dictionary: [[8,14,44,18,'t'],[8,38,26,6,'a'],[8,54,80,6,'l'],[8,66,72,6,'l'],[8,78,64,6,'l']],
+    story: [[8,8,20,5,'a'],[8,18,56,10,'t'],[8,34,80,5,'l'],[8,44,74,5,'l'],[8,56,84,34,'p']],
+    points: [[8,8,20,5,'a'],[8,18,50,10,'t'],[8,38,26,44,'l'],[37,38,26,44,'l'],[66,38,26,44,'l'],[11,43,6,7,'a'],[40,43,6,7,'a'],[69,43,6,7,'a'],[8,86,18,8,'o']],
+    invite: [[40,12,20,5,'a'],[22,24,56,12,'t'],[26,44,48,6,'l'],[29,62,19,12,'a'],[52,62,19,12,'o']],
+    rows: [[8,12,16,6,'a'],[30,10,50,8,'t'],[30,22,60,5,'l'],[8,42,16,6,'a'],[30,40,50,8,'t'],[30,52,60,5,'l'],[8,72,16,6,'a'],[30,70,50,8,'t'],[30,82,60,5,'l']],
+    convictions: [[8,10,8,10,'a'],[22,10,40,6,'t'],[22,20,66,5,'l'],[8,40,8,10,'a'],[22,40,40,6,'t'],[22,50,66,5,'l'],[8,70,8,10,'a'],[22,70,40,6,'t'],[22,80,66,5,'l']],
+    teamGrid: [[8,12,24,44,'p'],[38,12,24,44,'p'],[68,12,24,44,'p'],[8,62,18,6,'t'],[38,62,18,6,'t'],[68,62,18,6,'t'],[8,74,12,5,'l'],[38,74,12,5,'l'],[68,74,12,5,'l']],
+    library: [[8,10,40,10,'l'],[52,10,40,10,'l'],[8,28,84,8,'l'],[8,44,26,40,'l'],[37,44,26,40,'l'],[66,44,26,40,'l']],
+    gatherings: [[8,10,84,3,'a'],[8,18,30,20,'t'],[8,46,70,6,'l'],[8,58,60,6,'l'],[8,74,22,10,'o']],
+    contactForm: [[10,12,80,12,'l'],[10,30,80,12,'l'],[10,48,80,24,'l'],[10,80,20,10,'a']],
+    giving: [[8,10,40,30,'l'],[52,10,40,30,'l'],[8,48,84,24,'p'],[30,78,40,14,'o']]
+  };
+  function sketch(kind) {
+    return (SKETCH[kind] || []).map(function (r) {
+      return '<span class="sk sk-' + r[4] + '" style="left:' + r[0] + '%;top:' + r[1] + '%;width:' + r[2] + '%;height:' + r[3] + '%"></span>';
+    }).join('');
+  }
+  function grip() { return window.StaffSort ? StaffSort.grip(tr('ws.dragMove')).replace('class="sort-grip"', 'class="ws-icon sort-grip"') : ''; }
+  function seg(attr, options, current, labelOf) {
+    return '<div class="ws-seg" role="group">' + options.map(function (o) {
+      return '<button type="button" class="ws-segbtn" ' + attr + ' data-value="' + esc(o) + '" aria-pressed="' + (o === current) + '">' + esc(labelOf(o)) + '</button>';
+    }).join('') + '</div>';
+  }
+  function lookRow(label, control) {
+    return '<div class="ws-row"><span class="ws-lbl">' + esc(label) + '</span><div class="ws-ctl">' + control + '</div></div>';
+  }
+
+  /* ---- a page of sections, drawn ---- */
+  function rowOfKey(key) {
+    for (var i = 0; i < state.rows.length; i++) {
+      if (state.rows[i].lines.some(function (l) { return l.key === key; })) return state.rows[i];
+    }
+    return null;
+  }
+  function box(key, label, drop) {
+    var r = rowOfKey(key);
+    return r ? rowHtml(r, { label: label, drop: drop }) : '';
+  }
+  function addRow(attr, label) {
+    return '<div class="c-row c-addrow"><button type="button" class="link-btn ws-more" ' + attr + '>+ ' + esc(label) + '</button></div>';
+  }
+  function pageHtml(page) {
+    var list = state.doc.pages[page], html = '';
+    /* the page's own lines: what the menu and the browser's tab call it */
+    var own = [];
+    if (page !== 'home' && rowOfKey('nav.' + page)) own.push(box('nav.' + page, tr('sec.page.menuName')));
+    if (rowOfKey(page + '.title')) own.push(box(page + '.title', tr('sec.page.tabName')));
+    if (own.length) html += '<div class="c-rows c-pagerows">' + own.join('') + '</div>';
+    html += '<div class="ws-stack' + (state.open ? ' has-open' : '') + '">';
+    list.forEach(function (sec, i) {
+      html += secHtml(page, sec, i) + '<button type="button" class="ws-insert" data-insert-at="' + (i + 1) + '">+ ' + esc(tr('ws.addHere')) + '</button>';
+    });
+    return html + '</div>';
+  }
+  function secHtml(page, sec, i) {
+    var k = SS.KINDS[sec.kind], open = state.open === sec.id;
+    var movable = i > 0, removable = i > 0 && !k.fixed;
+    return '<article class="ws-acc' + (open ? ' is-open' : '') + (movable ? ' is-movable' : '') + '" data-sid="' + esc(sec.id) + '">' +
+      '<div class="ws-acc-head">' +
+        '<button type="button" class="ws-stile" data-open-sec="' + esc(sec.id) + '" aria-expanded="' + open + '">' +
+          '<span class="ws-sketch ws-sketch-sm" aria-hidden="true">' + sketch(sec.kind) + '</span>' +
+          '<span class="ws-stile-words"><b>' + esc(kindName(sec.kind)) + dot(secChanged(sec)) + '</b>' +
+            '<span>' + esc(secSummary(sec)) + '</span>' + missingNote(secMissing(sec)) + '</span>' +
+          '<span class="ws-chev" aria-hidden="true"></span></button>' +
+        '<span class="ws-stile-tools">' + (movable ? grip() : '') +
+          (removable ? '<button type="button" class="ws-icon del" data-sec-remove="' + esc(sec.id) + '" aria-label="' + esc(tr('sec.remove')) + '" title="' + esc(tr('sec.remove')) + '">✕</button>' : '') +
+        '</span></div>' +
+      '<div class="ws-acc-body"><div class="ws-acc-inner">' + (open ? secBody(sec) : '') + '</div></div></article>';
+  }
+  function secTabs(sec) {
+    var k = SS.KINDS[sec.kind], t = ['words'];
+    if (k.photo) t.push('photo');
+    if (k.buttons) t.push('buttons');
+    if (k.ground || k.voice) t.push('look');
+    return t;
+  }
+  function secBody(sec) {
+    var tabs = secTabs(sec);
+    if (tabs.indexOf(state.sectab) === -1) state.sectab = 'words';
+    var html = tabs.length > 1 ? '<div class="ws-sectabs" role="tablist">' + tabs.map(function (t) {
+      return '<button type="button" role="tab" data-sectab="' + t + '" aria-selected="' + (t === state.sectab) + '">' + esc(tr('ws.tabw.' + t)) + '</button>';
+    }).join('') + '</div>' : '';
+    html += '<div class="ws-panelbody">';
+    if (state.sectab === 'words') html += secWords(sec);
+    else if (state.sectab === 'photo') html += secPhoto(sec);
+    else if (state.sectab === 'buttons') html += secButtons(sec);
+    else if (state.sectab === 'look') html += secLook(sec);
+    return html + '</div>';
+  }
+  /* WHERE A FIXED PART IS EDITED: the people in People, the gatherings
+     and resources in Updates, the form's messages in Sharing. */
+  var FIXED_AT = { teamGrid: '/admin/users/', library: '/admin/website/updates/resources/', gatherings: '/admin/website/updates/',
+                   contactForm: '/admin/website/sharing/' };
+  function secWords(sec) {
+    var k = SS.KINDS[sec.kind], wd = sec.words || {}, id = esc(sec.id), out = [];
+    var note = k.fixed ? '<p class="ws-data">' + esc(tr('sec.what.' + sec.kind)) +
+      (FIXED_AT[sec.kind] ? ' <a href="' + FIXED_AT[sec.kind] + '">' + esc(tr('sec.editThere.' + sec.kind)) + ' →</a>' : '') + '</p>' : '';
+    if (k.fixed && !k.words) {
+      var rows = secRows(sec);
+      return note + (rows.length ? '<div class="c-rows">' + rows.map(function (r) { return rowHtml(r); }).join('') + '</div>' : '');
+    }
+    (k.words || []).forEach(function (f) {
+      var optional = (k.optional || []).indexOf(f) !== -1 && !k.fixed;
+      if (wd[f] == null) {
+        if (optional) out.push(addRow('data-add-part="' + id + ':' + f + '"', tr('sec.add.' + partWord(sec, f))));
+        return;
+      }
+      var label = tr('sec.part.' + partWord(sec, f));
+      out.push(box(f === 'heading' ? wd[f] + '_thin' : wd[f], label, optional ? id + ':' + f : null));
+    });
+    if (k.list) {
+      var list = wd[k.list] || [];
+      list.forEach(function (key, i) {
+        out.push(box(key, fill('sec.part.' + k.list, { n: i + 1 }), list.length > 1 || sec.kind === 'story' ? id + ':' + k.list + ':' + i : null));
+      });
+      if (list.length < (k.listMax || 8)) out.push(addRow('data-add-para="' + id + '"', tr('sec.add.' + k.list)));
+    }
+    var html = note + '<div class="c-rows c-secrows">' + out.join('') + '</div>';
+    if (k.items) {
+      var items = sec.items || [];
+      items.forEach(function (it, i) {
+        html += '<div class="c-item"><div class="c-item-head"><b>' + esc(fill('sec.item.' + sec.kind, { n: i + 1 })) + '</b>' +
+          (items.length > 1 ? '<button type="button" class="ws-icon del" data-drop-item="' + id + ':' + i + '" aria-label="' + esc(tr('sec.removeItem')) + '" title="' + esc(tr('sec.removeItem')) + '">✕</button>' : '') +
+          '</div><div class="c-rows">' + k.items.map(function (f) { return box(it[f], tr('sec.part.i' + f)); }).join('') + '</div></div>';
+      });
+      if (items.length < (k.itemsMax || 8)) html += '<button type="button" class="link-btn ws-more" data-add-item="' + id + '">+ ' + esc(tr('sec.add.item.' + sec.kind)) + '</button>';
+    }
+    return html;
+  }
+  function photoOf(sec) {
+    if (!sec.photo) return null;
+    if (state.photos[sec.photo]) return { src: state.photos[sec.photo], focal_x: 50, focal_y: 50, zoom: 100 };
+    return (state.site && state.site.images && state.site.images[sec.photo]) || null;
+  }
+  function secPhoto(sec) {
+    var img = photoOf(sec), own = !sec.photo || sec.photo === sec.id, id = esc(sec.id);
+    var html = img && img.src
+      ? '<div class="c-secphoto"><img src="' + esc(img.src) + '" alt="" style="object-position:' + Number(img.focal_x || 50) + '% ' + Number(img.focal_y || 50) + '%"></div>'
+      : '<div class="ws-bigphoto"><span class="ws-nophoto">' + esc(tr('ws.noPhoto')) + '</span></div>';
+    html += '<div class="ws-sec-row">';
+    /* a photo the site always had is changed and framed in Photos; a
+       section's own is chosen here, and framed in Photos once saved */
+    if (own) html += '<label class="ghost-btn sm ws-file">' + esc(tr(img && img.src ? 'sec.photo.change' : 'ws.choosePhoto')) +
+      '<input type="file" accept="image/*" data-sec-photo="' + id + '" hidden></label>';
+    if (sec.photo && !state.photos[sec.photo] && img && img.src) html += '<button type="button" class="ghost-btn sm" data-goto-photo="' + esc(sec.photo) + '">' + esc(tr(own ? 'sec.photo.frame' : 'sec.photo.inPhotos')) + ' →</button>';
+    if (own && sec.photo) html += '<button type="button" class="link-btn" data-sec-unphoto="' + id + '">' + esc(tr('ws.removePhoto')) + '</button>';
+    html += '<span class="hint" data-photo-hint></span></div>';
+    var wd = sec.words || {};
+    if (sec.photo && (wd.alt || wd.placeholder)) {
+      html += '<div class="c-rows">' + (wd.alt ? box(wd.alt, tr('sec.part.alt')) : '') + (wd.placeholder ? box(wd.placeholder, tr('sec.part.placeholder')) : '') + '</div>';
+    }
+    return html;
+  }
+  function pageOptions(current) {
+    var custom = SS.PAGES.indexOf(current) === -1;
+    return SS.PAGES.map(function (p) {
+      return '<option value="' + esc(p) + '"' + (p === current ? ' selected' : '') + '>' + esc(sectionLabel(p)) + '</option>';
+    }).join('') + '<option value="__url"' + (custom ? ' selected' : '') + '>' + esc(tr('sec.btn.address')) + '…</option>';
+  }
+  function secButtons(sec) {
+    var k = SS.KINDS[sec.kind], bs = sec.buttons || [], id = esc(sec.id), html = '';
+    bs.forEach(function (b, i) {
+      var custom = SS.PAGES.indexOf(b.to) === -1;
+      html += '<div class="c-item"><div class="c-item-head"><b>' + esc(bs.length > 1 ? fill('sec.part.buttonN', { n: i + 1 }) : tr('sec.part.button')) + '</b>' +
+        '<button type="button" class="ws-icon del" data-drop-button="' + id + ':' + i + '" aria-label="' + esc(tr('sec.removeButton')) + '" title="' + esc(tr('sec.removeButton')) + '">✕</button></div>' +
+        '<div class="c-rows">' + box(b.label, tr('sec.btn.words')) + '</div>' +
+        '<div class="ws-rows">' +
+          lookRow(tr('sec.btn.to'), '<div class="ws-link"><select data-btn-to="' + id + ':' + i + '">' + pageOptions(b.to) + '</select>' +
+            (custom ? '<input type="url" data-btn-url="' + id + ':' + i + '" value="' + esc(b.to) + '" placeholder="https://" spellcheck="false">' : '') + '</div>') +
+          lookRow(tr('sec.btn.style'), seg('data-btn-style="' + id + ':' + i + '"', SS.STYLES, b.style || 'solid', function (v) { return tr('sec.btn.' + v); })) +
+        '</div></div>';
+    });
+    if (bs.length < k.buttons) html += '<button type="button" class="link-btn ws-more" data-add-button="' + id + '">+ ' + esc(tr('ws.addButton')) + '</button>';
+    return html || '<p class="ws-small">' + esc(tr('sec.btn.none')) + '</p>';
+  }
+  function secLook(sec) {
+    var k = SS.KINDS[sec.kind], look = sec.look || {}, id = esc(sec.id), html = '<div class="ws-rows">';
+    if (k.ground) html += lookRow(tr('sec.look.ground'), seg('data-look="' + id + ':ground"', SS.GROUNDS, look.ground || 'plain', function (v) { return tr('sec.look.ground.' + v); }));
+    if (k.voice) html += lookRow(tr('sec.look.voice'), seg('data-look="' + id + ':voice"', SS.VOICES, look.voice || 'tech', function (v) { return tr('sec.look.voice.' + v); }));
+    return html + '</div>';
+  }
+
+  /* ---- a page of sections, changed ---- */
+  /* After a change to the arrangement: every section found again, the
+     rows placed again, the page and the preview drawn. */
+  function arranged(keepOpen) {
+    takeDoc(state.doc);
+    buildRows();
+    renderRows();
+    renderCrumb();
+    renderSaveBar();
+    renderNav();
+    prevArrange();
+    if (keepOpen && state.open) {
+      var el = $('cRows').querySelector('.ws-acc[data-sid="' + state.open + '"]');
+      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+  function newId() { return 's' + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 5); }
+  function viewPage() { return /^section:/.test(state.view || '') ? state.view.slice(8) : null; }
+  /* The keys of a section's words that were added since the last save. */
+  function freshIn(keys) { return keys.filter(function (k) { return state.fresh[k]; }); }
+
+  function openAdd(at) {
+    var page = viewPage();
+    if (!page) return;
+    state.insertAt = at;
+    $('cAddTitle').innerHTML = esc(tr('ws.addTo')) + ' <b>' + esc(sectionLabel(page)) + '</b>';
+    $('cTiles').innerHTML = SS.ADDABLE.map(function (kind) {
+      return '<button type="button" class="ws-tile" data-add-kind="' + kind + '"><span class="ws-sketch" aria-hidden="true">' + sketch(kind) + '</span>' +
+        '<b>' + esc(kindName(kind)) + '</b><span>' + esc(tr('sec.what.' + kind)) + '</span></button>';
+    }).join('');
+    $('cAddBack').hidden = false; void $('cAddBack').offsetHeight; $('cAddBack').classList.add('in');
+    var first = $('cTiles').querySelector('button'); if (first) first.focus();
+  }
+  function closeAdd() { $('cAddBack').classList.remove('in'); $('cAddBack').hidden = true; }
+  $('cAddClose').addEventListener('click', closeAdd);
+  $('cAddBack').addEventListener('click', function (e) {
+    if (e.target === this) return closeAdd();
+    var t = e.target.closest && e.target.closest('[data-add-kind]');
+    if (!t) return;
+    var page = viewPage(), kind = t.getAttribute('data-add-kind');
+    closeAdd();
+    if (!page) return;
+    var sec = SS.newSection(kind, newId());
+    state.doc.pages[page].splice(Math.max(1, state.insertAt || 1), 0, sec);
+    freshKeys(SS.keysOf(sec));
+    state.open = sec.id; state.sectab = 'words';
+    arranged(true);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cAddBack').hidden) closeAdd(); });
+
+  async function removeSection(id) {
+    var sec = secOf(id), at = state.idAt[id];
+    if (!sec || !at) return;
+    var fresh = !savedSecOf(id);
+    if (!fresh) {
+      var ok = await window.StaffConfirm({ title: tr('sec.removeTitle'), body: tr('sec.removeBody'), confirm: tr('sec.remove'), cancel: tr('ms.cancel'), danger: true });
+      if (!ok) return;
+    }
+    dropFresh(freshIn(SS.keysOf(sec)));
+    delete state.photos[id];
+    state.doc.pages[at.page].splice(at.at, 1);
+    if (state.open === id) state.open = null;
+    arranged();
+  }
+  function addKeys(sec, keys) { freshKeys(keys.filter(function (k) { return !state.byId['site:' + k]; })); }
+  function dropKeys(keys) { dropFresh(freshIn(keys)); }
+  function partKeys(key, f) { return f === 'heading' ? [key + '_thin', key + '_bold'] : [key]; }
+
+  /* everything a section's own controls do */
+  $('cRows').addEventListener('click', async function (e) {
+    var t = e.target.closest && e.target.closest('button');
+    if (!t || !$('cRows').contains(t)) return;
+    var d = t.dataset, sec, at, k;
+    if (d.openSec) {
+      state.open = state.open === d.openSec ? null : d.openSec;
+      state.sectab = 'words';
+      renderRows();
+      prevShowSection(state.open);
+      if (state.open) { var el = $('cRows').querySelector('.ws-acc[data-sid="' + state.open + '"]'); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      return;
+    }
+    if (d.sectab) { state.sectab = d.sectab; return renderRows(); }
+    if (d.insertAt) return openAdd(Number(d.insertAt));
+    if (d.secRemove) return removeSection(d.secRemove);
+    if (d.addPart) {
+      at = d.addPart.split(':'); sec = secOf(at[0]);
+      if (!sec) return;
+      sec.words = sec.words || {};
+      sec.words[at[1]] = SS.blockKey(sec.id, at[1]);
+      addKeys(sec, partKeys(sec.words[at[1]], at[1]));
+      return arranged();
+    }
+    if (d.dropPart) {
+      at = d.dropPart.split(':'); sec = secOf(at[0]);
+      if (!sec) return;
+      if (at.length === 3) {
+        k = SS.KINDS[sec.kind].list;
+        dropKeys(sec.words[k].splice(Number(at[2]), 1));
+      } else {
+        dropKeys(partKeys(sec.words[at[1]], at[1]));
+        delete sec.words[at[1]];
+      }
+      return arranged();
+    }
+    if (d.addPara) {
+      sec = secOf(d.addPara);
+      k = SS.KINDS[sec.kind].list;
+      var pk = SS.blockKey(sec.id, SS.nextPart(sec, k === 'defs' ? 'def' : 'p'));
+      sec.words[k] = (sec.words[k] || []).concat(pk);
+      addKeys(sec, [pk]);
+      return arranged();
+    }
+    if (d.addItem) {
+      sec = secOf(d.addItem);
+      var n = SS.nextPart(sec, 'item'), it = {};
+      SS.KINDS[sec.kind].items.forEach(function (f) { it[f] = SS.blockKey(sec.id, n + '_' + f); });
+      sec.items.push(it);
+      addKeys(sec, Object.keys(it).map(function (f) { return it[f]; }));
+      return arranged();
+    }
+    if (d.dropItem) {
+      at = d.dropItem.split(':'); sec = secOf(at[0]);
+      var gone = sec.items.splice(Number(at[1]), 1)[0];
+      dropKeys(Object.keys(gone).map(function (f) { return gone[f]; }));
+      return arranged();
+    }
+    if (d.addButton) {
+      sec = secOf(d.addButton);
+      sec.buttons = sec.buttons || [];
+      var bk = SS.blockKey(sec.id, SS.nextPart(sec, 'button'));
+      sec.buttons.push({ label: bk, to: 'contact', style: sec.buttons.length ? 'ghost' : 'solid' });
+      addKeys(sec, [bk]);
+      return arranged();
+    }
+    if (d.dropButton) {
+      at = d.dropButton.split(':'); sec = secOf(at[0]);
+      dropKeys([sec.buttons.splice(Number(at[1]), 1)[0].label]);
+      if (!sec.buttons.length) delete sec.buttons;
+      return arranged();
+    }
+    if (d.btnStyle) {
+      at = d.btnStyle.split(':'); sec = secOf(at[0]);
+      sec.buttons[Number(at[1])].style = d.value;
+      return arranged();
+    }
+    if (d.look) {
+      at = d.look.split(':'); sec = secOf(at[0]);
+      sec.look = sec.look || {};
+      var plain = at[1] === 'ground' ? 'plain' : 'tech';
+      if (d.value === plain) delete sec.look[at[1]]; else sec.look[at[1]] = d.value;
+      if (!Object.keys(sec.look).length) delete sec.look;
+      return arranged();
+    }
+    if (d.secUnphoto) {
+      sec = secOf(d.secUnphoto);
+      delete state.photos[sec.id];
+      delete sec.photo;
+      if (sec.words && sec.words.alt) { dropKeys([sec.words.alt]); delete sec.words.alt; }
+      return arranged();
+    }
+    if (d.gotoPhoto) {
+      /* Photos, on this photo (admin-photos.js) */
+      var tabLink = document.querySelector('.web-side [data-web-tab="photos"]');
+      if (tabLink) tabLink.click();
+      document.dispatchEvent(new CustomEvent('photos:show', { detail: d.gotoPhoto }));
+    }
+  });
+  $('cRows').addEventListener('change', async function (e) {
+    var t = e.target, d = t.dataset, at, sec;
+    if (d.btnTo) {
+      at = d.btnTo.split(':'); sec = secOf(at[0]);
+      var b = sec.buttons[Number(at[1])];
+      b.to = t.value === '__url' ? 'https://' : t.value;
+      arranged();
+      if (t.value === '__url') { var u = $('cRows').querySelector('[data-btn-url="' + d.btnTo + '"]'); if (u) u.focus(); }
+      return;
+    }
+    if (d.btnUrl) {
+      at = d.btnUrl.split(':'); sec = secOf(at[0]);
+      sec.buttons[Number(at[1])].to = t.value.trim();
+      return arranged();
+    }
+    if (d.secPhoto && t.files && t.files[0]) {
+      sec = secOf(d.secPhoto);
+      var hint = t.closest('.ws-sec-row').querySelector('[data-photo-hint]');
+      var file = t.files[0];
+      t.value = '';
+      var shot = window.PhotoCrop ? await window.PhotoCrop.open(file, 'site') : { blob: file };
+      if (!shot) return;
+      if (hint) hint.textContent = tr('lib.uploading');
+      try {
+        var res = await fetch('/api/admin/media?kind=site', { method: 'PUT', credentials: 'same-origin',
+          headers: { 'Content-Type': shot.blob.type || 'image/jpeg', 'X-File-Name': String(file.name || sec.id).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\x20-\x7e]/g, '').slice(0, 80) },
+          body: shot.blob });
+        var body = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(body.error || tr('err.refused'));
+        state.photos[sec.id] = body.url;
+        sec.photo = sec.id;
+        sec.words = sec.words || {};
+        if (!sec.words.alt) { sec.words.alt = SS.blockKey(sec.id, 'alt'); addKeys(sec, [sec.words.alt]); }
+        arranged();
+      } catch (err) { if (hint) hint.textContent = err.message; }
+    }
+  });
+  /* MOVING A SECTION: its grip, dragged or moved with the arrow keys, as on
+     the staff Site Creator. The head of the page is not among them. */
+  if (window.StaffSort) StaffSort($('cRows'), { items: '.ws-stack > .ws-acc.is-movable', handle: '.ws-acc.is-movable .sort-grip',
+    key: function (it) { return it.getAttribute('data-sid'); },
+    drop: function (parent, from, to) {
+      var page = viewPage();
+      if (!page) return;
+      var list = state.doc.pages[page], moving = list.slice(1);
+      moving.splice(to, 0, moving.splice(from, 1)[0]);
+      state.doc.pages[page] = [list[0]].concat(moving);
+      arranged();
+    } });
+
+  /* ---- Navigation: the menu ---------------------------------------------
+     THE HEADER (Chase, 2026-10-21: "should we have the footer and header
+     editor"): the menu's pages in the order the site shows them, each
+     called what the menu calls it, and the Give button at the end. Home is
+     the logo. A page switched off in Settings stays in its place here,
+     marked, and comes back there when it is switched on. */
+  function renderNav() {
+    var el = $('cNav');
+    if (!el || !state.rows.length) return;
+    if (!state.doc) { el.innerHTML = ''; return; }
+    var vis = (state.site && state.site.visibility && state.site.visibility.pages) || {};
+    var html = '<div class="ws-head"><h2>' + esc(tr('sec.nav.title')) + '</h2></div>' +
+      '<p class="ws-small c-navnote">' + esc(tr('sec.nav.note')) + '</p>' +
+      '<div class="ws-linkrows c-navlist">' + state.doc.nav.map(function (slug) {
+        var v = vis[slug], off = v && typeof v === 'object' ? !v.live : v === false;
+        return '<div class="ws-linkitem" data-slug="' + esc(slug) + '"><div class="ws-linkrow c-navrow">' + grip() +
+          '<div class="c-rows">' + box('nav.' + slug, sectionLabel(slug)) + '</div>' +
+          (off ? '<a class="ws-pill c-navoff" href="/admin/website/settings/" data-web-go="settings">' + esc(tr('sec.offLive')) + '</a>' : '') + '</div></div>';
+      }).join('') + '</div>' +
+      '<div class="c-rows c-navgive">' + box('nav.give', tr('sec.nav.give')) + '</div>';
+    el.innerHTML = html;
+    el.querySelectorAll('textarea').forEach(autosize);
+  }
+  if ($('cNav') && window.StaffSort) StaffSort($('cNav'), { items: '.c-navlist > .ws-linkitem', handle: '.ws-linkitem .sort-grip',
+    key: function (it) { return it.getAttribute('data-slug'); },
+    drop: function (parent, from, to) {
+      state.doc.nav.splice(to, 0, state.doc.nav.splice(from, 1)[0]);
+      renderNav(); renderSaveBar(); prevArrange();
+    } });
+
+  /* ---- Footer ----------------------------------------------------------
+     What is in it — the contact page, Stay Connected, the site's own links
+     and its social icons (Links) — and what it says. The © and the year
+     that start the small print are one of the arcade's doors (doors.js),
+     and are said to be. */
+  function renderFoot() {
+    var el = $('cFoot');
+    if (!el || !state.rows.length) return;
+    var site = state.site || {}, vis = (site.visibility || {}), pages = vis.pages || {}, secs = vis.sections || {};
+    var on = function (v) { return v == null ? true : typeof v === 'object' ? !!v.dev : !!v; };
+    var pills = [];
+    if (on(pages.contact)) pills.push(plainOf(draftOf('nav.contact')));
+    pills.push(plainOf(draftOf('footer.stay')));
+    (site.links || []).forEach(function (k) { var l = (k.label || {})[state.lang] || (k.label || {}).en || k.url; if (l) pills.push(l); });
+    if (on(secs.socialLinks)) Object.keys(site.socials || {}).forEach(function (s) { if (site.socials[s]) pills.push(s.charAt(0).toUpperCase() + s.slice(1)); });
+    var legal = plainOf(draftOf('footer.legal'));
+    el.innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.footer.has')) + '</h2></div><div class="ws-infoot">' +
+        pills.map(function (x) { return '<span class="ws-pill">' + esc(x) + '</span>'; }).join('') +
+        '<a class="ghost-btn sm" href="/admin/website/links/" data-web-go="links">' + esc(tr('ws.footer.editLinks')) + ' →</a></div>' +
+      '<div class="c-rows">' +
+        box('footer.tagline', tr('sec.foot.tagline')) + box('footer.stay', tr('sec.foot.stay')) +
+        box('footer.legal', tr('sec.foot.legal')) + box('footer.region', tr('sec.foot.region')) + '</div>' +
+      '<p class="ws-small c-footnote' + (/^©\s?\d{4}/.test(legal) ? '' : ' is-warn') + '" data-arcade-note>' + esc(tr(/^©\s?\d{4}/.test(legal) ? 'sec.foot.door' : 'sec.foot.noDoor')) + '</p>';
+    el.querySelectorAll('textarea').forEach(autosize);
+  }
+
+  /* A photo's name, for Photos: the page, and what its section says. */
+  window.ThaumaPhotoName = function (slot) {
+    if (!state.doc || !state.rows.length) return null;
+    var hit = null;
+    Object.keys(state.doc.pages).forEach(function (p) { state.doc.pages[p].forEach(function (s) { if (s.photo === slot) hit = s; }); });
+    if (!hit) return null;
+    var words = secSummary(hit);
+    return sectionLabel(state.idAt[hit.id].page) + ' · ' + (words.length > 40 ? words.slice(0, 38) + '…' : words || kindName(hit.kind));
+  };
+
+  /* ---- the preview, arranged as on screen --------------------------------
+     A page's sections are drawn into the preview with the templates that
+     build the site (src/_includes/sections, copied to /site-sections/) by
+     the engine that builds it (Nunjucks, copied to /js/vendor/), so what is
+     added, moved or taken away shows before it is saved. A section that has
+     not changed is the page's own, animations and all; a fixed part (the
+     team, the form) is always the page's own. */
+  var NJ = null, njLoading = null;
+  function loadScript(src) {
+    return new Promise(function (ok, no) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = ok; s.onerror = no;
+      document.head.appendChild(s);
+    });
+  }
+  function renderer() {
+    if (NJ) return Promise.resolve(NJ);
+    if (njLoading) return njLoading;
+    var v = ($('cPreview') && $('cPreview').getAttribute('data-v')) || '';
+    var kinds = Object.keys(SS.KINDS).filter(function (k) { return !SS.KINDS[k].fixed; });
+    njLoading = Promise.all([
+      window.nunjucks ? null : loadScript('/js/vendor/nunjucks.min.js?v=' + v),
+      window.ThaumaFrame ? null : loadScript('/js/frame.js?v=' + v),
+      Promise.all(kinds.map(function (k) {
+        return fetch('/site-sections/' + k + '.njk?v=' + v, { credentials: 'same-origin' }).then(function (r) {
+          if (!r.ok) throw new Error(k);
+          return r.text();
+        });
+      }))
+    ]).then(function (got) {
+      var src = {};
+      kinds.forEach(function (k, i) { src['sections/' + k + '.njk'] = got[2][i]; });
+      var Loader = window.nunjucks.Loader.extend({
+        getSource: function (name) { return src[name] != null ? { src: src[name], path: name, noCache: false } : null; }
+      });
+      var env = new window.nunjucks.Environment(new Loader(), { autoescape: true });
+      env.addFilter('w', SS.wordAt);
+      env.addFilter('sectionHref', SS.sectionHref);
+      env.addFilter('rich', function (s, key) {
+        var html = window.SiteRich.richHtml(s);
+        return new window.nunjucks.runtime.SafeString(key ? '<span data-k="' + String(key).replace(/[^\w.\-]/g, '') + '">' + html + '</span>' : html);
+      });
+      env.addFilter('plain', function (s) { return window.SiteRich.richPlain(s); });
+      env.addFilter('frameStyle', window.ThaumaFrame.frameStyle);
+      NJ = env;
+      return env;
+    }, function (e) { njLoading = null; throw e; });
+    return njLoading;
+  }
+  /* The words of the language being written, as the page reads them. */
+  function wordsTree() {
+    var t = {};
+    state.lines.forEach(function (l) {
+      if (l.source !== 'site') return;
+      var parts = l.key.split('.'), node = t;
+      for (var i = 0; i < parts.length - 1; i++) {
+        if (node[parts[i]] == null) node[parts[i]] = /^\d+$/.test(parts[i + 1]) ? [] : {};
+        node = node[parts[i]];
+      }
+      node[parts[parts.length - 1]] = state.draft[l.id];
+    });
+    return t;
+  }
+  function renderSection(env, sec, t) {
+    var images = {}, si = (state.site && state.site.images) || {};
+    Object.keys(si).forEach(function (k) { images[k] = si[k]; });
+    Object.keys(state.photos).forEach(function (k) { images[k] = { src: state.photos[k], focal_x: 50, focal_y: 50, zoom: 100 }; });
+    return env.render('sections/' + sec.kind + '.njk', { sec: sec, t: t, lang: state.lang, site: { images: images }, env: { isProduction: false } });
+  }
+  /* Which of the preview's elements a section is: the one holding its
+     first word, or for a fixed part, the one only it could be. */
+  var FIXED_EL = { homeHero: 'header.hero', convictions: 'section:has(.conviction)', teamGrid: 'section:has(.team-grid)',
+    library: 'section:has(.lib), section:has([data-k^="resources."])', gatherings: 'section:has([data-k^="events."]), section:has(.invite)',
+    contactForm: 'section:has(form.contact)', giving: 'section:has(.give-grid)' };
+  function kidsOf(main) { return [].filter.call(main.children, function (c) { return !/^(SCRIPT|STYLE|TEMPLATE)$/.test(c.tagName); }); }
+  function elOf(main, sec) {
+    var kids = kidsOf(main), i;
+    if (SS.KINDS[sec.kind].fixed) {
+      for (i = 0; i < kids.length; i++) { try { if (kids[i].matches(FIXED_EL[sec.kind])) return kids[i]; } catch (e) { return null; } }
+      return null;
+    }
+    var first = SS.keysOf(sec)[0];
+    if (!first) return null;
+    for (i = 0; i < kids.length; i++) if (kids[i].querySelector('[data-k="' + first + '"]')) return kids[i];
+    return null;
+  }
+  /* Drawn by the page itself when the page was built from it as it is; a
+     section changed since, or anything after a save the site has not been
+     rebuilt from yet, is drawn here. */
+  function unchanged(sec) {
+    if (SS.KINDS[sec.kind].fixed) return true;
+    if (state.structSaved) return false;
+    var was = savedSecOf(sec.id);
+    return !!was && JSON.stringify(was.sec) === JSON.stringify(sec) && !freshIn(SS.keysOf(sec)).length;
+  }
+  var arrangeTimer = null;
+  function prevArrange() { clearTimeout(arrangeTimer); arrangeTimer = setTimeout(arrangeNow, 40); }
+  async function arrangeNow() {
+    var doc = prevDoc(), page = prevSection();
+    if (!doc || !state.doc || !doc.querySelector('main')) return;
+    if ((doc.documentElement.getAttribute('lang') || state.lang) !== state.lang) return;
+    prevMenu(doc);
+    if (!isSectioned(page)) return;
+    var main = doc.querySelector('main'), list = state.doc.pages[page], kids = kidsOf(main);
+    var found = list.map(function (sec) { return unchanged(sec) ? elOf(main, sec) : null; });
+    /* nothing to do: every section is the page's own, in the page's order */
+    if (found.length === kids.length && found.every(function (el, i) { return el && el === kids[i]; })) return prevShowSection(state.open, true);
+    var env;
+    try { env = await renderer(); } catch (e) { return; }
+    if (prevDoc() !== doc) return;
+    var t = wordsTree(), win = doc.defaultView, y = win ? win.scrollY : 0;
+    var els = list.map(function (sec, i) {
+      if (found[i]) return found[i];
+      if (SS.KINDS[sec.kind].fixed) return null;
+      var tmp = doc.createElement('div');
+      try { tmp.innerHTML = renderSection(env, sec, t); } catch (e) { return null; }
+      return tmp.firstElementChild;
+    }).filter(Boolean);
+    kids.forEach(function (c) { if (els.indexOf(c) === -1) c.remove(); });
+    var tail = [].filter.call(main.children, function (c) { return /^(SCRIPT|STYLE|TEMPLATE)$/.test(c.tagName); })[0] || null;
+    els.forEach(function (el) { main.insertBefore(el, tail); });
+    if (win) win.scrollTo(0, y);
+    prevShowSection(state.open, true);
+  }
+  /* The menu in the order on screen: its own links, moved. */
+  function prevMenu(doc) {
+    var saved = savedDoc();
+    if (!saved || !state.doc) return;
+    ['.links', '.mobile-menu'].forEach(function (sel) {
+      var box = doc.querySelector(sel);
+      if (!box) return;
+      state.doc.nav.forEach(function (slug) {
+        var a = box.querySelector('a[href$="/' + slug + '/"]');
+        if (a) box.appendChild(a);
+      });
+      var give = sel === '.mobile-menu' && box.querySelector('a[href$="/give/"]');
+      if (give) box.appendChild(give);
+    });
+  }
+  /* The open section, outlined in the preview and brought into view. */
+  function prevShowSection(id, quiet) {
+    var doc = prevDoc();
+    if (!doc) return;
+    [].forEach.call(doc.querySelectorAll('.c-prev-sec'), function (x) { x.classList.remove('c-prev-sec'); });
+    var sec = id && secOf(id), main = doc.querySelector('main');
+    if (!sec || !main || state.idAt[id].page !== prevSection()) return;
+    var el = elOf(main, sec);
+    if (!el) return;
+    el.classList.add('c-prev-sec');
+    if (!quiet) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  /* A SECTION PRESSED IN THE PREVIEW OPENS IN THE LIST (as the staff Site
+     Creator's preview does): its words, ready to write. A link still goes
+     where it goes, and opens that page. */
+  function prevPress(doc, e) {
+    if (onTab() !== 'pages') return;
+    var t = e.target;
+    if (!t.closest || t.closest('a, button, input, textarea, select, label, form, dialog')) return;
+    var main = doc.querySelector('main'), page = prevSection();
+    if (!main || !main.contains(t) || !isSectioned(page)) return;
+    var hit = null;
+    state.doc.pages[page].some(function (sec) { var el = elOf(main, sec); if (el && el.contains(t)) { hit = sec.id; return true; } return false; });
+    if (!hit) return;
+    if (state.view !== 'section:' + page) openView('section:' + page, true);
+    state.open = hit; state.sectab = 'words';
+    renderRows();
+    prevShowSection(hit, true);
+    var acc = $('cRows').querySelector('.ws-acc[data-sid="' + hit + '"]');
+    if (acc) acc.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 
   /* ---- Advanced: search and sharing ------------------------------------
@@ -1051,15 +2057,6 @@
     box.querySelectorAll('textarea').forEach(autosize);
   }
 
-  function drawBack() {
-    var box = $('cRows').querySelector('[data-back-line]');
-    if (!box) return;
-    var page = !state.find && /^section:/.test(state.view || '') ? state.view.slice(8) : null;
-    var show = !!page && (!!state.changedSecs[page] || state.lines.some(function (l) { return sectionOf(l) === page && lineDirty(l); }));
-    box.hidden = !show;
-    box.innerHTML = show ? '<i class="ws-dot"></i><button type="button" class="link-btn" data-page-back="' + esc(page) + '">' + esc(tr('ws.revert.page')) + '</button>' : '';
-  }
-
   function renderMore() {
     /* The file and the upload are for translating, so English has neither. */
     var n = visibleLineIds().length;
@@ -1077,18 +2074,24 @@
   }
 
   function renderSaveBar() {
-    var d = dirtyIds();
+    var d = dirtyIds().filter(function (id) { return !state.byId[id] || !state.byId[id].fresh; });
     /* which tabs hold them, for the marks on the tabs (admin-website.js) */
-    var tabs = [];
+    var tabs = [], add = function (t) { if (tabs.indexOf(t) === -1) tabs.push(t); };
     d.forEach(function (id) {
-      var l = state.byId[id], t = l && /\.seo_(title|desc)$/.test(l.key) && l.source === 'site' ? 'advanced' : 'pages';
-      if (tabs.indexOf(t) === -1) tabs.push(t);
+      var l = state.byId[id], k = l && l.source === 'site' ? l.key : '';
+      add(/\.seo_(title|desc)$/.test(k) ? 'advanced' : /^nav\./.test(k) ? 'navigation' : /^footer\./.test(k) ? 'footer' : 'pages');
     });
+    var saved = savedDoc();
+    if (saved && state.doc) {
+      if (JSON.stringify(saved.nav) !== JSON.stringify(state.doc.nav)) add('navigation');
+      if (JSON.stringify(saved.pages) !== JSON.stringify(state.doc.pages)) add('pages');
+    }
+    var n = d.length + structChanges();
     $('cSaveBar').setAttribute('data-tabs', tabs.join(' ') || 'pages');
-    $('cSaveBar').hidden = !d.length;
-    document.body.classList.toggle('has-savebar', !!d.length);
-    if (!d.length) return;
-    $('cDirtyCount').textContent = d.length === 1 ? tr('con.oneChange') : d.length + ' ' + tr('con.nChanges');
+    $('cSaveBar').hidden = !n;
+    document.body.classList.toggle('has-savebar', !!n);
+    if (!n) return;
+    $('cDirtyCount').textContent = n === 1 ? tr('con.oneChange') : n + ' ' + tr('con.nChanges');
   }
 
   /* After an edit, the row's own marks change without a redraw — a redraw
@@ -1098,9 +2101,22 @@
     var row = state.rows.filter(function (r) { return r.id === rowEl.getAttribute('data-row'); })[0];
     if (!row) return;
     row.lines.forEach(function (l) { delete state.blocked[l.id]; });
-    var dirty = rowDirty(row);
-    rowEl.classList.toggle('is-dirty', dirty);
+    var dirty = rowDirty(row), unpub = !dirty && rowUnpub(row);
+    [].forEach.call(document.querySelectorAll('.c-row[data-row="' + rowEl.getAttribute('data-row').replace(/"/g, '') + '"]'), function (el) {
+      el.classList.toggle('is-dirty', dirty);
+      el.classList.toggle('is-unpub', unpub);
+      var u = el.querySelector('.c-undo');
+      if (u) { if (dirty || unpub) u.removeAttribute('tabindex'); else u.setAttribute('tabindex', '-1'); }
+    });
     rowEl.classList.remove('is-blocked');
+    /* the section's own mark, as it changes */
+    var acc = rowEl.closest('.ws-acc'), sec = acc && secOf(acc.getAttribute('data-sid'));
+    var head = acc && acc.querySelector('.ws-stile-words b');
+    if (sec && head) {
+      var d = head.querySelector('.ws-dot'), on = secChanged(sec);
+      if (on && !d) head.insertAdjacentHTML('beforeend', dot(true));
+      if (!on && d) d.remove();
+    }
     /* Being written now says more than having been missing or outdated. */
     var mark = needsWork(row) ? rowStatus(row) : '';
     rowEl.classList.toggle('is-' + mark, !!mark && !dirty);
@@ -1108,17 +2124,17 @@
     if (badge) badge.hidden = dirty;
     renderSaveBar();
     renderCrumb();
-    drawBack();
   }
 
   /* ---- editing -------------------------------------------------------- */
 
-  var BOXES = [$('cRows'), $('cAdv')];
+  var BOXES = [$('cRows'), $('cAdv'), $('cNav'), $('cFoot')].filter(Boolean);
   function onBoxes(type, fn) { BOXES.forEach(function (b) { b.addEventListener(type, fn); }); }
   onBoxes('input', function (e) {
     var t = e.target;
     if (t.tagName === 'TEXTAREA') {
       state.draft[t.getAttribute('data-id')] = t.value;
+      freshTyped(t.getAttribute('data-id'));
       autosize(t);
       prevDraw(t.getAttribute('data-id'));
       seoLive(t.getAttribute('data-id'));
@@ -1130,14 +2146,21 @@
       var parts = readSplit(box);
       state.draft[box.getAttribute('data-thin')] = parts.thin;
       state.draft[box.getAttribute('data-bold')] = parts.bold;
+      freshTyped(box.getAttribute('data-thin')); freshTyped(box.getAttribute('data-bold'));
       prevDraw(box.getAttribute('data-thin')); prevDraw(box.getAttribute('data-bold'));
     } else {
       state.draft[box.getAttribute('data-id')] = boxWords(box);
+      freshTyped(box.getAttribute('data-id'));
       prevDraw(box.getAttribute('data-id'));
       seoLive(box.getAttribute('data-id'));
     }
     markRow(box);
   });
+
+  function freshTyped(id) {
+    var l = state.byId[id];
+    if (l && l.fresh && state.fresh[l.key]) state.fresh[l.key][state.lang] = state.draft[id];
+  }
 
   function readSplit(box) {
     var all = boxWords(box), at = all.indexOf('<b>');
@@ -1162,6 +2185,11 @@
   });
   /* Leaving a heading shows it as it will be saved: where its bold half
      really begins. */
+  /* a box's own Discard Changes */
+  onBoxes('click', function (e) {
+    var u = e.target.closest && e.target.closest('[data-undo]');
+    if (u) undoRow(u.getAttribute('data-undo'));
+  });
   onBoxes('focusout', function (e) {
     var box = e.target.closest && e.target.closest('.c-splitbox');
     if (!box) return;
@@ -1172,6 +2200,7 @@
   /* A page, Needs Work, every line, or (null) the list of pages. `quiet`:
      the preview is already there, having been pressed into. */
   function openView(view, quiet) {
+    if ((view || null) !== state.view) state.open = null;
     state.view = view || null;
     prev.section = null;
     try {
@@ -1224,12 +2253,13 @@
 
   $('cBeside').addEventListener('change', async function (e) {
     state.beside = e.target.value;
+    try { localStorage.setItem('thauma.content.beside', state.beside); } catch (e2) { /* private mode */ }
     await loadBeside();
     renderRows();
   });
 
   $('cDiscard').addEventListener('click', async function () {
-    var n = dirtyIds().length;
+    var n = dirtyIds().length + structChanges();
     if (!n) return;
     var ok = await window.StaffConfirm({
       title: tr('con.discardTitle'), body: fill('con.discardBody', { n: n }),
@@ -1238,6 +2268,11 @@
     if (!ok) return;
     state.lines.forEach(function (l) { state.draft[l.id] = state.saved[l.id]; });
     state.blocked = {};
+    /* the arrangement as saved, and nothing added since */
+    dropFresh(Object.keys(state.fresh));
+    state.photos = {};
+    if (state.docSaved) takeDoc(JSON.parse(state.docSaved));
+    buildRows();
     prev.url = null;
     render();
   });
@@ -1279,38 +2314,82 @@
 
   /* A save is a quiet commit — nothing is live before publishing — so it asks
      nothing. The server checks every line again: a lost {placeholder} is
-     refused, and a line somebody else changed meanwhile is left as theirs. */
+     refused, and a line somebody else changed meanwhile is left as theirs.
+
+     THE ARRANGEMENT FIRST: sections added, moved or taken away, with the
+     words of what was added in every language, in one commit
+     (/api/admin/sections) — then the words of what was already there. If
+     the arrangement is refused, nothing else is sent. */
   $('cSave').addEventListener('click', async function () {
-    var ids = dirtyIds();
-    if (!ids.length) return;
     var btn = this;
+    if (state.ready) await state.ready;       // never saved against the kept copy
+    if (state.waitingAsk) await state.waitingAsk;   // nor before knowing what dev changed
+    var struct = docDirty() || Object.keys(state.fresh).length > 0;
+    var ids = dirtyIds().filter(function (id) { return !state.byId[id].fresh; });
+    if (!ids.length && !struct) return;
     btn.disabled = true; $('cDiscard').disabled = true;
-    if (state.fresh) await state.fresh;       // never saved against the kept copy
-    ids = dirtyIds();
-    var data = await send(WORDS, 'POST', { action: 'save', lang: state.lang, items: ids.map(function (id) {
-      var it = { id: id, value: state.draft[id], was: state.base[id] };
-      if (state.waiting[id]) it.waiting = true;
-      return it;
-    }) });
-    btn.disabled = false; $('cDiscard').disabled = false;
-    if (!data) return;
-    if (data.failed) {
-      if (data.code === 'problems' && data.ids) {
-        data.ids.forEach(function (id) { state.blocked[id] = true; });
-        renderRows();
-        return toast(tr('tl.problems'), 'err');
-      }
-      return refused(data);
+    var done = function () { btn.disabled = false; $('cDiscard').disabled = false; };
+    var saved = 0, siteMoved = false, structN = structChanges();
+
+    if (struct) {
+      var words = {};
+      state.langs.forEach(function (l) { words[l] = {}; });
+      Object.keys(state.fresh).forEach(function (key) {
+        state.langs.forEach(function (l) { words[l][key] = l === state.lang ? state.draft['site:' + key] : state.fresh[key][l]; });
+      });
+      var made = await send(SECTIONS_API, 'POST', { action: 'save', sha: state.docSha, doc: state.doc, words: words, photos: state.photos });
+      if (!made) return done();
+      if (made.failed) { done(); return refused(made); }
+      state.docSha = made.sha;
+      state.docSaved = JSON.stringify(made.doc);
+      state.structSaved = true;
+      state.fresh = {}; state.freshBase = {}; state.photos = {};
+      takeDoc(JSON.parse(state.docSaved));
+      snapPut('sections', { doc: made.doc, sha: made.sha });
+      siteMoved = (made.files || []).indexOf('src/_data/site.json') !== -1;
+      saved += Math.max(1, structN);
     }
-    var kept = {};
-    ids.forEach(function (id) { kept[id] = state.draft[id]; });
-    toast(fill('con.saved', { n: data.saved }), 'ok');
+
+    var conflicts = [], kept = {};
+    if (ids.length) {
+      var data = await send(WORDS, 'POST', { action: 'save', lang: state.lang, items: ids.map(function (id) {
+        var it = { id: id, value: state.draft[id], was: state.base[id] };
+        if (state.waiting[id]) it.waiting = true;
+        return it;
+      }) });
+      if (!data) { done(); if (struct) await openLang(state.lang, true); return; }
+      if (data.failed) {
+        done();
+        if (data.code === 'problems' && data.ids) {
+          data.ids.forEach(function (id) { state.blocked[id] = true; });
+          renderRows();
+          return toast(tr('tl.problems'), 'err');
+        }
+        return refused(data);
+      }
+      ids.forEach(function (id) { kept[id] = state.draft[id]; });
+      saved += data.saved || 0;
+      conflicts = data.conflicts || [];
+      if (conflicts.length) toast(fill('tl.conflicts', { n: conflicts.length }), 'err');
+      if (data.devMissed && data.devMissed.length) toast(tr('con.devMissed'), 'err');
+    }
+    done();
+    toast(fill('con.saved', { n: saved }), 'ok');
     document.dispatchEvent(new CustomEvent('web:saved'));
-    var conflicts = data.conflicts || [];
-    if (conflicts.length) toast(fill('tl.conflicts', { n: conflicts.length }), 'err');
-    if (data.devMissed && data.devMissed.length) toast(tr('con.devMissed'), 'err');
+    /* a section's own photo is a slot in site.json: every tab that reads it
+       reads it again (admin-photos.js, admin-site.js) */
+    if (siteMoved) {
+      var site = await send(CONTENT + '?file=site', 'GET', null, true);
+      if (site && !site.failed && site.data) {
+        snapPut('site', site);
+        takeSite(site);
+        document.dispatchEvent(new CustomEvent('thauma:site-saved', { detail: { sha: site.sha, changes: {}, from: 'sections' } }));
+      }
+    }
     await openLang(state.lang, true);
     loadSummary();
+    prev.url = null;
+    previewSync();
     // A line left as somebody else's keeps what was typed, still unsaved.
     if (conflicts.length) {
       conflicts.forEach(function (id) { if (id in kept) state.draft[id] = kept[id]; });
@@ -1324,20 +2403,29 @@
   function markChanged() {
     var set = {};
     changedLines.forEach(function (id) { set[id] = true; });
+    state.changedIds = set;
     state.changedSecs = {};
     state.lines.forEach(function (l) { if (set[l.id]) state.changedSecs[sectionOf(l)] = true; });
-    if (state.rows.length && !state.review) { renderCrumb(); if (!state.view && !state.find) renderRows(); drawBack(); }
+    if (state.rows.length && !state.review) renderAll();
   }
-  document.addEventListener('web:changes', function (e) { changedLines = (e.detail && e.detail.lines) || []; markChanged(); });
+  document.addEventListener('web:changes', function (e) {
+    changedLines = (e.detail && e.detail.lines) || [];
+    /* the pages whose sections are arranged differently from what visitors see */
+    state.unpubPages = {};
+    ((e.detail && e.detail.pages) || []).forEach(function (p) { state.unpubPages[p] = true; });
+    markChanged();
+  });
 
   window.addEventListener('beforeunload', function (e) {
-    if (dirtyIds().length || state.review) { e.preventDefault(); e.returnValue = ''; }
+    if (dirtyIds().length || docDirty() || state.review) { e.preventDefault(); e.returnValue = ''; }
   });
 
   /* Shown after loading hidden (admin-website.js): a text box measured while
      hidden measured nothing, so measure again. */
   document.addEventListener('web:panel', function (e) {
-    if (e.detail === 'pages') $('cRows').querySelectorAll('textarea').forEach(autosize);
+    if (e.detail === 'pages' && state.rows.length) renderRows();
+    if (e.detail === 'navigation') renderNav();
+    if (e.detail === 'footer') { renderFoot(); setTimeout(prevToFoot, 50); }
     /* Advanced opens on the page open on Pages, where it has a search card */
     if (e.detail === 'advanced') {
       var sec = /^section:/.test(state.view || '') ? state.view.slice(8) : null;

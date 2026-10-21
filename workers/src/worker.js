@@ -74,6 +74,7 @@ import adminDbSync from "./admin-dbsync.js";
 import adminTranslationNotes from "./admin-translation-notes.js";
 import adminArcade from "./admin-arcade.js";
 import adminTranslate from "./admin-translate.js";
+import adminSections from "./admin-sections.js";
 import confirmAccount from "./confirm-account.js";
 import confirmEmail from "./confirm-email.js";
 import confirmTestInbox from "./confirm-test-inbox.js";
@@ -274,17 +275,21 @@ const AREAS = ["/staff", "/admin"];
  */
 export const MOVED = {
   "/admin/content/": "/admin/website/",
-  "/admin/library/": "/admin/updates/resources/",
+  "/admin/library/": "/admin/website/updates/resources/",
   // Library became two pages; its Gatherings tab (#gatherings) is sent on
   // to Events by the Resources page itself — a fragment never reaches here.
-  "/admin/website/library/": "/admin/updates/resources/",
-  // Website became four areas in the header (2026-10-20): its Resources
-  // and Events are Updates, its Forms Sharing, its Mail Mail; Pages and the
-  // rest are Site Creator, which kept Website's address.
-  "/admin/website/resources/": "/admin/updates/resources/",
-  "/admin/website/events/": "/admin/updates/",
-  "/admin/website/forms/": "/admin/sharing/",
-  "/admin/website/mail/": "/admin/mail/",
+  "/admin/website/library/": "/admin/website/updates/resources/",
+  // Website's work is four areas — Updates, Mail, Sharing, Site Creator —
+  // in a row under Website (2026-10-21). For a day (2026-10-20) they were
+  // four links in the header, at these addresses; and before that Resources,
+  // Events and Forms were tabs of Website.
+  "/admin/updates/": "/admin/website/updates/",
+  "/admin/updates/resources/": "/admin/website/updates/resources/",
+  "/admin/mail/": "/admin/website/mail/",
+  "/admin/sharing/": "/admin/website/sharing/",
+  "/admin/website/resources/": "/admin/website/updates/resources/",
+  "/admin/website/events/": "/admin/website/updates/",
+  "/admin/website/forms/": "/admin/website/sharing/",
   "/admin/site/": "/admin/website/settings/",
   // Ministry became Updates (mockup board 7). Its tabs (#goals…) ride along.
   "/staff/ministry/": "/staff/updates/",
@@ -443,6 +448,7 @@ const ROUTES = {
   // outdated, saving, the file handed to a translator, and approving what
   // comes back. See admin-translate.js.
   "/api/admin/translate": adminTranslate,
+  "/api/admin/sections": adminSections,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   /* Resend reporting bounces, complaints, opens and clicks (signed). */

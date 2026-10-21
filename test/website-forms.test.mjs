@@ -13,8 +13,8 @@ import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
 const PAGE = ["_site", "_site_next", "_site_prod"]
-  .map((d) => `${d}/admin/sharing/index.html`)
-  .find((p) => existsSync(p)) || "_site/admin/sharing/index.html";
+  .map((d) => `${d}/admin/website/sharing/index.html`)
+  .find((p) => existsSync(p)) || "_site/admin/website/sharing/index.html";
 
 let pass = 0, fail = 0;
 const check = async (name, fn) => {
@@ -47,7 +47,7 @@ async function boot() {
   const sent = [], asked = [];
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only", pretendToBeVisual: true,
-    url: "https://next.thauma.one/admin/sharing/",
+    url: "https://next.thauma.one/admin/website/sharing/",
   });
   const w = dom.window;
   w.fetch = async (url, opts = {}) => {

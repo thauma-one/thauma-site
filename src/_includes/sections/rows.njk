@@ -1,0 +1,12 @@
+{#- LABELED ROWS (sectionKinds.js rows; Mission's three kinds of work): a
+    small label beside a title and its words, one row each. The labels roll
+    in a character at a time (main.js, the .work label cascade). -#}
+{%- set look = sec.look or {} %}
+<section{% if look.ground == "raised" %} class="alt"{% endif %}><div class="wrap">
+  {%- for it in sec.items %}
+  <div class="work">
+    <div class="label">{{ t | w(it.label) | rich(it.label) }}</div>
+    <div><h3>{{ t | w(it.title) | rich(it.title) }}</h3><p>{{ t | w(it.text) | rich(it.text) }}</p></div>
+  </div>
+  {%- endfor %}
+</div></section>

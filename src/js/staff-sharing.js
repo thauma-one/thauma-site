@@ -29,7 +29,7 @@
      console (Chase, 2026-09-27: staff pages for staff work, admin for
      admin); an old link to them lands there. */
   if (/(\?|&)scope=organization\b/.test(location.search)) {
-    location.replace('/admin/sharing/');
+    location.replace('/admin/website/sharing/');
     return;
   }
 

@@ -1,0 +1,288 @@
+{
+  "nav": [
+    "about",
+    "mission",
+    "values",
+    "team",
+    "resources",
+    "events",
+    "contact"
+  ],
+  "pages": {
+    "home": [
+      {
+        "id": "home-hero",
+        "kind": "homeHero",
+        "words": {
+          "cue": "home.cue",
+          "heading": "home.h1",
+          "text": "home.sub"
+        }
+      },
+      {
+        "id": "home-who",
+        "kind": "story",
+        "photo": "home_who",
+        "words": {
+          "cue": "home.who_cue",
+          "heading": "home.who_h2",
+          "lede": "home.who_lede",
+          "alt": "home.who_img_tag",
+          "placeholder": "home.who_placeholder"
+        }
+      },
+      {
+        "id": "home-values",
+        "kind": "points",
+        "words": {
+          "cue": "home.values_cue",
+          "heading": "home.values_h2"
+        },
+        "items": [
+          {
+            "title": "home.value1_title",
+            "text": "home.value1_text"
+          },
+          {
+            "title": "home.value2_title",
+            "text": "home.value2_text"
+          },
+          {
+            "title": "home.value3_title",
+            "text": "home.value3_text"
+          }
+        ],
+        "buttons": [
+          {
+            "label": "home.values_link",
+            "to": "values",
+            "style": "ghost"
+          }
+        ],
+        "look": {
+          "ground": "raised",
+          "voice": "ministry"
+        }
+      },
+      {
+        "id": "home-cta",
+        "kind": "invite",
+        "words": {
+          "cue": "home.cta_cue",
+          "heading": "home.cta_h2",
+          "lede": "home.cta_lede"
+        },
+        "buttons": [
+          {
+            "label": "home.cta_give",
+            "to": "give",
+            "style": "solid"
+          },
+          {
+            "label": "home.cta_contact",
+            "to": "contact",
+            "style": "ghost"
+          }
+        ],
+        "look": {
+          "voice": "ministry"
+        }
+      }
+    ],
+    "about": [
+      {
+        "id": "about-dict",
+        "kind": "dictionary",
+        "words": {
+          "word": "about.dict_word",
+          "ipa": "about.dict_ipa",
+          "defs": [
+            "about.dict_def1",
+            "about.dict_def2",
+            "about.dict_def3"
+          ]
+        }
+      },
+      {
+        "id": "about-who",
+        "kind": "story",
+        "words": {
+          "cue": "about.who_cue",
+          "heading": "about.who_h2",
+          "body": [
+            "about.body1",
+            "about.body2"
+          ]
+        }
+      },
+      {
+        "id": "about-posture",
+        "kind": "story",
+        "photo": "about_posture",
+        "words": {
+          "cue": "about.posture_cue",
+          "heading": "about.posture_h2",
+          "note": "about.status_note",
+          "body": [
+            "about.body3"
+          ],
+          "alt": "about.posture_img_tag",
+          "placeholder": "about.posture_placeholder"
+        },
+        "look": {
+          "ground": "raised",
+          "voice": "ministry"
+        }
+      }
+    ],
+    "mission": [
+      {
+        "id": "mission-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "mission.cue",
+          "heading": "mission.h2",
+          "lede": "mission.lede"
+        }
+      },
+      {
+        "id": "mission-work",
+        "kind": "rows",
+        "items": [
+          {
+            "label": "mission.work1_label",
+            "title": "mission.work1_title",
+            "text": "mission.work1_text"
+          },
+          {
+            "label": "mission.work2_label",
+            "title": "mission.work2_title",
+            "text": "mission.work2_text"
+          },
+          {
+            "label": "mission.work3_label",
+            "title": "mission.work3_title",
+            "text": "mission.work3_text"
+          }
+        ]
+      },
+      {
+        "id": "mission-horizon",
+        "kind": "story",
+        "photo": "mission_horizon",
+        "words": {
+          "cue": "mission.horizon_cue",
+          "heading": "mission.horizon_h2",
+          "body": [
+            "mission.horizon_text",
+            "mission.success_text"
+          ],
+          "alt": "mission.horizon_img_tag",
+          "placeholder": "mission.horizon_placeholder"
+        },
+        "look": {
+          "ground": "raised",
+          "voice": "ministry"
+        }
+      }
+    ],
+    "values": [
+      {
+        "id": "values-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "values.cue",
+          "heading": "values.h2"
+        },
+        "look": {
+          "voice": "ministry"
+        }
+      },
+      {
+        "id": "values-list",
+        "kind": "convictions"
+      }
+    ],
+    "team": [
+      {
+        "id": "team-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "team.cue",
+          "heading": "team.h2"
+        },
+        "look": {
+          "voice": "ministry"
+        }
+      },
+      {
+        "id": "team-grid",
+        "kind": "teamGrid"
+      }
+    ],
+    "resources": [
+      {
+        "id": "resources-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "resources.cue",
+          "heading": "resources.h2"
+        }
+      },
+      {
+        "id": "resources-library",
+        "kind": "library"
+      }
+    ],
+    "events": [
+      {
+        "id": "events-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "events.cue",
+          "heading": "events.h2"
+        },
+        "look": {
+          "voice": "ministry"
+        }
+      },
+      {
+        "id": "events-list",
+        "kind": "gatherings"
+      }
+    ],
+    "contact": [
+      {
+        "id": "contact-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "contact.cue",
+          "heading": "contact.h2",
+          "lede": "contact.lede"
+        }
+      },
+      {
+        "id": "contact-form",
+        "kind": "contactForm"
+      }
+    ],
+    "give": [
+      {
+        "id": "give-head",
+        "kind": "pageHeader",
+        "words": {
+          "cue": "give.cue",
+          "heading": "give.h2",
+          "lede": "give.lede"
+        },
+        "look": {
+          "voice": "ministry"
+        }
+      },
+      {
+        "id": "give-body",
+        "kind": "giving"
+      }
+    ]
+  }
+}

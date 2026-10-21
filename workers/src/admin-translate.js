@@ -214,15 +214,43 @@ export async function liveWords(env, code, fetchImpl = fetch) {
   return lines;
 }
 
-export async function waitingOnDev(env, wanted, fetchImpl = fetch) {
+/* THE COMPARISON IS THE SLOW PART (Chase, 2026-10-21: Pages "still loads
+   slowly"): GitHub takes most of a second to compare two branches, and the
+   page asks for two languages at once — the one written and the one beside
+   it — each of which asked again. So it is asked once and kept for twenty
+   seconds, and it is started as the request arrives, alongside reading the
+   words, rather than after. A file at the merge base is a file at a commit,
+   which never changes, so it is kept too. */
+const cmpKept = new WeakMap();
+export function devComparison(env, fetchImpl = fetch) {
+  const cfg = githubConfig(env), dev = env.STAGING_BRANCH;
+  if (cfg.error || !dev || dev === cfg.branch) return Promise.resolve(null);
+  const kept = cmpKept.get(fetchImpl);
+  if (kept && kept.key === `${cfg.repo}:${cfg.branch}...${dev}` && Date.now() - kept.at < 20000) return kept.promise;
+  const promise = compareBranches(env, cfg.branch, dev, fetchImpl).then((c) => (c.error || !c.merge_base ? null : c));
+  cmpKept.set(fetchImpl, { key: `${cfg.repo}:${cfg.branch}...${dev}`, at: Date.now(), promise });
+  return promise;
+}
+const atCommits = new WeakMap();
+function fileAtCommit(env, path, sha, fetchImpl) {
+  if (!atCommits.has(fetchImpl)) atCommits.set(fetchImpl, new Map());
+  const atCommit = atCommits.get(fetchImpl), k = `${sha}:${path}`;
+  if (!atCommit.has(k)) {
+    if (atCommit.size > 40) atCommit.delete(atCommit.keys().next().value);
+    atCommit.set(k, getFileAt(env, path, sha, fetchImpl).then((r) => { if (r.error) atCommit.delete(k); return r; }));
+  }
+  return atCommit.get(k);
+}
+
+export async function waitingOnDev(env, wanted, fetchImpl = fetch, comparing = null) {
   const cfg = githubConfig(env);
   const dev = env.STAGING_BRANCH;
   if (cfg.error || !dev || dev === cfg.branch) return {};
-  const cmp = await compareBranches(env, cfg.branch, dev, fetchImpl);
-  if (cmp.error || !cmp.merge_base) return {};
+  const cmp = await (comparing || devComparison(env, fetchImpl));
+  if (!cmp) return {};
   const out = {};
   await Promise.all(wanted.filter((w) => cmp.files.includes(w.path)).map(async (w) => {
-    const [d, b] = await Promise.all([getFileAt(env, w.path, dev, fetchImpl), getFileAt(env, w.path, cmp.merge_base, fetchImpl)]);
+    const [d, b] = await Promise.all([getFileAt(env, w.path, dev, fetchImpl), fileAtCommit(env, w.path, cmp.merge_base, fetchImpl)]);
     if (d.error) return;
     const dp = parse(d), bp = b.error ? { doc: {} } : parse(b);
     if (dp.error || bp.error) return;
@@ -287,17 +315,38 @@ export default {
         if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(code)) return json({ error: "Not a language code." }, 400);
         return json({ lines: await liveWords(env, code) });
       }
+      /* WHAT DEV CHANGED, on its own (?waiting=hr): the words come first
+         (?lang=hr&quick) and these fill in behind them — the comparison of
+         two branches is the slowest thing GitHub is asked, and it marks a
+         handful of lines. */
+      const waitOf = new URL(request.url).searchParams.get("waiting");
+      if (waitOf) {
+        const code = String(waitOf).toLowerCase();
+        if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(code)) return json({ error: "Not a language code." }, 400);
+        const comparing = devComparison(env);
+        const [mine, en] = await Promise.all([getFile(env, langPath(code)), code === "en" ? null : getFile(env, langPath("en"))]);
+        if (mine.error) return fail({ error: mine.error, status: mine.status || 502 });
+        const pm = parse(mine), pe = en && !en.error ? parse(en) : null;
+        if (pm.error) return fail({ error: `${langPath(code)} is not valid JSON`, status: 502 });
+        const w = await waitingOnDev(env, [
+          { path: langPath(code), doc: pm.doc },
+          ...(pe && !pe.error ? [{ path: langPath("en"), doc: pe.doc }] : []),
+        ], fetch, comparing);
+        return json({ lang: code, mine: w[langPath(code)] || {}, english: code === "en" ? {} : (w[langPath("en")] || {}) });
+      }
       const lang = new URL(request.url).searchParams.get("lang");
       if (!lang) {
         const r = await siteLanguages(env);
         return r.error ? fail(r) : json({ languages: r.languages });
       }
+      const quick = new URL(request.url).searchParams.has("quick");
+      const comparing = quick ? null : devComparison(env);
       const r = await load(env, db, String(lang).toLowerCase(), { english: true });
       if (r.error) return fail(r);
-      const waiting = await waitingOnDev(env, [
+      const waiting = quick ? {} : await waitingOnDev(env, [
         { path: langPath(r.lang), doc: r.files.site.doc },
         ...(r.lang === "en" ? [] : [{ path: langPath("en"), doc: r.englishSite }]),
-      ]);
+      ], fetch, comparing);
       const mine = waiting[langPath(r.lang)] || {}, eng = waiting[langPath("en")] || {};
       return json({
         lang: r.lang, name: r.name, languages: r.languages, unavailable: r.unavailable,

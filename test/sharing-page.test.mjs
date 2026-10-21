@@ -309,7 +309,7 @@ await check("Sharing is the ministry's alone; Thauma's forms are in the administ
               replace: (u) => { went = u; } };
   w.eval(readFileSync("src/js/color-pair.js", "utf8"));
   w.eval("(function (location) {" + readFileSync("src/js/staff-sharing.js", "utf8") + "\n})(window.__loc);");
-  eq(went, "/admin/sharing/", "an old link to Thauma's forms");
+  eq(went, "/admin/website/sharing/", "an old link to Thauma's forms");
 });
 
 await check("the roadmap's code is Full or Condensed, and nothing is saved by choosing", async () => {

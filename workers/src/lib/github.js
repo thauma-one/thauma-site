@@ -535,6 +535,56 @@ export async function deleteFile(env, { path, sha, message, authorName, authorEm
 }
 
 /**
+ * Several files in ONE commit, on top of a commit the caller has read.
+ *
+ * Website › Site Creator's sections (admin-sections.js): a section added in
+ * a page names words that must exist in every language file, and the page
+ * and its words must change together — a page naming words that are not
+ * there yet, or words left behind by a section that is gone, is a state the
+ * site should never be built from. The Contents API writes one file per
+ * commit, so this goes through git's own objects instead: a tree on top of
+ * `head`'s, a commit whose parent is `head`, and the branch moved to it only
+ * if it still points at `head` (force: false). If anybody saved anything
+ * after `head` was read, nothing is written and the caller reads again — the
+ * same promise putFile's SHA makes, for all the files at once.
+ */
+export async function commitFiles(env, { head, files, message, authorName, authorEmail, quiet }, fetchImpl = fetch) {
+  const cfg = githubConfig(env);
+  if (cfg.error) return { error: cfg.error, status: 500 };
+  if (!head || !files || !files.length) return { error: "Nothing to commit.", status: 400 };
+  for (const f of files) forget(env, f.path);
+
+  const h = await headers(env, fetchImpl);
+  if (h.error) return { error: h.error, status: 500 };
+  const call = async (method, path, body) => {
+    const res = await fetchImpl(`${API}/repos/${cfg.repo}${path}`, {
+      method, headers: { ...h.headers, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined,
+    });
+    return { res, body: res.ok ? await res.json() : null };
+  };
+
+  const base = await call("GET", `/git/commits/${encodeURIComponent(head)}`);
+  if (!base.res.ok) return { error: await githubError(base.res), status: 502 };
+  const tree = await call("POST", "/git/trees", {
+    base_tree: base.body.tree.sha,
+    tree: files.map((f) => ({ path: f.path, mode: "100644", type: "blob", content: f.text })),
+  });
+  if (!tree.res.ok) return { error: await githubError(tree.res), status: 502 };
+  const who = { name: authorName || "Thauma console", email: authorEmail || "admin@thauma.one" };
+  const commit = await call("POST", "/git/commits", {
+    message: quiet ? skipCi(message) : message, tree: tree.body.sha, parents: [head], author: who, committer: who,
+  });
+  if (!commit.res.ok) return { error: await githubError(commit.res), status: 502 };
+  const moved = await call("PATCH", `/git/refs/heads/${encodeURIComponent(cfg.branch)}`, { sha: commit.body.sha, force: false });
+  if (moved.res.status === 422 || moved.res.status === 409) {
+    return { error: "Something on the site was saved while you were working, so nothing was written. " +
+                    "Your changes are still here — save again.", status: 409 };
+  }
+  if (!moved.res.ok) return { error: await githubError(moved.res), status: 502 };
+  return { commit: commit.body.sha };
+}
+
+/**
  * The commit a ref currently points at.
  *
  * Needed to answer "is the preview showing what I would publish?", which is a

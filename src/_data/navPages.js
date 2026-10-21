@@ -11,6 +11,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const SITE_PATH = path.join(__dirname, "site.json");
+/* The menu's order is Website › Site Creator › Navigation's (pageSections.json
+   `nav`); Give is the button at the end of it, never moved. */
+const SECTIONS_PATH = path.join(__dirname, "pageSections.json");
 
 module.exports = () => {
   // readFileSync, not require — see the note in visible.js. require() caches,
@@ -26,6 +29,6 @@ module.exports = () => {
     return typeof e === "boolean" ? e : !!e[column];
   };
 
-  return ["about", "mission", "values", "team", "resources", "events", "contact", "give"]
-    .filter(on);
+  const nav = JSON.parse(fs.readFileSync(SECTIONS_PATH, "utf8")).nav;
+  return nav.concat("give").filter(on);
 };

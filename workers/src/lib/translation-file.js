@@ -18,6 +18,8 @@
  * translator, who translates FROM English and is reading English in every
  * other column; its instructions are part of the work, not console chrome.
  */
+import SECTIONS from "../../../src/js/site-sections.js";
+const { isLorem } = SECTIONS;
 
 /* The two places a visitor's words are kept (see 0036 for the names).
    `label` is what the FILE calls them; the console has its own words. */
@@ -104,7 +106,9 @@ export async function withStatus(lines, stateRows) {
     const row = { source: line.source, key: line.key, english_hash, text_hash };
     const was = known.get(line.id);
     let status = "done";
-    if (!line.current.trim()) status = "missing";
+    /* stand-in words (a section just added, site-sections.js) are not a
+       translation: missing until somebody writes one */
+    if (!line.current.trim() || isLorem(line.current)) status = "missing";
     else if (!was) baseline.push(row);
     else if (was.english_hash !== english_hash) {
       if (was.text_hash === text_hash) status = "outdated";

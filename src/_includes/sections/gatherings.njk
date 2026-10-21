@@ -1,0 +1,207 @@
+{#- THE GATHERINGS (Events): the invitation, the record and the honest wait.
+    Fixed to Events: the gatherings are edited in Updates › Events. -#}
+{#- BONES, NOT THE DESIGN. The spec keeps the visual pass for later — the
+   invitation anatomy, the one interactive moment, the alternating record. This
+   renders the collection honestly in the site's existing classes so the data
+   can be seen and edited long before any of that is decided. Replacing this
+   markup later changes nothing behind it. -#}
+{#- THE INVITATION, THE RECORD, AND THE HONEST WAIT.
+
+   Three permanent parts, and the page keeps this shape whether it holds one
+   gathering or twenty. It never graduates into a calendar or a list, because
+   a calendar is what you look at when you already intend to go and this page
+   exists to make somebody want to.
+
+   ANATOMY BORROWED FROM A WEDDING INVITATION, deliberately: an announcement
+   line, then who and what stated plainly, then the date and place set apart
+   typographically but QUIET, then the action small and bounded at the end. An
+   invitation does not shout its RSVP button; it tells you something is
+   happening and trusts you.
+
+   THE DATE IS THE OBJECT. An invitation prints the date large, because the
+   date is the thing somebody has to decide about — everything else is detail
+   they read once they are already interested. It used to sit in a WHEN/WHERE
+   facts row at 16px, smaller than the summary above it, which is how a
+   spreadsheet states a date rather than how an invitation offers one.
+
+   ONE INTERACTIVE MOMENT, not scattered decoration. A light draws along the
+   card's top edge as it arrives and the date rolls in beneath it, per
+   character, using the same cascade the section cues and the page wheel use —
+   the site's own motion vocabulary rather than a new trick for one page. It
+   runs once, and nothing at all happens under prefers-reduced-motion. -#}
+<section><div class="wrap">
+  {%- set upcoming = [] %}{% set past = [] %}
+  {%- for g in gatherings %}
+    {%- if g.status == "upcoming" %}{% set _ = upcoming.push(g) %}
+    {%- elif g.status != "canceled" %}{% set _ = past.push(g) %}{% endif %}
+  {%- endfor %}
+
+  {#- ONE INVITATION, NOT ONE PER GATHERING. The spec features THE next one,
+     and the difference matters: three cards each announcing "You are invited"
+     is a list wearing an invitation's clothes, and the announcement stops
+     meaning anything by the third time somebody reads it. Anything else
+     already scheduled is named quietly underneath, which is what an invitation
+     to one evening does when the host has a second date in mind. -#}
+  {#- `slice` in Nunjucks CHUNKS a list into N lists rather than taking the
+     first n of it, which quietly rendered every gathering as the featured one.
+     Naming the item is clearer than any filter would have been. -#}
+  {#- HIGHLIGHTED, THEN THE NEXT (2026-10-08, Chase: "a highlighted event
+     which is the one that populates at the top … highlighting multiple"):
+     every upcoming gathering marked featured (Website › Events, its star) is
+     an invitation, in date order; with none marked, the next one is, as
+     before. The rest are named quietly under them. -#}
+  {%- set top = [] %}{% set rest = [] %}
+  {%- for g in upcoming %}{% if g.featured %}{% set _ = top.push(g) %}{% else %}{% set _ = rest.push(g) %}{% endif %}{% endfor %}
+  {%- if upcoming.length and not top.length %}
+    {%- set top = [] %}{% set rest = [] %}
+    {%- for g in upcoming %}{% if loop.first %}{% set _ = top.push(g) %}{% else %}{% set _ = rest.push(g) %}{% endif %}{% endfor %}
+  {%- endif %}
+  {% if upcoming.length %}
+    {% for g in top %}
+    {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
+    {%- set summary = g.summary[lang] or g.summary.en %}
+    {#- THE PICTURE IN ITS OWN SHAPE (photo_ar, gatherings.js), the same
+       shape it keeps when the gathering moves to the record below. With no
+       picture there is no empty frame: the card alone. -#}
+    {#- Every invitation shimmers, photo or not (2026-10-08, Chase: "I still
+       want it to shimmer"): the light crosses the photo and the card. -#}
+    <article class="invite is-next is-new">
+      {% if g.photo %}<div class="invite-photo" style="aspect-ratio:{{ g.photo_ar }}"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
+
+      <div class="invite-card">
+        <p class="invite-cue">{{ t.events.invited | rich("events.invited") }}</p>
+
+        {#- THE DATE AND THE NAME, side by side on a wide card, stacked on a
+           narrow one. Two columns because the card is as wide as the page and
+           a single column left half of it empty whenever the gathering had no
+           photograph to fill the other side. -#}
+        <div class="invite-head">
+          {% if g.date %}
+          <p class="invite-when">
+            {#- The label is for a screen reader only. A date set this large,
+               directly under "you are invited", does not need the word WHEN
+               in front of it — and printing one is the interface explaining
+               itself instead of working. -#}
+            <span class="vh">{{ t.events.when_label | rich("events.when_label") }}</span>
+            {#- ONE STRING, NOT day / month-year split. Croatian, Serbian and
+               Slovenian put the month in the genitive when a day precedes it
+               ("14.-15. ozujka"), so splitting the parts to stack them would
+               print correct English and broken Croatian. The filter already
+               knows each locale's whole form; this keeps it. -#}
+            <span class="invite-date">{{ g.date | when(g.end_date, lang) }}</span>
+            {% if g.time %}<span class="invite-time">{{ g.time }}</span>{% endif %}
+          </p>
+          {% endif %}
+
+          <div class="invite-lede">
+            <h3 class="invite-title">{{ title }}</h3>
+
+            {#- Said where somebody is about to read words that are not theirs,
+               rather than hiding the gathering from them. A Croatian-only entry
+               is proof of real work, not a gap to apologize for. -#}
+            {% if not g.title[lang] %}<p class="invite-lang">{{ t.events.other_lang | rich("events.other_lang") }}</p>{% endif %}
+
+            {% if summary %}<div class="invite-blurb">{{ summary | md | safe }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="invite-rule" aria-hidden="true"></div>
+
+        {#- WHERE, unlabeled for the same reason the date is: a place name
+           under a date reads as the place. The cohort facts keep their labels,
+           because "every week" and "12" do not say what they are on their
+           own. -#}
+        {% if g.location %}
+        <p class="invite-where">
+          <span class="vh">{{ t.events.where_label | rich("events.where_label") }}</span>
+          <a href="{{ g.map_url }}" data-map="{{ g.location }}"
+             target="_blank" rel="noopener">{{ g.location }}</a>
+        </p>
+        {% endif %}
+
+        {% if g.type == "cohort" and (g.cadence or g.capacity) %}
+        <dl class="invite-facts">
+          {% if g.cadence %}
+          <div><dt>{{ t.events.often_label | rich("events.often_label") }}</dt>
+            <dd>{{ (t.events["cadence_" + g.cadence] or g.cadence) | plain }}</dd></div>
+          {% endif %}
+          {% if g.capacity %}
+          <div><dt>{{ t.events.places_label | rich("events.places_label") }}</dt><dd>{{ g.capacity }}</dd></div>
+          {% endif %}
+        </dl>
+        {% endif %}
+
+        {% if g.sessions.length %}
+        <ol class="invite-sessions">
+          {% for s in g.sessions %}
+          <li><span class="invite-session-date">{{ s.date | when(null, lang) }}</span>{{ s.topic }}</li>
+          {% endfor %}
+        </ol>
+        {% endif %}
+
+        {#- SMALL AND BOUNDED. Never the visual star of the page: the point of
+           an invitation is the thing being offered, not the button. -#}
+        {% if g.registration %}
+        <p class="invite-act">
+          <a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register | rich("events.register") }}</a>
+          {% if g.application_required %}<span class="invite-note">{{ t.events.application | rich("events.application") }}</span>{% endif %}
+        </p>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+
+    {#- ALSO AHEAD. Same card, no announcement line, no moment — quieter on
+       purpose, so the featured one keeps being the featured one. -#}
+    {% if rest.length %}
+    <div class="also">
+      <p class="cue bare also-cue">{{ t.events.also_cue | rich("events.also_cue") }}</p>
+      {% for g in rest %}
+      {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
+      <article class="also-item">
+        <p class="also-when">{{ g.date | when(g.end_date, lang) }}{% if g.location %} · {{ g.location }}{% endif %}</p>
+        <h3>{{ title }}</h3>
+        {% if g.summary[lang] or g.summary.en %}<p>{{ (g.summary[lang] or g.summary.en) | md | safe }}</p>{% endif %}
+        {% if g.registration %}
+        <p class="invite-act"><a href="{{ g.registration }}" target="_blank" rel="noopener">{{ t.events.register | rich("events.register") }}</a></p>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% else %}
+  {#- THE EXPECTED LONG-TERM CONDITION, not a degraded fallback. This page may
+     hold nothing for years, and saying "check back later" would be both untrue
+     and a little embarrassed about it. It states the vision and names what has
+     to mature first, in the same register the Mission page uses. -#}
+  <div class="empty invite-waiting">
+    <h3>{{ t.events.empty_title | rich("events.empty_title") }}</h3>
+    <p>{{ t.events.empty_text | rich("events.empty_text") }}</p>
+    <div class="workline"><i></i></div>
+    <a class="btn ghost" href="/{{ lang }}/contact/">{{ t.events.empty_cta | rich("events.empty_cta") }}</a>
+  </div>
+  {% endif %}
+
+  {#- THE RECORD. Alternating sides down the page so it reads as a story being
+     told rather than a spreadsheet with pictures — and so that the page has
+     something to show a supporter long before it has anything to invite
+     anyone to. -#}
+  {% if past.length %}
+  <div class="record">
+    <p class="cue bare record-cue">{{ t.events.past_cue | rich("events.past_cue") }}</p>
+    {% for g in past %}
+    {%- set title = g.title[lang] or g.title.en or g.title[g.langs[0]] %}
+    {%- set summary = g.summary[lang] or g.summary.en %}
+    {#- No picture, no frame: the words take the whole width. -#}
+    <article class="record-band{% if loop.index0 % 2 %} is-flipped{% endif %}{% if not g.photo %} no-photo{% endif %}">
+      {% if g.photo %}<div class="record-photo" style="aspect-ratio:{{ g.photo_ar }}"><img src="{{ g.photo }}" alt="" loading="lazy" decoding="async"></div>{% endif %}
+      <div class="record-body">
+        <p class="record-when">{{ g.date | when(g.end_date, lang) }}{% if g.location %} · {{ g.location }}{% endif %}</p>
+        <h3>{{ title }}</h3>
+        {% if summary %}<div>{{ summary | md | safe }}</div>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div></section>

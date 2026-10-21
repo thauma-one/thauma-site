@@ -146,4 +146,4 @@
    to another site. Loading a console page only reads; nothing it does on
    arrival changes anything, which is what makes drawing it early safe —
    keep it so. -#}
-<script type="speculationrules">{"prerender":[{"where":{"and":[{"selector_matches":".console-row nav a"},{"not":{"selector_matches":"[aria-current]"}}]},"eagerness":"moderate"}]}</script>
+<script type="speculationrules">{"prerender":[{"where":{"and":[{"selector_matches":".console-row nav a, .web-areas a"},{"not":{"selector_matches":"[aria-current]"}}]},"eagerness":"moderate"}]}</script>

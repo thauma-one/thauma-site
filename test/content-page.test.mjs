@@ -11,6 +11,7 @@
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
   existsSync(`${d}/admin/website/index.html`));
@@ -65,6 +66,11 @@ const HR_LINES = [
   L("site:home.who_img_tag", "A stage", "Pozornica"),
   L("emails:confirm.helloAnon", "Hello,", "", "missing"),
 ];
+/* The pages' sections, as the site has them (Chase, 2026-10-21: the Site
+   Creator works like the staff one) */
+const SECTIONS = JSON.parse(readFileSync("src/_data/pageSections.json", "utf8"));
+const SECTIONS_JS = createRequire(import.meta.url)("../src/js/site-sections.js");
+
 const REVIEW = {
   lang: "hr", name: "Hrvatski", skipped: { unknown: 0, blank: 0, unchanged: 0 },
   items: [
@@ -91,6 +97,10 @@ async function boot({ answers = {} } = {}) {
         const ok = (j, status = 200) => ({ ok: status < 400, status, json: async () => j });
         if (u.includes("/translation-notes")) return ok(NOTES);
         if (u.includes("/api/admin/publish")) return ok({ configured: true, waiting: 0 });
+        if (u.includes("/api/admin/sections")) {
+          if (body) return answers.sections ? answers.sections(body) : ok({ ok: true, sha: "d2", doc: body.doc, files: ["src/_data/pageSections.json"] });
+          return ok({ doc: JSON.parse(JSON.stringify(SECTIONS)), sha: "d1" });
+        }
         if (u.includes("/api/admin/content")) {
           if (o.method === "PUT") return ok({ ok: true, sha: "s2", changed: Object.keys(body.changes) });
           return ok({ configured: true, data: JSON.parse(JSON.stringify(SITE)), sha: "s1" });
@@ -113,12 +123,15 @@ async function boot({ answers = {} } = {}) {
       w.URL.createObjectURL = () => "blob:x";
       w.URL.revokeObjectURL = () => {};
       w.scrollTo = () => {};
+      w.Element.prototype.scrollIntoView = () => {};
     },
   });
   const w = dom.window, d = w.document;
   w.eval(readFileSync("src/js/staff-i18n.js", "utf8"));
   w.eval(readFileSync("src/js/staff.js", "utf8"));
   w.eval(readFileSync("src/js/rich-text.js", "utf8"));
+  w.eval(readFileSync("src/js/site-rich.js", "utf8"));
+  w.eval(readFileSync("src/js/site-sections.js", "utf8"));
   // Every question is answered yes, and recorded, so a test can say whether one was asked.
   w.StaffConfirm = async (o) => { asked.push(o); return true; };
   w.StaffPrompt = async (o) => { asked.push(o); return null; };
@@ -134,7 +147,7 @@ async function pick(w, d, lang) {
   await tick(100);
 }
 const rows = (d) => [...d.querySelectorAll("#cRows .c-row")].map((r) => r.dataset.row);
-const names = (d) => Object.fromEntries([...d.querySelectorAll("#cRows .c-row")]
+const names = (d) => Object.fromEntries([...d.querySelectorAll("#cRows .c-row[data-row]")]
   .map((r) => [r.dataset.row, r.querySelector(".c-name").textContent]));
 const count = (d) => Number((d.getElementById("cDown").textContent.match(/\d+/) || [0])[0]);
 /* A page from the list of pages (2026-10-20, as the staff Site Creator):
@@ -145,31 +158,44 @@ const view = (d, v) => {
   d.querySelector(`#cRows [data-view="${v}"]`).click();
 };
 
+/* A section of the open page, opened (and a tab of it). */
+const open = (d, id, tab) => {
+  d.querySelector(`#cRows [data-open-sec="${id}"]`).click();
+  if (tab) d.querySelector(`#cRows [data-sectab="${tab}"]`).click();
+};
+
 /* ------------------------------------------------------------- the lines */
 
 await check("each line is named for what it is, its block named by its own heading", async () => {
+  /* a page's own line, then a section's parts, named for their part of it */
   const { d } = await boot();
   view(d, "section:home");
-  const n = names(d);
-  assert(n["site:home.title"] === "Page Name", n["site:home.title"]);
-  assert(n["site:home.cue"] === "Small line above the headline", n["site:home.cue"]);
-  assert(n["split:site:home.h1"] === "Headline", n["split:site:home.h1"]);
-  assert(n["split:site:home.who_h2"] === "The need · Heading", n["split:site:home.who_h2"]);
-  assert(n["site:home.who_img_tag"] === "The need · Photo description", n["site:home.who_img_tag"]);
+  assert(names(d)["site:home.title"] === "Name in the Browser Tab", names(d)["site:home.title"]);
+  open(d, "home-hero");
+  assert(names(d)["site:home.cue"] === "Small Line Above", names(d)["site:home.cue"]);
+  assert(names(d)["split:site:home.h1"] === "Heading", names(d)["split:site:home.h1"]);
+  open(d, "home-who");
+  assert(names(d)["split:site:home.who_h2"] === "Heading", names(d)["split:site:home.who_h2"]);
+  d.querySelector('#cRows [data-sectab="photo"]').click();
+  assert(names(d)["site:home.who_img_tag"] === "The Photo, in Words", names(d)["site:home.who_img_tag"]);
+  /* where pages mix, the page and the section's kind lead */
+  view(d, "all");
+  assert(names(d)["split:site:home.who_h2"] === "Home · Words and a Photo · Heading", names(d)["split:site:home.who_h2"]);
   view(d, "section:e:confirm");
   assert(names(d)["emails:confirm.helloAnon"] === "Confirmation email · Greeting, without a name",
     names(d)["emails:confirm.helloAnon"]);
 });
 
-await check("the menu and the footer are one page, as on the board", async () => {
+await check("the menu's names are on Navigation and the footer's words on Footer, not a page of their own", async () => {
   const { d } = await boot();
-  assert(d.querySelector('[data-view="section:menu"]'), "no Menu & footer");
-  assert(!d.querySelector('[data-view="section:nav"]'), "nav listed on its own");
+  assert(!d.querySelector('#cRows [data-view="section:menu"]') && !d.querySelector('#cRows [data-view="section:nav"]'), "the menu is listed as a page");
+  assert(d.querySelector('#cNav .c-row[data-row="site:nav.about"]'), "Navigation does not hold the menu's names");
 });
 
 await check("a two-part heading is one line, shown as it reads", async () => {
   const { d } = await boot();
   view(d, "section:home");
+  open(d, "home-hero");
   const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
   assert(box && box.innerHTML === "On-site, <b>behind the scenes.</b>", box && box.innerHTML);
   assert(!d.querySelector('[data-row="site:home.h1_thin"]'), "the halves are listed separately too");
@@ -179,6 +205,7 @@ await check("editing it saves the two halves, split where the bold begins", asyn
   const { w, d, sent } = await boot();
   await pick(w, d, "hr");
   view(d, "section:home");
+  open(d, "home-hero");
   const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
   box.innerHTML = "Na licu mjesta, <b>iza kulisa.</b>";
   box.dispatchEvent(new w.Event("input", { bubbles: true }));
@@ -194,6 +221,7 @@ await check("a heading keeps the line break typed into it; a page's words take f
   const { w, d, sent } = await boot();
   await pick(w, d, "hr");
   view(d, "section:home");
+  open(d, "home-hero");
   const box = d.querySelector('[data-row="split:site:home.h1"] .c-splitbox');
   assert(box.hasAttribute("data-rt"), "the heading has no formatting bar");
   box.innerHTML = "Na licu<br>mjesta,<br><b>iza <i>kulisa.</i></b>";
@@ -209,13 +237,13 @@ await check("a heading keeps the line break typed into it; a page's words take f
     "saved with its breaks and its italic: " + JSON.stringify(items));
 });
 
-await check("another language's list of pages starts with what needs work, beside English", async () => {
+await check("another language's list of pages offers what needs work, beside English", async () => {
   /* the list of pages first, as the staff Site Creator (2026-10-20), with
-     Needs Work at its head */
+     Needs Work under it */
   const { w, d } = await boot();
   await pick(w, d, "hr");
-  const first = d.querySelector("#cRows [data-view]");
-  assert(first && first.dataset.view === "needs" && /2/.test(first.textContent), "Needs Work does not lead the list");
+  const needs = d.querySelector('#cRows .c-everyline [data-view="needs"]');
+  assert(needs && /2/.test(needs.textContent), "no Needs Work under the list");
   view(d, "needs");
   assert(d.querySelector("#cCrumb [data-page-pick]").value === "needs", "the menu does not say Needs Work");
   assert(rows(d).join() === "site:home.title,emails:confirm.helloAnon", `shown: ${rows(d)}`);
@@ -243,14 +271,14 @@ await check("the file holds exactly what is on screen, and More says how many", 
   assert(count(d) === 2, `Needs work offers ${count(d)}`);
   view(d, "section:home");
   assert(count(d) === 8, `Home offers ${count(d)} (two-part headings count as two lines)`);
-  view(d, "section:menu");
+  view(d, "section:e:confirm");
   assert(/1 line\b/.test(d.getElementById("cDown").textContent), d.getElementById("cDown").textContent);
   d.getElementById("cMoreBtn").click();
   assert(d.querySelector(".c-more").classList.contains("is-open"), "More did not open");
   d.getElementById("cDown").click();
   await tick();
   const file = sent.find((s) => s.body && s.body.action === "file");
-  assert(file && file.body.ids.join() === "site:nav.about", `downloaded ${JSON.stringify(file && file.body.ids)}`);
+  assert(file && file.body.ids.join() === "emails:confirm.helloAnon", `downloaded ${JSON.stringify(file && file.body.ids)}`);
 });
 
 /* ---------------------------------------------------------------- saving */
@@ -391,6 +419,7 @@ await check("a line changed on dev and not published shows dev's text, marked, a
     const ctx = await boot();
     const { d } = ctx;
     view(d, "section:home");
+    open(d, "home-who");
     const box = d.querySelector('[data-thin="site:home.who_h2_thin"]');
     assert(box, "the heading's box is missing");
     assert(/Real<br>churches,/.test(box.innerHTML), `the box shows ${box.innerHTML}, not dev's two lines`);
@@ -431,6 +460,62 @@ await check("a page's search title is on Advanced, not among its words; the emai
     view(d, "section:e:confirm");
     assert(rows(d).join() === "emails:confirm.helloAnon", `the confirmation email's page shows ${rows(d)}`);
   } finally { EN_LINES.pop(); }
+});
+
+/* --------------------------------------------------------- the sections */
+
+await check("a section added is drawn open with stand-in words, and Save sends the page before the words", async () => {
+  const { w, d, sent } = await boot();
+  view(d, "section:home");
+  d.querySelector('#cRows [data-insert-at="2"]').click();
+  assert(!d.getElementById("cAddBack").hidden, "no choice of sections");
+  d.querySelector('#cTiles [data-add-kind="points"]').click();
+  const added = d.querySelector("#cRows .ws-acc.is-open");
+  assert(added && [...d.querySelectorAll("#cRows .ws-acc")].indexOf(added) === 2, "not open where it was added");
+  assert(added.querySelectorAll(".c-item").length === 3, "a new set of points does not start with three");
+  assert(!d.getElementById("cSaveBar").hidden, "an added section is not an unsaved change");
+  /* the words typed into it go with the page, in the language being written */
+  const id = added.getAttribute("data-sid"), box = added.querySelector(`[data-id="site:blocks.${id}.cue"]`);
+  box.textContent = "Our Story";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await type(w, d, "site:home.title", "Welcome");
+  d.getElementById("cSave").click();
+  await tick(200);
+  const posts = sent.filter((s) => s.method === "POST");
+  assert(posts[0].url.includes("/api/admin/sections") && posts[1].body.action === "save", posts.map((p) => p.url).join());
+  const page = posts[0].body;
+  assert(page.doc.pages.home[2].id === id && page.sha === "d1", "the arrangement sent is not what is on screen");
+  assert(page.words.en[`blocks.${id}.cue`] === "Our Story", "what was typed is not sent with it");
+  assert(SECTIONS_JS.isLorem(page.words.hr[`blocks.${id}.cue`]), "the other languages are not given stand-in words");
+  assert(posts[1].body.items.map((i) => i.id).join() === "site:home.title", "the new words were saved twice");
+});
+
+await check("a section is taken away, and moved, before anything is saved", async () => {
+  const { w, d } = await boot();
+  view(d, "section:home");
+  d.querySelector('#cRows [data-sec-remove="home-values"]').click();
+  await tick(50);
+  assert(!d.querySelector('#cRows [data-sid="home-values"]'), "still there");
+  assert(!d.querySelector('#cRows [data-sid="home-hero"] [data-sec-remove]'), "the head of the page can be taken away");
+  const grip = d.querySelector('#cRows [data-sid="home-cta"] .sort-grip');
+  grip.dispatchEvent(new w.KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+  const order = [...d.querySelectorAll("#cRows .ws-acc")].map((a) => a.getAttribute("data-sid"));
+  assert(order.join() === "home-hero,home-cta,home-who", order.join());
+  assert(/2/.test(d.getElementById("cDirtyCount").textContent), d.getElementById("cDirtyCount").textContent);
+});
+
+await check("a box's own Discard Changes appears when it is changed and puts it back", async () => {
+  const { w, d } = await boot();
+  await pick(w, d, "hr");
+  view(d, "needs");
+  const row = () => d.querySelector('.c-row[data-row="site:home.title"]');
+  assert(!row().classList.contains("is-dirty"), "changed before anything was typed");
+  await type(w, d, "site:home.title", "Naslovnica");
+  assert(row().classList.contains("is-dirty") && !row().querySelector(".c-undo").hasAttribute("tabindex"), "no Discard Changes on the changed box");
+  row().querySelector(".c-undo").click();
+  await tick(50);
+  assert(d.querySelector('#cRows [data-id="site:home.title"]').textContent === "Početna", "the box was not put back");
+  assert(d.getElementById("cSaveBar").hidden, "still an unsaved change");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -41,13 +41,25 @@
     {#- The page's name, without a number: the numbers disagreed with each
        other (two 04s, two 05s) and so meant nothing (mockup board 1). -#}
     {%- if areaTab %}
-    <div class="cue"><span data-i18n="adm.nav.{{ adminPage }}">{{ areaLabel }}</span></div>
+    <div class="cue"><span data-i18n="adm.nav.website">Website</span></div>
     {%- else %}
     <div class="cue"><span data-i18n="adm.page.{{ adminPage }}.title">{{ adminTitle }}</span></div>
     {%- endif %}
     <div class="sec-h">
-      <h1 id="pageHeading" data-i18n-html="adm.page.{{ adminPage }}.heading">{{ adminHeading | safe }}</h1>
+      <h1 id="pageHeading" data-i18n-html="adm.page.{{ areaId or adminPage }}.heading">{{ adminHeading | safe }}</h1>
     </div>
+    {%- if areaTab %}
+    {#- WEBSITE'S OWN ROW (Chase, 2026-10-21: "those headers you added live
+        under the Website nav"): its four parts, named and ordered as the
+        staff header names them. Each is its own page; the one you are on is
+        underlined, as in the header above. -#}
+    <nav class="web-areas" aria-label="Website" data-i18n-attr="aria-label:adm.nav.website">
+      {%- for a in consoleNav.website %}
+      <a href="{{ a.url }}" data-web-area="{{ a.area }}"{% if a.area == areaId %} aria-current="page"{% endif %}
+         data-i18n="web.area.{{ a.area }}">{{ a.label }}</a>
+      {%- endfor %}
+    </nav>
+    {%- endif %}
   </div>
 
   {#- Shown when the endpoint refuses. The pages are reachable by anyone Access
@@ -63,10 +75,10 @@
      the top — then the tab on screen, and on Site Creator the page as it
      will look beside it (admin.css AREAS). Updates and Site Creator have
      the publish bar and review along the foot. -#}
-  {%- set area = consoleNav.areas[adminPage] %}
-  <div class="web{% if area.side %} is-side{% endif %}" id="webArea" data-area="{{ adminPage }}" data-tab="{{ areaTab }}">
+  {%- set area = consoleNav.areas[areaId] %}
+  <div class="web{% if area.side %} is-side{% endif %}" id="webArea" data-area="{{ areaId }}" data-tab="{{ areaTab }}">
     {%- if area.tabs.length > 1 %}
-    <nav class="web-side" aria-label="{{ adminTitle }}">
+    <nav class="web-side" aria-label="{{ area.label }}">
       {%- for t in area.tabs %}
       <a href="{{ t.url }}" data-web-tab="{{ t.tab }}"
          {% if t.tab == areaTab %}aria-current="page"{% endif %}
@@ -77,7 +89,7 @@
     <div class="web-main">
       {{ content | safe }}
     </div>
-    {%- if adminPage == "website" %}{% include "website/preview.njk" %}{% endif %}
+    {%- if areaId == "creator" %}{% include "website/preview.njk" %}{% endif %}
   </div>
   {%- if area.publish %}{% include "website-publish.njk" %}{% endif %}
   {%- else %}
@@ -109,9 +121,9 @@
 {#- AN AREA IS ONE PAGE: each of its tabs' scripts, so every tab loads at
    once, then the shell that moves between them (admin-website.js). Only
    the area's own — Site Creator does not wait for the mail. -#}
-{% if areaTab %}{% for f in consoleNav.areas[adminPage].scripts %}
+{% if areaTab %}{% for f in consoleNav.areas[areaId].scripts %}
 <script src="/js/{{ f }}.js?v={{ ("/js/" + f + ".js") | v }}"></script>{% endfor %}
-{%- if adminPage == "mail" %}
+{%- if areaId == "mail" %}
 {#- Thauma's Mail writes with the same composer as the staff Mail page,
    after staff-mailing.js, which it reads (see staff.njk). -#}
 <script defer src="/js/composer.bundle.js?v={{ "/js/composer.bundle.js" | v }}"></script>{% endif %}{% endif %}

@@ -4,10 +4,16 @@
    TAB (Chase, 2026-10-20: "have an independent Pages tab with dropdown
    menus to select the page, have the page follow where you click"): the
    pages as a list first — every page there is, the ones a visitor only
-   meets after pressing a link in an email too — then one page's lines,
-   with "← All Pages" and a menu of the pages at the top. The preview
-   beside it shows that page, and a link pressed in the preview opens
-   that page's lines.
+   meets after pressing a link in an email too — then one page, with
+   "← All Pages" and a menu of the pages at the top. The preview beside it
+   shows that page, and a link pressed in the preview opens that page.
+
+   THE SITE'S OWN PAGES ARE THEIR SECTIONS (Chase, 2026-10-21: "should we
+   just have the site creator operate almost exactly the same?"): each
+   opened to its words, photo, buttons and look, with a place between any
+   two to add one, a grip to move one and ✕ to take one away — the staff
+   Site Creator's pieces, drawn by admin-content.js. The rest are their
+   lines.
 
    ONE LANGUAGE AT A TIME, "Writing X beside Y" (website/writing.njk,
    above the tabs it serves): the line being written, with the same line
@@ -55,6 +61,16 @@
   <div class="ws-crumb c-crumb" id="cCrumb" hidden></div>
   <span class="c-count" id="cCount" role="status"></span>
   <div class="c-rows" id="cRows"></div>
+</div>
+
+{#- Adding a section: every kind there is, each drawn as a small sketch, as
+   on the staff Site Creator. -#}
+<div class="dlg-back" id="cAddBack" hidden>
+  <div class="dlg ws-add" role="dialog" aria-modal="true" aria-labelledby="cAddTitle">
+    <div class="ws-add-head"><h3 id="cAddTitle"></h3>
+      <button type="button" class="sw-close" id="cAddClose" data-i18n-attr="aria-label:common.close" aria-label="Close">&times;</button></div>
+    <div class="ws-tiles" id="cTiles"></div>
+  </div>
 </div>
 
 {#- A returned translation, line by line, in place of the editor until it is

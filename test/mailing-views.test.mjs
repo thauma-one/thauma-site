@@ -194,7 +194,7 @@ function forwardOf(url) {
 await check("Thauma's mail left the staff page: an old link lands in the administrators' Mail, view and all", async () => {
   /* Chase, 2026-09-27: staff pages for staff work, admin for admin. */
   eq2(forwardOf("https://dev.thauma.one/staff/mail/?scope=organization#composer"),
-    "/admin/mail/#composer", "the old address");
+    "/admin/website/mail/#composer", "the old address");
   const page = readFileSync(`${build}/staff/mail/index.html`, "utf8");
   assert(!/data-scope=/.test(page), "the staff Mail page still offers Thauma's lists");
 });
@@ -215,7 +215,7 @@ await check("an old link to a form lands where the form lives now", async () => 
   for (const [hash, item] of [["contact", "contact"], ["embed", "signup"]]) {
     eq2(forwardOf("https://dev.thauma.one/staff/mail/#" + hash), "/staff/sharing/#" + item, `#${hash}`);
     eq2(forwardOf("https://dev.thauma.one/staff/mail/?scope=organization#" + hash),
-      "/admin/sharing/", `Thauma's #${hash}`);
+      "/admin/website/sharing/", `Thauma's #${hash}`);
   }
 });
 
@@ -261,7 +261,7 @@ await check("the administrators' Mail is Thauma's, and tells the composer so", a
      moved to Sharing, and the composer — a separate file on the same screen —
      asked it whose lists these were, got nothing, and wrote to the ministry's
      lists while the page showed Thauma's. */
-  const { w, asked } = await bootMail("https://dev.thauma.one/admin/mail/", {}, "admin/mail");
+  const { w, asked } = await bootMail("https://dev.thauma.one/admin/website/mail/", {}, "admin/website/mail");
   assert(/scope=organization/.test(asked[0]), `Mail asked for ${asked[0]}`);
   assert(w.StaffMailing && w.StaffMailing.scope() === "organization",
     `the composer would ask for ${w.StaffMailing ? w.StaffMailing.scope() : "nothing"}`);

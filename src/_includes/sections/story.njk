@@ -1,0 +1,31 @@
+{#- WORDS, AND A PHOTO IF IT HAS ONE (sectionKinds.js story): the line
+    above, the heading, an introduction, paragraphs, the photo in its frame
+    (framed in Website › Photos; the parallax is main.js's .frame img) and a
+    small note under it. Each part is there only when the section has it. -#}
+{%- set wd = sec.words %}{% set look = sec.look or {} %}
+<section{% if look.ground == "raised" %} class="alt"{% endif %}><div class="wrap">
+  {%- if wd.cue %}
+  <div class="cue{% if look.voice == "ministry" %} foam{% endif %}">{{ t | w(wd.cue) | rich(wd.cue) }}</div>
+  {%- endif %}
+  {%- if wd.heading %}
+  <h2>{{ t | w(wd.heading ~ "_thin") | rich(wd.heading ~ "_thin") }} <b>{{ t | w(wd.heading ~ "_bold") | rich(wd.heading ~ "_bold") }}</b></h2>
+  {%- endif %}
+  {%- if wd.lede %}
+  <p class="lede">{{ t | w(wd.lede) | rich(wd.lede) }}</p>
+  {%- endif %}
+  {%- for k in wd.body %}
+  <p class="body-text">{{ t | w(k) | rich(k) }}</p>
+  {%- endfor %}
+  {%- set img = site.images[sec.photo] if sec.photo else null %}
+  {%- if img and img.src %}
+  <div class="frame">
+    <img src="{{ img.src }}" alt="{{ t | w(wd.alt) | plain }}" loading="lazy" decoding="async"
+      style="{{ img | frameStyle }}">
+  </div>
+  {%- elif sec.photo and wd.placeholder and not env.isProduction %}
+  <div class="frame-placeholder"><span>{{ t | w(wd.placeholder) | rich(wd.placeholder) }}</span></div>
+  {%- endif %}
+  {%- if wd.note %}
+  <p class="legal-note">{{ t | w(wd.note) | rich(wd.note) }}</p>
+  {%- endif %}
+</div></section>

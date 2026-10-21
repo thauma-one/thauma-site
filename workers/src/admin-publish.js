@@ -150,16 +150,18 @@ const TAB_OF_FILE = [
   [/^src\/content\/resources\//, "resources"],
 ];
 const SITE_KEY_TAB = { socials: "links", links: "links", images: "photos", share: "advanced" };
-/* a page's search title and description are on Advanced; every other word on Pages */
-const tabOfWord = (k) => (/\.seo_(title|desc)$/.test(k) ? "advanced" : "pages");
+/* a page's search title and description are on Advanced, the menu's names on
+   Navigation, the footer's words on Footer; every other word on Pages */
+export const tabOfWord = (k) => (/\.seo_(title|desc)$/.test(k) ? "advanced"
+  : /^nav\./.test(k) ? "navigation" : /^footer\./.test(k) ? "footer" : "pages");
 export async function changes(env, fetchImpl = fetch) {
   const live = await lastSuccessfulRun(env, PROD_WORKFLOW, fetchImpl);
-  if (live.error || live.never) return { tabs: [], lines: [] };
+  if (live.error || live.never) return { tabs: [], lines: [], pages: [] };
   const heads = [...new Set([stagingBranch(env), liveBranch(env)])];
   const cmps = await Promise.all(heads.map((h) => compareBranches(env, live.sha, h, fetchImpl)));
   const files = new Set();
   for (const c of cmps) if (!c.error) c.files.forEach((f) => files.add(f));
-  const tabs = new Set(), lines = new Set();
+  const tabs = new Set(), lines = new Set(), pages = new Set();
   for (const f of files) for (const [re, tab] of TAB_OF_FILE) if (re.test(f)) tabs.add(tab);
   /* keys whose text differs from live's on either head */
   const differ = async (path) => {
@@ -183,10 +185,18 @@ export async function changes(env, fetchImpl = fetch) {
       jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("emails:" + k.split(".").slice(1).join("."))); }));
     } else if (f === "src/_data/site.json") {
       jobs.push(differ(f).then((ks) => ks.forEach((k) => tabs.add(SITE_KEY_TAB[k.split(".")[0]] || "settings"))));
+    } else if (f === "src/_data/pageSections.json") {
+      /* the pages' sections (admin-sections.js): the menu's order on
+         Navigation, a page's arrangement on Pages, and which pages */
+      jobs.push(differ(f).then((ks) => ks.forEach((k) => {
+        const [part, page] = k.split(".");
+        if (part === "nav") tabs.add("navigation");
+        else if (part === "pages") { tabs.add("pages"); pages.add(page); }
+      })));
     }
   }
   await Promise.all(jobs);
-  return { tabs: [...tabs], lines: [...lines] };
+  return { tabs: [...tabs], lines: [...lines], pages: [...pages] };
 }
 
 /* ------------------------------- progress -------------------------------

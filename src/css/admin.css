@@ -314,19 +314,10 @@
   text-transform:uppercase;color:var(--dim)}
 .c-rows.is-list{display:block;background:none;border:0}
 .c-rows.is-list > .c-group:first-child{margin-top:4px}
-.c-pages{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
-.c-pages li + li{border-top:1px solid var(--line)}
-.c-pages-needs{border-color:rgba(245,184,69,.45);margin-bottom:6px}
-.c-page{display:grid;grid-template-columns:minmax(0,1fr) auto auto 14px;gap:14px;align-items:center;width:100%;
-  padding:13px 16px;background:none;border:0;color:var(--text);text-align:left;cursor:pointer;font:300 15px var(--font-display)}
-@media(hover:hover){ .c-page:hover{background:var(--bg2)} }
-.c-page:focus-visible{outline:2px solid var(--console-admin);outline-offset:-2px}
-.c-page-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.c-page-c{font:12.5px var(--font-body);color:var(--dim);font-variant-numeric:tabular-nums}
-.c-page-x{display:flex;align-items:center;gap:8px;justify-content:flex-end;min-width:0}
-.c-page-go{color:var(--dim);font-size:18px;line-height:1}
-.c-everyline{margin-top:16px}
-@media (max-width:560px){ .c-page{grid-template-columns:minmax(0,1fr) auto 14px}.c-page-c{display:none} }
+/* the list of pages is the staff Site Creator's (.ws-plist); its groups
+   are headed as before */
+.c-rows.is-list .ws-plist + .c-group{margin-top:22px}
+.c-everyline{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px}
 /* Empty strings are the thing you are looking for when translating, so the
    count of them is on the page rather than only inside it. */
 .c-sec-empty{font-size:var(--fs-micro);color:var(--warn,#F5B845);
@@ -981,6 +972,14 @@
    as it will look in a third column beside Pages. Same width as every
    other console page, so nothing moves sideways once it has loaded. */
 .web{display:block}
+/* WEBSITE'S OWN ROW (Chase, 2026-10-21): Updates, Mail, Sharing and Site
+   Creator under Website's heading, as the header's own links look — the
+   one you are on underlined in the admin color. */
+.web-areas{display:flex;gap:4px 22px;flex-wrap:wrap;margin-top:18px;border-bottom:1px solid var(--line)}
+.web-areas a{padding:8px 0 10px;color:var(--dim);font-size:var(--fs-sm);text-decoration:none;
+  border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.web-areas a:hover{color:var(--text)}
+.web-areas a[aria-current]{color:var(--text);border-bottom-color:var(--console-admin)}
 .web-side{display:flex;gap:2px;margin:0 0 26px;border-bottom:1px solid var(--line);
   overflow-x:auto;scrollbar-width:none}
 .web-side::-webkit-scrollbar{display:none}
@@ -1004,7 +1003,7 @@
   border-bottom:0;border-left:2px solid transparent}
 .web.is-side .web-side a[aria-current]{background:var(--bg2);border-left-color:var(--console-admin)}
 /* the words' one save bar, only on the tabs that write them */
-#webArea:not([data-tab="pages"]):not([data-tab="advanced"]) #cSaveBar{display:none}
+#webArea:not([data-tab="pages"]):not([data-tab="navigation"]):not([data-tab="footer"]):not([data-tab="advanced"]) #cSaveBar{display:none}
 @media (max-width:1180px){
   .web.is-side.with-preview{grid-template-columns:180px minmax(0,1fr)}
   .web.is-side .c-preview{display:none!important}
@@ -1027,7 +1026,7 @@ body.has-webbar{padding-bottom:72px}
    steps aside. The tab on screen only — the Website is one page, and another
    tab can be holding unsaved changes out of sight (its link says so). */
 body:has(.web-panel:not([hidden]) .ms-savebar:not([hidden])) .web-bar,
-body:has(#webArea:is([data-tab="pages"],[data-tab="advanced"]) #cSaveBar:not([hidden])) .web-bar{display:none}
+body:has(#webArea:is([data-tab="pages"],[data-tab="navigation"],[data-tab="footer"],[data-tab="advanced"]) #cSaveBar:not([hidden])) .web-bar{display:none}
 .web-side a.is-dirty::after,.web-side a.has-changes::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;
   border-radius:50%;background:var(--warn);vertical-align:middle}
 
@@ -1426,3 +1425,44 @@ body:has(#webArea:is([data-tab="pages"],[data-tab="advanced"]) #cSaveBar:not([hi
 .an-v{position:relative;color:var(--dim)}
 .an-empty{color:var(--dim);margin:0}
 @media (max-width:820px){ .an-geo{grid-template-columns:1fr} }
+
+/* ============================================================ SECTIONS
+   Site Creator › Pages, Navigation and Footer drawn with the staff Site
+   Creator's own pieces (staff.css .ws-*): the page list, a page's sections
+   to open, the sketches, the add dialog, the menu's rows. What is here is
+   only what those pieces need around the words' own boxes (.c-row). */
+.c-sections{display:flex;flex-direction:column;gap:14px}
+.c-pagerows{margin-bottom:4px}
+.c-sections .ws-acc-inner .c-rows{border-radius:var(--radius)}
+.c-sections .ws-panelbody{gap:14px}
+.c-addrow{padding:10px 18px}
+.c-addrow .ws-more{margin:0}
+.c-item{display:flex;flex-direction:column;gap:8px}
+.c-item-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--dim)}
+.c-item-head b{font-weight:500;color:var(--text)}
+.c-item-head .ws-icon{width:28px;height:28px}
+.c-item .ws-rows{margin-top:2px}
+.c-secphoto{max-width:520px;aspect-ratio:21/9;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg)}
+.c-secphoto img{width:100%;height:100%;object-fit:cover;display:block}
+.c-drop{align-self:flex-start;font-size:12px}
+/* DISCARD CHANGES, on the box (Chase, 2026-10-21: "fades in if edits are
+   made"): there while the box differs from what is saved or from what
+   visitors see, gone otherwise. */
+.c-undo{align-self:flex-start;font-size:12px;opacity:0;visibility:hidden;
+  transition:opacity .3s cubic-bezier(.55,.05,.45,.95),visibility 0s linear .3s}
+.c-row.is-dirty .c-undo,.c-row.is-unpub .c-undo{opacity:1;visibility:visible;transition:opacity .3s cubic-bezier(.55,.05,.45,.95)}
+@media (prefers-reduced-motion:reduce){.c-undo,.c-row.is-dirty .c-undo,.c-row.is-unpub .c-undo{transition:none}}
+.c-row.is-unpub{box-shadow:inset 3px 0 0 rgba(245,184,69,.45)}
+/* the menu */
+.c-navnote{margin:-4px 0 12px}
+.c-navlist{margin-bottom:14px}
+.c-navrow{display:flex;align-items:center;gap:10px;padding:6px 10px}
+.c-navrow > .c-rows{flex:1 1 auto;min-width:0;border:0;background:none}
+.c-navrow .c-row{padding:10px 8px}
+.c-navoff{font-size:12px;color:var(--warn);text-decoration:none;white-space:nowrap}
+/* the footer */
+.c-foot .ws-infoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.c-footnote{margin:12px 0 0}
+.c-footnote.is-warn{color:var(--warn)}
+/* "On the Site", as the staff preview's head says it */
+.c-prev-bar .c-prev-on-site{text-transform:uppercase;letter-spacing:.14em;font-size:12px;white-space:nowrap}

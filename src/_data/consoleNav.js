@@ -83,21 +83,12 @@ const admin = [
   { slug: "users", url: "/admin/users/", label: "People", roles: ["admin"] },
   { slug: "partners", url: "/admin/partners/", label: "Partners",
     roles: ["admin", "board"] },
-  /* THE PUBLIC SITE, AS THE STAFF HEADER HAS IT (Chase, 2026-10-20: "we can
-     restructure it entirely so it matches similar to the staff header").
-     Website was one link with nine tabs under it; now its work is four
-     links with the staff console's names — Updates (the site's events and
-     resources), Mail (Thauma's lists), Sharing (what Thauma's forms do) and
-     Site Creator (pages, photos, links, the arcade, settings), each with
-     its own tabs (`areas` below). Site Creator keeps Website's address, so
-     every old link to Pages still lands on Pages. */
-  { slug: "updates", url: "/admin/updates/", label: "Updates",
-    roles: ["admin", "communications"] },
-  { slug: "mail", url: "/admin/mail/", label: "Mail",
-    roles: ["admin", "communications"] },
-  { slug: "sharing", url: "/admin/sharing/", label: "Sharing",
-    roles: ["admin", "communications"] },
-  { slug: "website", url: "/admin/website/", label: "Site Creator",
+  /* THE PUBLIC SITE, ONE LINK (Chase, 2026-10-21: "those headers you added
+     live under the Website nav, not get added to the Admin nav bar"). Its
+     work is four parts with the staff console's names — Updates, Mail,
+     Sharing and Site Creator — in a row of their own under Website's heading
+     (`website` below), each with its own tabs (`areas`). */
+  { slug: "website", url: "/admin/website/", label: "Website",
     roles: ["admin", "communications"] },
   { slug: "activity", url: "/admin/activity/", label: "Activity",
     roles: ["admin", "board"] },
@@ -118,6 +109,10 @@ const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || [
    comes back to where you were. Only the area's own tabs load with it, so a
    page asks for what it shows and no more.
 
+   The four areas are Website's (Chase, 2026-10-21): the admin header shows
+   Website, and the areas are the row under its heading (`website`), the
+   staff header's names in the staff header's order.
+
    A tab's markup is src/_includes/website/<tab>.njk. The area's heading
    stays as you move between its tabs, as on the staff pages. A tab is
    never listed before its page exists. `side` lays the tabs out as the
@@ -126,33 +121,42 @@ const rowRoles = (pages) => [...new Set(inRow(pages).flatMap((p) => p.roles || [
    puts the publish bar along its foot (what it changes waits for Publish);
    `scripts` are what its tabs run, the shell last. */
 const areas = {
-  updates: { heading: "What the Site <b>Publishes</b>", publish: true,
+  updates: { label: "Updates", heading: "What the Site <b>Publishes</b>", publish: true,
     scripts: ["admin-library", "admin-publish", "admin-dbsync", "admin-website"], tabs: [
-    { tab: "events", url: "/admin/updates/", label: "Events" },
-    { tab: "resources", url: "/admin/updates/resources/", label: "Resources" },
+    { tab: "events", url: "/admin/website/updates/", label: "Events" },
+    { tab: "resources", url: "/admin/website/updates/resources/", label: "Resources" },
   ] },
   /* Thauma's own mail (Chase, 2026-09-27): Thauma's lists, admin work, so
      off the staff pages. */
-  mail: { heading: "Who Hears from <b>Thauma</b>",
+  mail: { label: "Mail", heading: "Who Hears from <b>Thauma</b>",
     scripts: ["staff-mailing", "admin-website"], tabs: [
-    { tab: "mail", url: "/admin/mail/", label: "Mail" },
+    { tab: "mail", url: "/admin/website/mail/", label: "Mail" },
   ] },
   /* What happens to what a visitor sends: where it goes, the reasons, the
      lists on the sign-up form. */
-  sharing: { heading: "Thauma's <b>Forms</b>",
+  sharing: { label: "Sharing", heading: "Thauma's <b>Forms</b>",
     scripts: ["admin-forms", "admin-website"], tabs: [
-    { tab: "forms", url: "/admin/sharing/", label: "Forms" },
+    { tab: "forms", url: "/admin/website/sharing/", label: "Forms" },
   ] },
-  /* THE SITE CREATOR, as a ministry's own is laid out (Chase, 2026-10-20):
-     its tabs down the left, the page as it will look on the right. */
-  website: { heading: "Site <b>Creator</b>", side: true, publish: true,
-    scripts: ["admin-content", "admin-photos", "admin-site", "admin-links", "admin-arcade",
+  /* THE SITE CREATOR, as a ministry's own is laid out (Chase, 2026-10-20,
+     and 2026-10-21: "make sure the Site Creator of staff and the Site
+     Creator of Admin Website look and feel the same"): its tabs down the
+     left in the staff one's order — the menu, the pages, the links, the
+     footer — and the page as it will look on the right. It keeps Website's
+     own address, so every old link to Pages still lands on Pages. */
+  creator: { label: "Site Creator", heading: "Site <b>Creator</b>", side: true, publish: true,
+    scripts: ["site-sections", "admin-content", "admin-photos", "admin-site", "admin-links", "admin-arcade",
               "admin-publish", "admin-dbsync", "admin-website"], tabs: [
     { tab: "pages", url: "/admin/website/", label: "Pages" },
-    { tab: "photos", url: "/admin/website/photos/", label: "Photos" },
+    /* The header (Chase, 2026-10-21: "should we have the footer and header
+       editor"): the menu's pages in their order and what each is called. */
+    { tab: "navigation", url: "/admin/website/navigation/", label: "Navigation" },
     /* The footer's social and own links (2026-10-07), as a partner site's
        Links tab has them. Saves at once, like Settings. */
     { tab: "links", url: "/admin/website/links/", label: "Links" },
+    /* What the footer says, and what is in it. */
+    { tab: "footer", url: "/admin/website/footer/", label: "Footer" },
+    { tab: "photos", url: "/admin/website/photos/", label: "Photos" },
     /* The hidden arcade's control room (Chase, 2026-10-06): games open or
        out of order, the high scores, blocked names. Saves at once. */
     { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade" },
@@ -162,10 +166,11 @@ const areas = {
     { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
   ] },
 };
+/* Website's own row: each area, at its first tab's address. */
+const website = Object.entries(areas).map(([area, a]) => ({ area, label: a.label, url: a.tabs[0].url }));
 /* Every tab of every area, one per address, for the pages to be written. */
 const areaTabs = Object.entries(areas).flatMap(([area, a]) =>
-  a.tabs.map((t) => ({ ...t, area, heading: a.heading,
-    areaLabel: admin.find((p) => p.slug === area).label })));
+  a.tabs.map((t) => ({ ...t, area, heading: a.heading, areaLabel: a.label })));
 
 module.exports = {
   staff,
@@ -177,5 +182,6 @@ module.exports = {
   row: { staff: inRow(staff), admin: inRow(admin) },
   menu: [...staff, ...admin].filter((p) => p.menu),
   areas,
+  website,
   areaTabs,
 };

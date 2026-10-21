@@ -64,10 +64,20 @@ is served live through a tunnel at https://dev.thauma.one.
   pageSlug frontmatter; src/src.11tydata.js computes permalinks.
 - Layout: src/_includes/layouts/base.njk (nav, footer, lang dropdown,
   page wheel, hreflang - all generated from site.languages).
-- Nav order lives in src/_data/navPages.js (function export so it
-  re-reads site.showEvents every build). It drives the desktop links,
-  the mobile menu, and the page wheel's numbering — never hand-copy
-  the page list anywhere else.
+- THE SITE'S OWN PAGES ARE SECTIONS (2026-10-21): src/_data/pageSections.json
+  lists each page's sections; each kind is one template in
+  src/_includes/sections/ (cut from the pages as they were — the build was
+  compared page by page, same HTML) and src/js/site-sections.js says what
+  each kind is made of. The page templates only include sections/page.njk.
+  Website › Site Creator writes the file (workers/src/admin-sections.js);
+  the console's preview draws the same templates in the browser, so
+  test/page-sections.test.mjs checks build and preview agree, the arcade
+  doors and animation hooks are all still there. A section names its
+  words by key; words added since live under `blocks.<section id>`.
+- Nav order is pageSections.json `nav` (Site Creator › Navigation), read
+  by src/_data/navPages.js (function export so it re-reads every build).
+  It drives the desktop links, the mobile menu, and the page wheel's
+  numbering — never hand-copy the page list anywhere else.
 - The landing page (src/coming-soon.njk) is standalone and owns the
   star + sweep animation (one shared 9s timeline).
 

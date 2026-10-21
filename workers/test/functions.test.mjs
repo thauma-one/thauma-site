@@ -272,13 +272,17 @@ await check("an old console address leads to where the page moved", async () => 
   eq(go("/admin/content/"), "https://x/admin/website/", "Content");
   eq(go("/admin/site"), "https://x/admin/website/settings/", "without the slash");
   eq(go("/admin/publish/"), "https://x/admin/website/?review", "Publish opens the review");
-  eq(go("/admin/library/?tab=gatherings"), "https://x/admin/updates/resources/?tab=gatherings", "keeps the query");
-  eq(go("/admin/website/library/"), "https://x/admin/updates/resources/", "Library became Resources and Events");
-  /* Website became four areas in the header (2026-10-20) */
-  eq(go("/admin/website/events/"), "https://x/admin/updates/", "Events are Updates");
-  eq(go("/admin/website/resources/"), "https://x/admin/updates/resources/", "Resources are Updates");
-  eq(go("/admin/website/forms/"), "https://x/admin/sharing/", "Forms are Sharing");
-  eq(go("/admin/website/mail/#composer"), "https://x/admin/mail/", "Mail is Mail");
+  eq(go("/admin/library/?tab=gatherings"), "https://x/admin/website/updates/resources/?tab=gatherings", "keeps the query");
+  eq(go("/admin/website/library/"), "https://x/admin/website/updates/resources/", "Library became Resources and Events");
+  /* Website's work is four areas under Website (2026-10-21); for a day they
+     were four links in the header, and before that tabs of Website */
+  eq(go("/admin/website/events/"), "https://x/admin/website/updates/", "Events are Updates");
+  eq(go("/admin/website/resources/"), "https://x/admin/website/updates/resources/", "Resources are Updates");
+  eq(go("/admin/website/forms/"), "https://x/admin/website/sharing/", "Forms are Sharing");
+  eq(go("/admin/updates/"), "https://x/admin/website/updates/", "the day Updates was in the header");
+  eq(go("/admin/mail/"), "https://x/admin/website/mail/", "the day Mail was in the header");
+  eq(go("/admin/sharing/"), "https://x/admin/website/sharing/", "the day Sharing was in the header");
+  eq(go("/admin/website/mail/"), null, "Mail is Website's again");
   eq(go("/admin/website/photos/"), null, "Photos stayed in Site Creator");
   eq(go("/staff/ministry/"), "https://x/staff/updates/", "Ministry became Updates");
   eq(go("/staff/mailing/?scope=organization"), "https://x/staff/mail/?scope=organization",

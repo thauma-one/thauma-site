@@ -43,11 +43,11 @@
     var hash = (location.hash || '').slice(1);
     var form = { embed: 'signup', contact: 'contact' }[hash];
     if (form) {
-      location.replace(orgAsked ? '/admin/sharing/' : '/staff/sharing/#' + form);
+      location.replace(orgAsked ? '/admin/website/sharing/' : '/staff/sharing/#' + form);
       return;
     }
     if (orgAsked) {
-      location.replace('/admin/mail/' + location.hash);
+      location.replace('/admin/website/mail/' + location.hash);
       return;
     }
   }

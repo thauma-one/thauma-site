@@ -121,7 +121,7 @@ await check("Back goes to the tab before", async () => {
 
 await check("an old link to the Library's Gatherings opens Events", async () => {
   const { w, d } = await boot("resources", "#gatherings");
-  assert(on(d).join() === "events" && w.location.pathname === "/admin/updates/", `${on(d)} at ${w.location.pathname}`);
+  assert(on(d).join() === "events" && w.location.pathname === "/admin/website/updates/", `${on(d)} at ${w.location.pathname}`);
 });
 
 await check("a tab with unsaved changes is marked while you look at another", async () => {
