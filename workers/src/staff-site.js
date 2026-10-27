@@ -33,7 +33,7 @@ import { createDb } from "./lib/db.js";
 import { json, readJson } from "./lib/store.js";
 import { partnerFor } from "./staff-milestones.js";
 import { ensureSiteDns, removeSiteDns } from "./lib/site-dns.js";
-import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word, placeholders } from "./site/model.js";
+import { cleanDoc, cleanDims, starter, subdomainFrom, validSubdomain, PAGES, word, placeholders } from "./site/model.js";
 import { lookFor, TURNS } from "./embed-colour.js";
 import { changedAnswer } from "./lib/fresh.js";
 
@@ -285,6 +285,23 @@ export default {
         partner_id: partner.id, action: "update", entity: "partner.embed", entity_id: partner.id,
         detail: JSON.stringify({ accent, accent2, turn, from: "site" }),
       }).catch(() => {});
+      return answer();
+    }
+    /* EVERY PHOTO'S SIZE (2026-10-27), measured by the editor: kept in the
+       working copy and the published one alike, since it changes nothing but
+       how a page holds a photo's place. Equal copies stay equal, so a site
+       with nothing to publish still has nothing to publish. */
+    if (action === "sizes") {
+      if (!isEditor) return onlyEditors();
+      const add = cleanDims(body.dims);
+      if (!Object.keys(add).length) return answer();
+      const merge = (raw) => {
+        if (!raw) return raw;
+        const d = JSON.parse(raw);
+        d.dims = { ...(d.dims || {}), ...add };
+        return JSON.stringify(d);
+      };
+      await db.query("partner_site_docs_set", { partner_id: partner.id, draft: merge(row.draft), published: merge(row.published) });
       return answer();
     }
     if (action === "discard") {

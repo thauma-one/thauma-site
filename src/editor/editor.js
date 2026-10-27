@@ -42,7 +42,7 @@
  * in a quieter voice.
  * ============================================================================
  */
-import { Editor, Mark, Node, mergeAttributes, nodeInputRule, nodePasteRule } from "@tiptap/core";
+import { Editor, Extension, Mark, Node, mergeAttributes, nodeInputRule, nodePasteRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 
@@ -208,6 +208,34 @@ const Size = Mark.create({
   },
 });
 
+/* HOW A PARAGRAPH LINES UP (Chase, 2026-10-27: "in the Mail section, we
+   should also have an option for justification alignment"): left (as
+   written, nothing stored), centered, right or justified, on a paragraph or
+   a heading. Stored as data-ta, which newsletter.js keeps and turns into
+   text-align for the email. */
+export const ALIGNS = ["center", "right", "justify"];
+const TextAlign = Extension.create({
+  name: "textAlign",
+  addGlobalAttributes() {
+    return [{ types: ["paragraph", "heading"], attributes: { ta: {
+      default: null,
+      parseHTML: (el) => (ALIGNS.includes(el.getAttribute("data-ta")) ? el.getAttribute("data-ta") : null),
+      renderHTML: (a) => (a.ta ? { "data-ta": a.ta, style: "text-align:" + a.ta } : {}),
+    } } }];
+  },
+  addCommands() {
+    return {
+      setAlign: (ta) => ({ commands }) => {
+        const v = ALIGNS.includes(ta) ? ta : null;
+        const a = commands.updateAttributes("paragraph", { ta: v });
+        const b = commands.updateAttributes("heading", { ta: v });
+        return a || b;
+      },
+    };
+  },
+});
+const alignedAs = (e) => ALIGNS.find((v) => e.isActive({ ta: v })) || "left";
+
 /* What each button does, and how to tell whether it is currently on.
    One table, so a button cannot exist without a state check — which is how
    the first version ended up with decorative buttons. */
@@ -224,6 +252,10 @@ export const TOOLS = {
   ordered:   { run: (c) => c.toggleOrderedList(),          on: (e) => e.isActive("orderedList") },
   quote:     { run: (c) => c.toggleBlockquote(),           on: (e) => e.isActive("blockquote") },
   rule:      { run: (c) => c.setHorizontalRule(),          on: () => false },
+  taLeft:    { run: (c) => c.setAlign(null),               on: (e) => alignedAs(e) === "left" },
+  taCenter:  { run: (c) => c.setAlign("center"),           on: (e) => alignedAs(e) === "center" },
+  taRight:   { run: (c) => c.setAlign("right"),            on: (e) => alignedAs(e) === "right" },
+  taJustify: { run: (c) => c.setAlign("justify"),          on: (e) => alignedAs(e) === "justify" },
 };
 
 /**
@@ -401,6 +433,7 @@ export function createEditor(opts) {
       Tone,
       Size,
       Variable,
+      TextAlign,
     ],
 
     /* PICTURES DROPPED OR PASTED IN (2026-10-07, after chaseroush.com's

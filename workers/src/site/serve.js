@@ -25,7 +25,7 @@ import { serveApp } from "./app.js";
 import { splitLogo, sheenLogo } from "./logo.js";
 import { assertNoPersonalData } from "../lib/nopii.js";
 import { siteOrigin } from "../lib/origin.js";
-import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget } from "./model.js";
+import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget, pagePath, pageAt } from "./model.js";
 import { renderPage, simplePage } from "./render.js";
 
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -277,7 +277,7 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
     if (rest === "/robots.txt") {
       return new Response(`User-agent: *\nAllow: /\nSitemap: ${pub}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
     }
-    const at = (id, l) => `${pub}/${l}/${id === "home" ? "" : id + "/"}`;
+    const at = (id, l) => `${pub}/${l}/${id === "home" ? "" : pagePath(doc.pages.find((p) => p.id === id)) + "/"}`;
     const x = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
     const urls = doc.pages.filter((p) => p.on).flatMap((p) => doc.languages.map((l) =>
       `<url><loc>${x(at(p.id, l))}</loc>${doc.languages.map((o2) => `<xhtml:link rel="alternate" hreflang="${x(o2)}" href="${x(at(p.id, o2))}"/>`).join("")}</url>`));
@@ -291,18 +291,20 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
   }
   /* A clean link — /YouTube, /hr/Darivanje — before anything is "not found". */
   const clean = (parts.length === 1 && !doc.languages.includes(parts[0])) ||
-    (parts.length === 2 && doc.languages.includes(parts[0]) && !doc.pages.some((p) => p.id === parts[1]))
+    (parts.length === 2 && doc.languages.includes(parts[0]) && !pageAt(doc, parts[1]))
     ? cleanLinkTarget(doc, parts, { base, q, giving: doc.give || row.giving_url || "" }) : null;
   if (clean) return new Response(null, { status: 302, headers: { Location: clean, "Cache-Control": "no-store" } });
   const lang = parts[0];
   if (!doc.languages.includes(lang)) {
     /* An address in a language the site does not publish: the same page in
        the fallback language, rather than nothing. */
-    const page = parts[1] && PAGES.includes(parts[1]) ? parts[1] + "/" : "";
+    const page = parts[1] && pageAt(doc, parts[1]) ? parts[1] + "/" : "";
     return new Response(null, { status: 302, headers: { Location: `${base}/${doc.fallback}/${page}${q}` } });
   }
-  const pageId = parts[1] || "home";
-  const page = doc.pages.find((p) => p.id === pageId);
+  /* the page this address names: a built-in one by its id, one of the
+     owner's own by its address */
+  const page = parts[1] ? pageAt(doc, parts[1]) : doc.pages.find((p) => p.id === "home");
+  const pageId = page ? page.id : parts[1];
   if (parts.length > 2 || !page || (!page.on && !draft)) {
     return simplePage("Not found", "There is no page at this address.", 404);
   }

@@ -172,7 +172,22 @@
       "tabFill": "Tab",
       "allUpdates": "See All Updates",
       "getApp": "Get the App",
-      "givingLink": "Donate"
+      "givingLink": "Donate",
+      "previous": "Previous",
+      "next": "Next",
+      "newPage": "New Page",
+      "defineWord": "Wonder",
+      "defineSay": "/ˈwʌn.dər/",
+      "defineFill": "The feeling of something you did not expect and cannot explain.\n\nReplace it with the word your work is named for.",
+      "rowsThin": "What",
+      "rowsBold": "We Do",
+      "rowsFill": "Each kind of work, in a few words.",
+      "rowLabel": "Serve",
+      "rowTitle": "A Kind of Work",
+      "rowText": "Say what it is and who it is for. Replace these words with your own.",
+      "appInvite": "Add {name} to your phone",
+      "appAdd": "Add",
+      "appLater": "Not Now"
     },
     "brand": {
       "note": "A Thauma ministry",
@@ -293,7 +308,7 @@
       "tour1t": "Welcome",
       "tour1": "Everything {name} shares, in one place — prayer, updates and giving.",
       "tour2t": "Pray Along",
-      "tour2": "Press “I prayed” on a request. {name} sees how many are praying — never who.",
+      "tour2": "Hold to pray on a request. {name} sees how many are praying — never who.",
       "tour3t": "Stay Close",
       "tour3": "Hear when there's something new. You choose what.",
       "skip": "Skip",
@@ -309,7 +324,13 @@
       "pushPrayer": "New prayer request · {title}",
       "pushAnswered": "Prayer answered · {title}",
       "pushUpdate": "News · {title}",
-      "pushGoal": "{label} · {percent}%"
+      "pushGoal": "{label} · {percent}%",
+      "hold": "Hold to Pray",
+      "soFar": "Raised So Far",
+      "done": "Done",
+      "now": "Now",
+      "addHome": "Add {name} to your phone",
+      "add": "Add"
     }
   },
   "hr": {
@@ -485,7 +506,22 @@
       "tabFill": "Kartica",
       "allUpdates": "Sva izdanja",
       "getApp": "Preuzmite aplikaciju",
-      "givingLink": "Doniraj"
+      "givingLink": "Doniraj",
+      "previous": "Prethodno",
+      "next": "Sljedeće",
+      "newPage": "Nova stranica",
+      "defineWord": "Čudo",
+      "defineSay": "/tʃûdo/",
+      "defineFill": "Osjećaj nečega što niste očekivali i ne možete objasniti.\n\nZamijenite ga riječju po kojoj je vaš rad dobio ime.",
+      "rowsThin": "Što",
+      "rowsBold": "radimo",
+      "rowsFill": "Svaka vrsta rada, u nekoliko riječi.",
+      "rowLabel": "Služenje",
+      "rowTitle": "Vrsta rada",
+      "rowText": "Recite što je i za koga je. Zamijenite ove riječi svojima.",
+      "appInvite": "Dodajte {name} na mobitel",
+      "appAdd": "Dodaj",
+      "appLater": "Ne sada"
     },
     "brand": {
       "note": "Služba Thaume",
@@ -606,7 +642,7 @@
       "tour1t": "Dobro došli",
       "tour1": "Sve što {name} dijeli, na jednom mjestu — molitva, novosti i darivanje.",
       "tour2t": "Molite s nama",
-      "tour2": "Pritisnite „Molio/la sam” uz potrebu. {name} vidi koliko ljudi moli — nikad tko.",
+      "tour2": "Držite prst na molbi dok molite. {name} vidi koliko ljudi moli — nikad tko.",
       "tour3t": "Budite blizu",
       "tour3": "Saznajte kad ima nešto novo. Vi birate što.",
       "skip": "Preskoči",
@@ -622,7 +658,13 @@
       "pushPrayer": "Nova molitvena potreba · {title}",
       "pushAnswered": "Molitva uslišana · {title}",
       "pushUpdate": "Novost · {title}",
-      "pushGoal": "{label} · {percent} %"
+      "pushGoal": "{label} · {percent} %",
+      "hold": "Držite za molitvu",
+      "soFar": "Do sada prikupljeno",
+      "done": "Gotovo",
+      "now": "Sada",
+      "addHome": "Dodajte {name} na mobitel",
+      "add": "Dodaj"
     }
   },
   "sr": {
@@ -798,7 +840,22 @@
       "tabFill": "Картица",
       "allUpdates": "Сва издања",
       "getApp": "Преузмите апликацију",
-      "givingLink": "Донирај"
+      "givingLink": "Донирај",
+      "previous": "Претходно",
+      "next": "Сљедеће",
+      "newPage": "Нова страница",
+      "defineWord": "Чудо",
+      "defineSay": "/tʃûdo/",
+      "defineFill": "Осјећај нечега што нисте очекивали и не можете објаснити.\n\nЗамијените га ријечју по којој је ваш рад добио име.",
+      "rowsThin": "Што",
+      "rowsBold": "радимо",
+      "rowsFill": "Свака врста рада, у неколико ријечи.",
+      "rowLabel": "Служење",
+      "rowTitle": "Врста рада",
+      "rowText": "Реците што је и за кога је. Замијените ове ријечи својима.",
+      "appInvite": "Додајте {name} на мобилни",
+      "appAdd": "Додај",
+      "appLater": "Не сада"
     },
     "brand": {
       "note": "Служба Тауме",
@@ -919,7 +976,7 @@
       "tour1t": "Добро дошли",
       "tour1": "Све што {name} дели, на једном месту — молитва, новости и даривање.",
       "tour2t": "Молите се с нама",
-      "tour2": "Притисните „Молио/ла сам” поред потребе. {name} види колико људи се моли — никад ко.",
+      "tour2": "Држите прст на молби док молите. {name} види колико људи моли — никад ко.",
       "tour3t": "Будите близу",
       "tour3": "Сазнајте кад има нешто ново. Ви бирате шта.",
       "skip": "Прескочи",
@@ -935,7 +992,13 @@
       "pushPrayer": "Нова молитвена потреба · {title}",
       "pushAnswered": "Молитва услишена · {title}",
       "pushUpdate": "Новост · {title}",
-      "pushGoal": "{label} · {percent} %"
+      "pushGoal": "{label} · {percent} %",
+      "hold": "Држите за молитву",
+      "soFar": "До сада прикупљено",
+      "done": "Готово",
+      "now": "Сада",
+      "addHome": "Додајте {name} на мобилни",
+      "add": "Додај"
     }
   },
   "sl": {
@@ -1111,7 +1174,22 @@
       "tabFill": "Zavihek",
       "allUpdates": "Vse novice",
       "getApp": "Prenesite aplikacijo",
-      "givingLink": "Doniraj"
+      "givingLink": "Doniraj",
+      "previous": "Prejšnje",
+      "next": "Naslednje",
+      "newPage": "Nova stran",
+      "defineWord": "Čudež",
+      "defineSay": "/ˈtʃuːdeʃ/",
+      "defineFill": "Občutek nečesa, česar niste pričakovali in ne znate razložiti.\n\nZamenjajte ga z besedo, po kateri se imenuje vaše delo.",
+      "rowsThin": "Kaj",
+      "rowsBold": "delamo",
+      "rowsFill": "Vsaka vrsta dela v nekaj besedah.",
+      "rowLabel": "Služenje",
+      "rowTitle": "Vrsta dela",
+      "rowText": "Povejte, kaj je in za koga. Zamenjajte te besede s svojimi.",
+      "appInvite": "Dodajte {name} na telefon",
+      "appAdd": "Dodaj",
+      "appLater": "Ne zdaj"
     },
     "brand": {
       "note": "Služba Thaume",
@@ -1232,7 +1310,7 @@
       "tour1t": "Dobrodošli",
       "tour1": "Vse, kar {name} deli, na enem mestu — molitev, novice in darovanje.",
       "tour2t": "Molite z nami",
-      "tour2": "Pritisnite »Molil/a sem« ob prošnji. {name} vidi, koliko jih moli — nikoli kdo.",
+      "tour2": "Med molitvijo držite prst na prošnji. {name} vidi, koliko ljudi moli — nikoli kdo.",
       "tour3t": "Ostanite blizu",
       "tour3": "Izveste, ko je kaj novega. Vi izberete kaj.",
       "skip": "Preskoči",
@@ -1248,7 +1326,13 @@
       "pushPrayer": "Nova molitvena prošnja · {title}",
       "pushAnswered": "Molitev uslišana · {title}",
       "pushUpdate": "Novica · {title}",
-      "pushGoal": "{label} · {percent} %"
+      "pushGoal": "{label} · {percent} %",
+      "hold": "Držite za molitev",
+      "soFar": "Doslej zbrano",
+      "done": "Končano",
+      "now": "Zdaj",
+      "addHome": "Dodajte {name} na telefon",
+      "add": "Dodaj"
     }
   }
 }

@@ -142,6 +142,13 @@ check("the brand color resolves to the ministry's own accent", () => {
   assert(/<span style="[^"]*color:#22C55E/.test(out), `not resolved: ${out.slice(0, 200)}`);
 });
 
+check("a paragraph or heading lines up centered, right or justified; anything else is left as written", () => {
+  const out = render(sanitise('<p data-ta="justify" style="text-align:justify">a</p><h2 data-ta="center">b</h2><p data-ta="sideways">c</p>'), OPTS);
+  assert(/<p data-ta="justify" style="[^"]*;text-align:justify">a<\/p>/.test(out), "justified: " + out.slice(0, 300));
+  assert(/<h2 data-ta="center" style="[^"]*;text-align:center">b<\/h2>/.test(out), "centered");
+  assert(/<p style="[^"]*">c<\/p>/.test(out) && !/sideways/.test(out), "nonsense dropped");
+});
+
 check("underline and strikethrough survive with real styles", () => {
   const out = render(sanitise("<p><u>u</u> <s>s</s></p>"), OPTS);
   assert(/<u[^>]*style="[^"]*underline/.test(out), "underline lost its style");

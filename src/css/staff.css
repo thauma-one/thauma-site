@@ -1364,6 +1364,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-tools button:active{transform:translateY(1px)}
 .cp-tools button.is-on{background:var(--voice-tech);color:#0b1119}
 .cp-tools button:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
+.cp-ta svg{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
 .cp-tools-sep{width:1px;height:17px;background:var(--line);margin:0 5px}
 .cp-swatch span{display:block;width:13px;height:13px;border-radius:50%;
   background:var(--voice-tech);margin:0 auto;border:1px solid rgba(255,255,255,.15)}
@@ -3238,16 +3239,30 @@ html.pe-open{overflow:hidden}
 .ws-seg-icons .ws-segbtn{padding:7px 12px;line-height:0}
 .ws-seg-icons svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
 .ws-pick{min-width:0;max-width:100%;padding:8px 12px;font-size:13px}
-.ws-fonts{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;width:100%}
-.ws-font{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:none;color:var(--text);cursor:pointer;text-align:left;font:inherit}
-.ws-font:hover{border-color:rgba(255,255,255,.28)}
-.ws-font[aria-pressed="true"]{border-color:var(--voice-tech);background:var(--voice-tech-dim)}
-.ws-font:focus-visible{outline:2px solid var(--voice-tech);outline-offset:2px}
-.ws-font-aa{font-size:26px;line-height:1.15}
-.ws-font-name{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--dim)}
-.ws-font-tag{font-size:10px;letter-spacing:.02em;color:var(--warn,#F5B845)}
-.ws-font-up{border-style:dashed;color:var(--dim)}
-.ws-font-change{align-self:center;justify-self:start;font-size:12px;cursor:pointer}
+.ws-font-tag{font-size:10px;letter-spacing:.02em;color:var(--warn,#F5B845);margin-left:auto;flex:none}
+.ws-font-change{align-self:center;font-size:12px;cursor:pointer;white-space:nowrap}
+/* A LIST THAT SHOWS WHAT IT DOES (staff-site.js ddPick): a font named in
+   its own face, an entrance played in the preview as it is pointed at. */
+.ws-dd{max-width:360px}
+.ws-dd .ws-pp-btn,.ws-dd .ws-pp-opt{padding:9px 14px;gap:10px}
+.ws-dd-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
+.ws-dd .ws-pp-list{max-height:min(420px,60vh)}
+.ws-row .ws-ctl:has(> .ws-dd){display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ws-lctl:has(> .ws-dd){display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ws-play{flex:none}
+/* the speed: a slider between its two ends, the seconds beside it */
+.ws-speed{display:flex;align-items:center;gap:10px;width:100%;max-width:440px}
+.ws-speed input[type=range]{flex:1;min-width:120px;accent-color:var(--voice-tech)}
+.ws-speed-end{font-size:12px;color:var(--dim);flex:none}
+.ws-speed-val{flex:none;min-width:4.2em;text-align:right;font:600 13px var(--font-mono,monospace);color:var(--text)}
+/* a page of your own (2026-10-27): added under the list; its address */
+.ws-addpage{margin-top:12px}
+.ws-addr{display:flex;align-items:center;gap:4px;max-width:420px}
+.ws-addr input{flex:1;min-width:0;font-family:var(--font-mono,monospace)}
+.ws-addr-base{color:var(--dim);font:13px var(--font-mono,monospace)}
+/* what each link shows, over the links (2026-10-27) */
+.ws-linkshow{display:flex;flex-direction:column;gap:12px;margin:0 0 18px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius)}
+.ws-linkshow .ws-flags{display:flex;flex-wrap:wrap;gap:8px 16px}
 @media (max-width:560px){.ws-lrow{grid-template-columns:1fr;gap:8px}}
 
 /* A CHOICE WITH PICTURES (staff-site.js picPick): a wide box showing the one

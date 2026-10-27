@@ -2,6 +2,66 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-27-ministry-app-visual",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Your site's phone app is rebuilt to be seen rather than read: it opens with your initials, leads with your own photo, and shows giving as rings. A prayer request is held to pray — the ring fills, the phone buzzes and the count goes up — and requests swipe one at a time. Updates are a line of pictures and videos. “Get the App” is no longer in the footer: it is in the phone's menu, and a phone is asked once, after a second visit. A computer never hears about an app.",
+        "hr": "Aplikacija vaše stranice za mobitel izrađena je iznova da se gleda, a ne čita: otvara se vašim inicijalima, počinje vašom fotografijom, a darivanje prikazuje u krugovima. Na molbi se drži prst dok se moli — krug se puni, mobitel zavibrira i broj raste — a molbe se listaju jedna po jedna. Novosti su niz slika i videa. „Preuzmite aplikaciju” više nije u podnožju: nalazi se u izborniku na mobitelu, a mobitel se pita jednom, nakon drugog posjeta. Računalo nikad ne spominje aplikaciju.",
+        "sr": "Апликација ваше странице за мобилни израђена је изнова да се гледа, а не чита: отвара се вашим иницијалима, почиње вашом фотографијом, а даривање приказује у круговима. На молби се држи прст док се моли — круг се пуни, мобилни завибрира и број расте — а молбе се листају једна по једна. Новости су низ слика и видеа. „Преузмите апликацију” више није у подножју: налази се у изборнику на мобилном, а мобилни се пита једном, након другог посјета. Рачунар никад не спомиње апликацију."
+      }
+    },
+    {
+      "id": "2026-10-27-site-thauma-sections",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator: two sections from thauma.one's own pages — A Word and Its Meaning (a word, how it is said, and its meanings, numbered) and Labeled Rows (a short label beside a title and its words) — and Custom Cards can be numbered I, II, III.",
+        "hr": "Kreator stranice: dva odjeljka sa stranica thauma.one — Riječ i njezino značenje (riječ, kako se izgovara i njezina značenja, s brojevima) i Označeni retci (kratka oznaka uz naslov i njegove riječi) — a vlastite kartice mogu imati brojeve I, II, III.",
+        "sr": "Креатор странице: два одјељка са страница thauma.one — Ријеч и њено значење (ријеч, како се изговара и њена значења, с бројевима) и Означени редци (кратка ознака уз наслов и његове ријечи) — а властите картице могу имати бројеве I, II, III."
+      }
+    },
+    {
+      "id": "2026-10-27-site-own-pages",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator › Pages: add pages of your own with “Add a Page” under the list. Each has its own name and address, starts switched off, can be switched on and off like the others, and is the only kind of page you can delete.",
+        "hr": "Kreator stranice › Stranice: dodajte vlastite stranice gumbom „Dodajte stranicu” ispod popisa. Svaka ima svoj naziv i adresu, počinje isključena, može se uključivati i isključivati kao ostale i jedina je vrsta stranice koju možete izbrisati.",
+        "sr": "Креатор странице › Странице: додајте властите странице дугметом „Додајте страницу” испод пописа. Свака има свој назив и адресу, почиње искључена, може се укључивати и искључивати као остале и једина је врста странице коју можете избрисати."
+      }
+    },
+    {
+      "id": "2026-10-27-site-creator-motion-fonts",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator: fonts are a list where pointing at a font shows it on your site at once; \"Default\" replaces \"The Look's Own\", and text can wear the headings' font. How sections arrive plays in the preview as you point at each way (with a Play button), two new ways (Drop In, Sweep In), a speed slider from 0.2 to 4 seconds, and each section can arrive its own way. Sections now arrive properly when you move to another page, and photos keep their place while they load.",
+        "hr": "Kreator stranice: fontovi su popis na kojem pokazivanje na font odmah prikazuje kako izgleda na vašoj stranici; „Zadano” zamjenjuje „Font izgleda”, a tekst može nositi font naslova. Način na koji se odjeljci pojavljuju odvija se u pregledu dok pokazujete na svaki (uz gumb Pokreni), dva su nova načina (Spuste se, Uplove zdesna), brzina je klizač od 0,2 do 4 sekunde, a svaki odjeljak može se pojaviti na svoj način. Odjeljci se sada ispravno pojavljuju kad prijeđete na drugu stranicu, a fotografije drže svoje mjesto dok se učitavaju.",
+        "sr": "Креатор странице: фонтови су попис на којем показивање на фонт одмах приказује како изгледа на вашој страници; „Задано” замјењује „Фонт изгледа”, а текст може носити фонт наслова. Начин на који се одјељци појављују одвија се у прегледу док показујете на сваки (уз дугме Покрени), два су нова начина (Спусте се, Уплове здесна), брзина је клизач од 0,2 до 4 секунде, а сваки одјељак може се појавити на свој начин. Одјељци се сада исправно појављују кад пријеђете на другу страницу, а фотографије држе своје мјесто док се учитавају."
+      }
+    },
+    {
+      "id": "2026-10-27-site-creator-sections",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator sections: words can be Justified in every section; the Header takes about half the room it did; Links has a real List, a sideways Shelf, Buttons in a row or stacked with pictures, a choice of how pictures show (Whole, Fill the Frame, Round, None), and switches for what each link shows beside its words; descriptions start at 12 and a size picked for a whole box spaces its lines to match; a Give band and words with a button now line up exactly, so page tabs swap words without moving them; an opened timeline milestone takes the card color.",
+        "hr": "Odjeljci u Kreatoru stranice: riječi se u svakom odjeljku mogu poravnati obostrano; Zaglavlje zauzima otprilike upola manje mjesta; Poveznice imaju pravi popis, Policu koja se pomiče u stranu, gumbe u nizu ili jedan ispod drugog sa slikama, izbor kako se slike prikazuju (Cijele, Ispune okvir, Okrugle, Bez slika) i prekidače za ono što svaka poveznica prikazuje, uz njezine riječi; opisi počinju veličinom 12, a veličina odabrana za cijeli okvir prilagođava razmak redaka; traka za darivanje i riječi s gumbom sada su točno poravnate, pa kartice stranice mijenjaju riječi bez pomicanja; otvorena prekretnica vremenske crte nosi boju kartice.",
+        "sr": "Одјељци у Креатору странице: ријечи се у сваком одјељку могу поравнати обострано; Заглавље заузима отприлике упола мање мјеста; Везе имају прави попис, Полицу која се помиче у страну, дугмад у низу или једно испод другог са сликама, избор како се слике приказују (Цијеле, Испуне оквир, Округле, Без слика) и прекидаче за оно што свака веза приказује, уз њене ријечи; описи почињу величином 12, а величина одабрана за цијели оквир прилагођава размак редака; трака за даривање и ријечи с дугметом сада су тачно поравнате, па картице странице мијењају ријечи без помицања; отворена прекретница временске линије носи боју картице."
+      }
+    },
+    {
+      "id": "2026-10-27-mail-align",
+      "date": "2026-10-27",
+      "page": "staff:mail",
+      "text": {
+        "en": "Mail: paragraphs and headings can be aligned left, centered, right or justified.",
+        "hr": "Pošta: odlomci i naslovi mogu se poravnati lijevo, po sredini, desno ili obostrano.",
+        "sr": "Пошта: одломци и наслови могу се поравнати лијево, по средини, десно или обострано."
+      }
+    },
+    {
       "id": "2026-10-20-title-case-everywhere",
       "date": "2026-10-20",
       "page": "console",

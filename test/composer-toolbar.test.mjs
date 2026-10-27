@@ -398,6 +398,23 @@ await check("a picture beside the words: left or right, under half the column, k
   assert(!/data-al|data-w/.test(editor.getHTML()), "full width did not undo it: " + editor.getHTML());
 });
 
+await check("a paragraph lines up left, centered, right or justified; the button shows which; kept on save", async () => {
+  const { sanitise } = await import("../workers/src/lib/newsletter.js");
+  const { editor, D, w } = ctx;
+  editor.commands.setContent("<p>one</p><h2>two</h2>");
+  editor.commands.setTextSelection(2);
+  const press = (t) => D.querySelector(`.cp-tools [data-tool="${t}"]`).dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  eq(D.querySelector('.cp-tools [data-tool="taLeft"]').getAttribute("aria-pressed"), "true", "left to start");
+  press("taJustify");
+  await settle();
+  assert(/<p data-ta="justify"[^>]*>one<\/p>/.test(editor.getHTML()), "justified: " + editor.getHTML());
+  eq(D.querySelector('.cp-tools [data-tool="taJustify"]').getAttribute("aria-pressed"), "true", "Justified lit");
+  assert(/<p data-ta="justify">one<\/p>/.test(sanitise(editor.getHTML())), "lost on save: " + sanitise(editor.getHTML()));
+  press("taLeft");
+  await settle();
+  assert(!/data-ta/.test(editor.getHTML()), "left again stores nothing");
+});
+
 await check("what the editor emits is what the sanitiser keeps", async () => {
   /* If the two ever disagreed, formatting would vanish on save with no
      explanation — which is the single most demoralising bug an editor can

@@ -128,7 +128,9 @@ const DROP_WHOLE = new Set(["script", "style", "head", "title", "meta", "link", 
 /* What each surviving tag may carry. Anything not listed is dropped — that
    includes every style, class and id, which is what keeps a paste from
    bringing another website's appearance along. */
+/* p, h2, h3: how the paragraph lines up (data-ta, 2026-10-27). */
 const ATTRS = { a: ["href"], img: ["src", "alt", "data-orig", "data-w", "data-al"],
+                p: ["data-ta"], h2: ["data-ta"], h3: ["data-ta"],
                 span: ["data-sz", "data-c", "data-var", "data-sig", "data-sig-name"] };
 
 export function escapeHtml(s) {
@@ -238,6 +240,7 @@ export function sanitise(html) {
       if (key === "data-sz" && !sizeOf_(value)) continue;
       if (key === "data-w" && !picWidth(value)) continue;
       if (key === "data-al" && value !== "left" && value !== "right") continue;
+      if (key === "data-ta" && !["center", "right", "justify"].includes(value)) continue;
       if (key === "data-c") {
         if (!isColor(value)) continue;
         if (HEX.test(value)) value = value.toLowerCase();
@@ -387,7 +390,9 @@ function inlineStyles(html, accent, ink, dim, line, dark = false, accent2 = acce
     }
     const style = S[name];
     if (!style) return m;
-    return `<${tag}${rest} style="${style}">`;
+    /* centered, right or justified, as written (2026-10-27) */
+    const ta = /data-ta="(center|right|justify)"/.exec(rest);
+    return `<${tag}${rest} style="${style}${ta ? ";text-align:" + ta[1] : ""}">`;
   });
 }
 

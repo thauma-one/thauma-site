@@ -248,7 +248,13 @@ ${COLOUR_JS}
     /* The names on cards in the page's display face, not this widget's serif. */
     var display = typeof o.display === 'string' && FONT.test(o.display)
       ? '.gname,.dtitle,.ptitle{font-family:' + o.display + '}' : '';
-    return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + display;
+    /* A MILESTONE OPENED is a card too (Chase, 2026-10-27: the timeline's
+       cards "are still showing the wrong color when they are dropped down").
+       Here --panel is the GROUND the widget sits on, so a details panel in
+       it vanished into a raised or tinted section; it wears the card color
+       instead, and the words inside it the ground's, as on a card. */
+    var opened = '.detail{background:var(--bg)}.ddesc{background:var(--panel)}';
+    return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + display + opened;
   }
 
   /* ---------- styles ---------- */

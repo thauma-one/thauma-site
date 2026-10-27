@@ -5,6 +5,7 @@
  */
 import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES, SECTIONS, plainOf, cleanLinkTarget } from "../src/site/model.js";
 import { renderPage, esc } from "../src/site/render.js";
+import * as RENDER from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { appData, serveApp, renderApp } from "../src/site/app.js";
 import { newsFor } from "../src/staff-push.js";
@@ -1193,13 +1194,16 @@ check("a page's own description is a title as its language writes one: Title Cas
 
 /* ------------------------------------------------- the ministry's app -- */
 
-check("every site has an app: the page offers it to a phone and links it in the footer; a preview does not offer it", () => {
+check("every site has an app, offered only to a phone: in the phone's menu and asked once; never in the footer, never on a computer", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   const html = page(d);
   assert(html.includes('<link rel="manifest" href="/site/chaseroush/app/manifest.webmanifest">'), "the manifest");
-  assert(/<footer[\s\S]*<a href="\/site\/chaseroush\/app">Get the App<\/a>[\s\S]*<\/footer>/.test(html), "the footer link");
-  assert(!page(d, "home", "en", { draft: true }).includes('rel="manifest"'), "not in a preview");
-  assert(/<a href="\/site\/chaseroush\/app">Preuzmite aplikaciju<\/a>/.test(page(d, "home", "hr")), "in the page's language");
+  assert(!/<footer[\s\S]*Get the App[\s\S]*<\/footer>/.test(html), "not in the footer");
+  assert(/<nav class="nav" id="sitenav">[\s\S]*<a class="navapp" href="\/site\/chaseroush\/app">[\s\S]*Get the App<\/a>/.test(html), "in the menu");
+  assert(/\.navapp\{display:none\}\s*@media \(hover:none\) and \(pointer:coarse\)\{html\.menu-open \.nav \.navapp\{display:inline-flex/.test(html), "shown only in a phone's open menu");
+  assert(/<div class="appask" id="appask" hidden[^>]*>[\s\S]*Add Chase Roush to your phone[\s\S]*<\/div>/.test(html) && html.includes("(hover: none) and (pointer: coarse)") && html.includes("if(n<2)return"), "asked once, on a phone, after a second visit");
+  assert(!page(d, "home", "en", { draft: true }).includes('rel="manifest"') && !page(d, "home", "en", { draft: true }).includes('id="appask"'), "not in a preview");
+  assert(/Preuzmite aplikaciju<\/a>/.test(page(d, "home", "hr")), "in the page's language");
 });
 
 check("the app shows what the site publishes: open prayer, the road so far newest first, letters, goals, the giving link", () => {
@@ -1341,6 +1345,112 @@ check("fonts: the chosen one, then the fallback, then the look's; Google is aske
   const src = readFileSync(new URL("../../src/js/staff-site.js", import.meta.url), "utf8");
   for (const id of [...MODEL.HEADING_FONTS, ...MODEL.BODY_FONTS]) assert(src.includes("'" + id + "'"), "the console offers " + id);
   assert(ids.every((id) => src.includes("'" + MODEL.FONT_CHOICES[id].family + "'")), "the console knows every family");
+});
+
+check("the speed is seconds on a slider; the three old words read as theirs; a section may arrive its own way; Justified", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  for (const [v, want] of [["slow", 1.7], ["medium", 1.25], ["fast", 0.8], [0.05, 0.2], [9, 4], [2.345, 2.35], ["x", 1.25]]) {
+    d.design.motion.speed = v;
+    eq(cleanDoc(d, ["en"]).design.motion.speed, want, "speed " + v);
+  }
+  d.design.motion.speed = 2;
+  const sec = d.pages.find((p) => p.id === "mission").sections[0];
+  sec.enter = "sweep"; sec.align = "justify";
+  const c = cleanDoc(d, ["en"]);
+  eq([c.pages.find((p) => p.id === "mission").sections[0].enter, c.pages.find((p) => p.id === "mission").sections[0].align], ["sweep", "justify"], "kept");
+  sec.enter = "explode";
+  assert(!("enter" in cleanDoc(d, ["en"]).pages.find((p) => p.id === "mission").sections[0]), "only a known way");
+  sec.enter = "sweep";
+  const html = page(cleanDoc(d, ["en"]), "mission");
+  assert(/<html [^>]*style="--mt:2s;--mstep:176ms;--cstep:67ms"/.test(html), "the seconds on the page");
+  assert(/<section class="[^"]*al-justify[^"]*" id="s-[^"]+" data-enter="sweep">/.test(html), "the section's own way, justified");
+  assert(html.includes(':is(html[data-entrance="sweep"] main section:not([data-enter]),main section[data-enter="sweep"]) .m:not(.in){opacity:0;transform:translateX(40px)}'), "its own way over the site's");
+  assert(/\.al-justify :is\([^)]*\.prose p[^)]*\)\{text-align:justify/.test(html), "the words run edge to edge");
+  /* arriving from another page: after the cross-fade, as on a refresh */
+  assert(html.includes("e.viewTransition.finished.then(go,go)") && html.includes("window.__siteReplay="), "held through the fade; playable from the Site Creator");
+});
+
+check("Links: a real List, a Shelf, Buttons in a row or stacked, and how the pictures show", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const r = d.pages.find((p) => p.id === "resources"); r.on = true;
+  const L = r.sections[0];
+  L.items[0].photo = "/media/partnersite/c/a.webp"; L.items[0].words.en.note = "Mine";
+  L.variant = "list";
+  let html = page(cleanDoc(d, ["en"]), "resources");
+  assert(/<ul class="llist m"><li><a href="[^"]+"><span class="ll-pic"><img src="\/media\/partnersite\/c\/a.webp"/.test(html), "a row with its picture");
+  assert(html.includes('<span class="ll-note">Mine</span>'), "the note too, when wanted");
+  L.showNote = false; L.pics = "none";
+  html = page(cleanDoc(d, ["en"]), "resources");
+  assert(!html.includes('<span class="ll-note">') && !html.includes('<span class="ll-pic">'), "switched off");
+  L.variant = "shelf"; L.pics = "round"; L.showNote = true;
+  html = page(cleanDoc(d, ["en"]), "resources");
+  assert(/links-shelf pics-round/.test(html) && /<ul class="sh-row"><li><a class="sh-card"/.test(html) && html.includes('class="sh-next" aria-label="Next"'), "the shelf, round pictures, arrows");
+  L.variant = "buttons"; L.stack = true; L.pics = "fill";
+  html = page(cleanDoc(d, ["en"]), "resources");
+  assert(/<div class="lstack m"><a class="btn solid lb-accent" href="[^"]+"><span class="ls-pic"><img/.test(html), "stacked, each with its picture");
+  L.stack = false;
+  assert(/<div class="btns linkbtns m"><a class="btn solid lb-accent" href="[^"]+">A Resource/.test(page(cleanDoc(d, ["en"]), "resources")), "a row of buttons, no pictures");
+  L.pics = "sparkly";
+  eq(cleanDoc(d, ["en"]).pages.find((p) => p.id === "resources").sections[0].pics, "whole", "a known way only");
+  /* a description starts at 12px, and a size chosen for a whole box is the box's own, so its lines are spaced for it */
+  assert(/\.rc-desc\{color:var\(--dim\);font-size:12px;line-height:1\.7/.test(html), "12px");
+});
+
+check("a page of the owner's own: its own address, kept apart from every other; no more than twelve; linked to and in the menu", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const mine = (id, label, slug) => ({ id, custom: true, slug, on: true, label: { en: label }, sections: [{ id: "s" + id, type: "text", words: { en: { heading: "Hello", text: "Words here, plenty of them." } } }] });
+  d.pages.push(mine("pabc1", "Our Story", "our-story"), mine("pabc2", "Our Story", "our-story"), mine("pabc3", "About", ""), { id: "zzz", custom: true, label: { en: "x" } });
+  const c = cleanDoc(d, ["en", "hr"]);
+  const own = c.pages.filter((p) => p.custom);
+  eq(own.map((p) => [p.id, p.slug]), [["pabc1", "our-story"], ["pabc2", "our-story-2"], ["pabc3", "about-2"]], "each address once, never a built-in page's");
+  assert(!c.pages.some((p) => p.id === "zzz"), "only a page id of the right shape");
+  for (let i = 0; i < 15; i++) d.pages.push(mine("pmore" + i, "More " + i, ""));
+  eq(cleanDoc(d, ["en", "hr"]).pages.filter((p) => p.custom).length, 12, "twelve at most");
+  c.pages.find((p) => p.id === "about").sections[0].link = "page:pabc1";
+  c.pages.find((p) => p.id === "about").sections[0].words.en.button = "Read it";
+  const html = page(c, "about");
+  assert(html.includes('<a href="/site/chaseroush/en/our-story/">Our Story</a>'), "in the menu, by its address");
+  assert(html.includes('href="/site/chaseroush/en/our-story/">Read it'), "a button goes to it");
+  eq(cleanLinkTarget(c, ["Our-Story"], { base: "/site/chaseroush" }), "/site/chaseroush/en/our-story/", "its clean link");
+  eq(page(c, "pabc2").match(/<title>([^<]*)<\/title>/)[1], "Our Story · Chase Roush", "its own page, named");
+});
+
+check("from thauma.one: a word and its meanings, labeled rows, and Custom Cards numbered I, II, III", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const m = d.pages.find((p) => p.id === "mission");
+  m.sections = [
+    { id: "sdef1", type: "define", words: { en: { word: "Thauma", say: "θαῦμα · wonder", text: "A wonder.\n\nWhat makes people <i>stop</i>." } } },
+    { id: "srow1", type: "rows", words: { en: { heading: "What <b>We Do</b>", text: "" } }, items: [{ words: { en: { label: "Serve", title: "On Site", text: "Behind the scenes." } } }, { words: { en: { label: "", title: "", text: "" } } }] },
+    { id: "scrd1", type: "cards", numStyle: "roman", items: [{ words: { en: { title: "One", text: "a" } } }, { words: { en: { title: "Two", text: "b" } } }] },
+  ];
+  const c = cleanDoc(d, ["en"]);
+  eq(c.pages.find((p) => p.id === "mission").sections.map((x) => x.type), ["define", "rows", "cards"], "kept");
+  const html = page(c, "mission");
+  assert(/<p class="df-word m">Thauma<\/p><p class="df-say m">θαῦμα · wonder<\/p><ol class="df-means m"><li>A wonder\.<\/li><li>What makes people <i>stop<\/i>\.<\/li><\/ol>/.test(html), "the word, how it is said, its meanings");
+  assert(/<div class="lrows m"><div class="lrow"><div class="lr-label">Serve<\/div><div><h3>On Site<\/h3><p>Behind the scenes\.<\/p><\/div><\/div><\/div>/.test(html), "one row; an empty one is not drawn");
+  assert(html.includes('<span class="cnum roman" aria-hidden="true">II</span>'), "I, II, III");
+});
+
+check("a size chosen for a whole box is the box's: its lines are spaced for it", () => {
+  const { hoistSizes } = RENDER;
+  eq(hoistSizes('<p class="lede m"><span style="font-size:13px">a <b>b</b> <span style="color:#fff">c</span></span></p>'),
+    '<p class="lede m" style="font-size:13px">a <b>b</b> <span style="color:#fff">c</span></p>', "lifted");
+  eq(hoistSizes('<p><span style="font-size:9px">a</span> b</p>'), '<p><span style="font-size:9px">a</span> b</p>', "a part of a box stays a part");
+  eq(hoistSizes('<span class="rc-desc"><span class="ts-lg">x</span></span>'), '<span class="rc-desc" style="font-size:1.25em">x</span>', "a named size");
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].words.en.text = '<span data-sz="13px">one\n\ntwo</span>';
+  assert(/<div class="prose m" style="font-size:13px"><p>one<\/p><p>two<\/p><\/div>/.test(page(cleanDoc(d, ["en"]))), "paragraphs and all");
+});
+
+check("a photo's size is kept with the site, so the page holds its place; the opened timeline card wears the card color", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].photo = "/media/partnersite/c/b.webp";
+  d.dims = { "/media/partnersite/c/b.webp": [1600, 1200], "https://evil.example/x.png": [1, 1], "/media/partnersite/c/z.webp": [0, 5], "/media/partnersite/c/q.webp": "big" };
+  const c = cleanDoc(d, ["en"]);
+  eq(c.dims, { "/media/partnersite/c/b.webp": [1600, 1200], "https://evil.example/x.png": [1, 1] }, "only sizes of photos");
+  assert(/<img src="\/media\/partnersite\/c\/b.webp" alt="[^"]*" loading="eager" fetchpriority="high" decoding="async" width="1600" height="1200">/.test(page(c)), "width and height on the photo");
+  const W = readFileSync(new URL("../src/embed-widget.js", import.meta.url), "utf8");
+  assert(W.includes("'.detail{background:var(--bg)}.ddesc{background:var(--panel)}'"), "the opened card, a card");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -869,6 +869,25 @@ await check("Design's colors are the ministry's: saved to the partner, and the s
   } finally { EXTRA = {}; }
 });
 
+await check("each photo's size is kept in both copies alike, so a site with nothing to publish still has nothing to publish", async () => {
+  const row = SITE_ROW();
+  row.published = row.draft;
+  EXTRA = { partner_site_get: [row] };
+  try {
+    const db = makeDb();
+    const res = await staffSite.fetch(post("/api/staff-site", { action: "sizes", dims: { "/media/partnersite/c/a.webp": [800, 600], "javascript:x": [1, 1] } }), env(db));
+    eq(res.status, 200, "kept");
+    const docs = called(db, "partner_site_docs_set")[0].args.filter((a) => typeof a === "string" && a.startsWith("{"));
+    eq(docs.length, 2, "both copies");
+    eq(docs[0], docs[1], "still the same");
+    eq(JSON.parse(docs[0]).dims, { "/media/partnersite/c/a.webp": [800, 600] }, "only a photo's size");
+  } finally { EXTRA = {}; }
+  EXTRA = { partner_site_get: [SITE_ROW()], partners_for_user: [{ ...PARTNER, access_role: "assist" }] };
+  try {
+    eq((await staffSite.fetch(post("/api/staff-site", { action: "sizes", dims: {} }), env(makeDb()))).status, 403, "only the site's editors");
+  } finally { EXTRA = {}; }
+});
+
 await check("saved versions (0049): saved by name from the stored draft, made at every Publish, opened cleaned, only by editors", async () => {
   const row = SITE_ROW();
   EXTRA = { partner_site_get: [row], site_save_get: [{ id: "sv_1", name: "Old", kind: "manual", doc: row.draft, created_at: "x" }] };

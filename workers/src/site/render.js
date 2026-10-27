@@ -17,7 +17,7 @@
  * are attributes on <html> that the CSS and the small script below read, all
  * of it switched off for anyone whose device asks for less motion.
  */
-import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget, linkTable, FONT_CHOICES } from "./model.js";
+import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget, linkTable, FONT_CHOICES, pagePath } from "./model.js";
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 import { ICON, SOCIAL_NAME } from "../lib/social-icons.js";
@@ -49,7 +49,8 @@ function siteFonts(design, L) {
     query: [FONTS[design.look] || FONTS.night, ...used.map((id) => `family=${fam(id).family.replace(/ /g, "+")}${fam(id).q ? ":" + fam(id).q : ""}`)].join("&"),
     face: own ? `@font-face{font-family:'SiteOwn';src:url(${f.own}) format('${FONT_FORMAT[f.own.split(".").pop()]}');font-weight:100 900;font-display:swap}` : "",
     display: (own ? "'SiteOwn', " : name(f.heading)) + name(f.fallback) + L.display,
-    body: name(f.body) + name(f.fallback) + L.body,
+    /* "same": the text wears the headings' font (2026-10-27) */
+    body: f.body === "same" ? (own ? "'SiteOwn', " : name(f.heading)) + name(f.fallback) + L.display : name(f.body) + name(f.fallback) + L.body,
   };
 }
 
@@ -191,6 +192,28 @@ export function styledSpans(html) {
   });
 }
 
+/* HOW A SECTION ARRIVES: the site's choice (html[data-entrance]) for every
+   section without its own, and a section's own (data-enter) over it
+   (Chase, 2026-10-27). Rise, Fade, Slide, Zoom; Into Focus, Wipe Up and
+   Layered (2026-10-19) — words rise, photos settle from a little larger,
+   buttons simply appear last; Drop and Sweep (2026-10-27). */
+const ENTER = {
+  fade: "opacity:0", rise: "opacity:0;transform:translateY(36px)", slide: "opacity:0;transform:translateX(-40px)",
+  zoom: "opacity:0;transform:scale(.94)", blur: "opacity:0;filter:blur(12px)",
+  reveal: "opacity:0;clip-path:inset(0 0 100% 0);transform:translateY(14px)", layered: "opacity:0;transform:translateY(30px)",
+  drop: "opacity:0;transform:translateY(-36px)", sweep: "opacity:0;transform:translateX(40px)",
+};
+function entranceCss() {
+  const on = (e) => `:is(html[data-entrance="${e}"] main section:not([data-enter]),main section[data-enter="${e}"])`;
+  return Object.entries(ENTER).map(([e, r]) => `${on(e)} .m:not(.in){${r}}`).join("\n") +
+    `\n${on("layered")} :is(.pic,.hero-media).m:not(.in){transform:scale(1.04)}\n${on("layered")} .btns.m:not(.in){transform:none}`;
+}
+/** The seconds arriving takes, and the staggers that go with them. */
+export function speedVars(sec) {
+  const t = Number.isFinite(+sec) && +sec > 0 ? +sec : 1.25;
+  return `--mt:${t}s;--mstep:${Math.round(t * 88)}ms;--cstep:${Math.round(t * 33.6)}ms`;
+}
+
 function css(L, design) {
   return `
 :root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--on-acc2:${onColor(L.acc2)};--herobg:${L.heroBg};${bands(L)}
@@ -258,7 +281,20 @@ html.fit-follow .headlinks .follow{display:inline-flex}
 html.fit-follow .headlinks .hl-set{display:none;position:absolute;top:calc(100% + 10px);right:0;padding:10px;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:30}
 html.fit-follow .headlinks.open .hl-set{display:flex}
 html.nav-fold .menubtn{display:inline-block}html.nav-fold:not(.menu-open) .nav{display:none}html.nav-fold .top .wrap{flex-direction:row!important;padding:0!important}html.nav-fold .top .wrap>.langmenu{display:none}html.nav-fold.menu-open .nav .navlang{display:block;width:100%}
-html.menu-open .headlinks .follow{display:none}html.menu-open .headlinks .hl-set{display:flex;position:static;padding:0;border:0;background:none;box-shadow:none;flex-wrap:wrap}
+html.menu-open .headlinks .follow{display:none}
+/* the app, in the phone's menu only */
+.navapp{display:none}
+@media (hover:none) and (pointer:coarse){html.menu-open .nav .navapp{display:inline-flex;align-items:center;gap:10px;margin-top:6px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:15px}
+ .navapp svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}}
+/* the one-time card, on a phone */
+.appask{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:12px;padding:12px 8px 12px 14px;border-radius:18px;background:var(--panel);border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.35);color:var(--fg);font-size:14px}
+.appask[hidden]{display:none}
+.appask-i{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--ink)}
+.appask-i svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+.appask-t{flex:1;line-height:1.35}.appask .btn{padding:9px 16px;font-size:14px}
+.appask-x{flex:none;width:36px;height:36px;border:0;background:none;color:var(--dim);font-size:22px;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){.appask:not([hidden]){animation:askin .5s cubic-bezier(.16,1,.3,1)}}
+@keyframes askin{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}html.menu-open .headlinks .hl-set{display:flex;position:static;padding:0;border:0;background:none;box-shadow:none;flex-wrap:wrap}
 @media (max-width:820px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}}
 html[data-menu="center"] .top .wrap{position:relative}
 html[data-menu="center"] .top .langmenu{position:absolute;right:0;top:16px}
@@ -344,7 +380,7 @@ ${Object.keys(TONES).map((k) => `.tc-${k}{color:var(--t-${k})}`).join("")}
 .lede{font-size:clamp(17px,1.6vw,20px);color:var(--dim);max-width:60ch;margin:0}
 .prose p{margin:0 0 1em;max-width:68ch}.prose p:last-child{margin-bottom:0}
 .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:999px;font:600 15px var(--body);text-decoration:none;border:1.5px solid var(--acc);color:var(--fg);transition:transform .25s ease,box-shadow .25s ease,background .25s ease}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:999px;font:600 15px/1.25 var(--body);text-decoration:none;border:1.5px solid var(--acc);color:var(--fg);transition:transform .25s ease,box-shadow .25s ease,background .25s ease}
 .btn.solid{background:var(--acc);color:var(--on-acc)}
 html[data-buttons="lift"] .btn:hover{transform:translateY(-2px)}
 html[data-buttons="glow"] .btn:hover{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 22%,transparent),0 10px 30px -8px var(--acc)}
@@ -465,9 +501,13 @@ main section.raised + section{border-top-color:transparent}
 .al-right .verse-line{border-left:0;border-right:3px solid var(--acc);padding:4px 22px 4px 0}
 .al-center .verse-quote blockquote,.al-center .verse-line blockquote{margin-left:auto;margin-right:auto}
 /* THE HEADER: a page's title area, as chaseroush.com's page headers */
-main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112px) 0 clamp(40px,6vw,76px)}
+/* SMALLER (Chase, 2026-10-27: "the whole section feels REALLY big. I feel
+   like that's practically all I see when a page loads"): less room above
+   and below, and a watermark that sits behind the title rather than over
+   the screen. */
+main section.phead{position:relative;overflow:hidden;padding:clamp(36px,5vw,72px) 0 clamp(28px,4vw,52px)}
 .phead .wrap{position:relative;z-index:1}
-.phead .h{margin:0}
+.phead .h{margin:0;font-size:clamp(28px,3.8vw,46px)}
 /* nearer the title than the small print (2026-10-06): a title already leaves room under its letters */
 .phead .rule{margin:14px 0 24px}
 .phead.al-center .rule{margin-left:auto;margin-right:auto}.phead.al-right .rule{margin-left:auto}
@@ -480,7 +520,7 @@ main section.phead{position:relative;overflow:hidden;padding:clamp(56px,8vw,112p
 .ph-sub{font:400 14px/1.7 var(--body);letter-spacing:.08em;color:var(--dim);margin:0;max-width:none}
 .phead:not(:has(.rule)) .ph-sub{margin-top:18px}
 .ph-top::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--acc)}
-.ph-mark{position:absolute;left:max(24px,calc((100% - 1120px) / 2));margin-left:-.055em;top:50%;transform:translateY(-46%);font:700 clamp(110px,17vw,250px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
+.ph-mark{position:absolute;left:max(24px,calc((100% - 1120px) / 2));margin-left:-.055em;top:50%;transform:translateY(-46%);font:700 clamp(84px,12vw,176px)/1 var(--display);color:var(--fg);opacity:.05;white-space:nowrap;pointer-events:none;user-select:none;letter-spacing:-.03em;z-index:0}
 /* the watermark's left side on the text's (2026-10-06, Chase: "needs to
    align with the text of the header so both left sides are aligned"): the
    column's own edge, less the letters' side bearing */
@@ -493,7 +533,7 @@ main section.ph-accent{background:var(--acc);color:var(--on-acc)}
 .ph-accent .rule,.ph-accent.ph-top::before{background:var(--on-acc)}
 .ph-accent .ph-mark{color:var(--on-acc);opacity:.1}
 main section.phead + section{border-top-color:transparent}
-@media (max-width:760px){.ph-mark{font-size:clamp(80px,24vw,140px)}}
+@media (max-width:760px){.ph-mark{font-size:clamp(64px,20vw,110px)}}
 /* bands */
 .band{background-color:var(--band)}main section.raised.band{background-color:var(--band2)}
 .bandrow{display:flex;gap:40px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -533,6 +573,23 @@ main section:is(.raised,.band) .lpic{background:var(--panel)}
 .ccards h3{margin:2px 0 6px;font:600 19px var(--display);color:var(--fg)}
 .ccards p{margin:0;color:var(--dim);line-height:1.65}
 .cnum{flex:none;width:44px;height:44px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:flex;align-items:center;justify-content:center;font:700 17px var(--body)}
+/* I, II, III: thauma.one's points — the numeral in the accent, no disc */
+.cnum.roman{background:none;color:var(--ink);font:var(--thin) 26px/1 var(--display);letter-spacing:.04em;width:auto;min-width:44px;height:auto;padding-top:2px}
+/* A WORD AND WHAT IT MEANS, and LABELED ROWS (2026-10-27, from thauma.one) */
+.df-word{font:var(--thin) clamp(48px,8vw,104px)/1 var(--display);letter-spacing:.05em;margin:0;text-shadow:0 0 60px color-mix(in srgb,var(--acc) 22%,transparent)}
+.df-say{margin:16px 0 0;color:var(--ink);font:400 14px/1.6 var(--body);letter-spacing:.12em}
+.df-means{list-style:none;counter-reset:def;margin:30px 0 0;padding:0;max-width:620px;text-align:left}
+.df-means li{position:relative;padding-left:38px;margin-bottom:16px;color:var(--dim);font-size:16.5px;line-height:1.75;font-style:italic}
+.df-means li::before{counter-increment:def;content:counter(def);position:absolute;left:0;top:2px;font:600 13px var(--display);font-style:normal;color:var(--acc2)}
+.al-center :is(.df-word,.df-say){text-align:center}.al-center .df-means{margin-left:auto;margin-right:auto}
+.al-right :is(.df-word,.df-say){text-align:right}.al-right .df-means{margin-left:auto}
+.lrows{text-align:left}
+.lrow{display:grid;grid-template-columns:140px 1fr;gap:36px;padding:40px 0;border-bottom:1px solid var(--line)}
+.lrow:first-child{padding-top:12px}.lrow:last-child{border-bottom:0}
+.lr-label{font:600 11px/1.6 var(--body);letter-spacing:.3em;color:var(--ink);padding-top:6px;overflow-wrap:anywhere}
+.lrow h3{font:600 21px/1.3 var(--display);margin:0 0 12px}
+.lrow p{color:var(--dim);margin:0;line-height:1.8;max-width:62ch}
+@media (max-width:700px){.lrow{grid-template-columns:1fr;gap:10px;padding:30px 0}}
 /* A PAGE'S TABS (2026-10-06): joined (chaseroush.com's Give | Pray), pills,
    or an underline; the chosen one in the accent. */
 main section.ptabs-bar{padding:28px 0 0}
@@ -649,8 +706,11 @@ main section.cards-open .ccards li{background:none;border:0;border-radius:0;box-
 .rc-body{display:flex;flex-direction:column;gap:6px;padding:20px 22px 24px;min-width:0;overflow-wrap:anywhere}
 .rc-title{font:600 19px/1.3 var(--display);color:var(--fg)}
 .rc-type{font:600 11px/1.4 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--acc)}
-.rc-desc{color:var(--dim);font-size:15px;line-height:1.7;margin-top:4px}
-.rc-note{color:var(--dim);font-size:14.5px;line-height:1.7;font-style:italic;padding-left:12px;border-left:2px solid var(--acc);margin-top:6px}
+/* 12px to start (Chase, 2026-10-27: "the description text size feels a bit
+   large by default. Let's change it to 12"); a size picked for the whole
+   box is the box's own (hoistSizes), so its lines are spaced for it */
+.rc-desc{color:var(--dim);font-size:12px;line-height:1.7;margin-top:4px}
+.rc-note{color:var(--dim);font-size:12px;line-height:1.7;font-style:italic;padding-left:12px;border-left:2px solid var(--acc);margin-top:6px}
 .rc-go{position:absolute;right:14px;bottom:12px;width:15px;height:15px;color:var(--dim);transition:color .2s}
 .rc-go svg{width:100%;height:100%;display:block}
 .rc a:hover .rc-go{color:var(--fg)}
@@ -674,6 +734,69 @@ main section:is(.raised,.band) .rc a{background:var(--bg)}main section:is(.raise
 @media (max-width:820px){.rc-g-big,.rc-g-small{grid-template-columns:1fr}.rc-std .rc-pic{width:84px}.rc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.rc-tiles{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.rc a{transition:none}.rc a:hover,.rc a:focus-visible{transform:none}}
+/* THE PICTURES, as chosen for the section (2026-10-27): whole on a quiet
+   panel (the default, above), filling their frame, or in a circle. */
+main section.pics-fill :is(.rc-pic,.ll-pic,.sh-pic) img{object-fit:cover;padding:0}
+main section.pics-fill .rc-std .rc-pic img,main section.pics-fill .rc-small .rc-pic img{padding:0}
+main section.pics-round .rc-pic{background:none;border:0;height:auto;padding:24px 22px 0;justify-content:flex-start}
+main section.pics-round .rc-pic img{width:96px;height:96px;border-radius:50%;object-fit:cover;padding:0}
+main section.pics-round :is(.rc-std,.rc-small) .rc-pic{width:auto;padding:0 0 0 18px;align-items:center}
+main section.pics-round .rc-std .rc-pic img{width:64px;height:64px}main section.pics-round .rc-small .rc-pic img{width:44px;height:44px}
+main section.pics-round .rc-tile .rc-pic{aspect-ratio:auto;justify-content:center;padding-top:26px}
+main section.pics-round .ll-pic{border-radius:50%}main section.pics-round .ll-pic img{object-fit:cover;padding:0}
+main section.pics-round .sh-pic{aspect-ratio:auto;padding:26px 0 6px;background:none;border:0}main section.pics-round .sh-pic img{width:110px;height:110px;border-radius:50%;object-fit:cover}
+/* THE LIST, a real list (Chase, 2026-10-27: "there isn't a huge difference
+   between Cards and List … more of a List in appearance"): rows between
+   hairlines, no boxes; a small picture, the title and its words, what it is
+   at the end, and an arrow that leans in. */
+.llist{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);text-align:left}
+.llist li{border-bottom:1px solid var(--line)}
+.llist a{display:flex;align-items:center;gap:18px;padding:18px 8px;color:var(--fg);text-decoration:none;transition:background .25s ease,padding .25s ease}
+.llist a:hover,.llist a:focus-visible{background:color-mix(in srgb,var(--fg) 4%,transparent);padding-left:16px;outline:none}
+.ll-pic{flex:none;width:56px;height:56px;border-radius:10px;overflow:hidden;background:var(--panel);display:flex;align-items:center;justify-content:center}
+.ll-pic img{width:100%;height:100%;object-fit:contain;padding:8px;box-sizing:border-box}
+.ll-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;overflow-wrap:anywhere}
+.ll-title{font:600 17px/1.35 var(--display)}
+.ll-desc{color:var(--dim);font-size:12px;line-height:1.7}
+.ll-note{color:var(--dim);font-size:12px;line-height:1.7;font-style:italic}
+.ll-type{flex:none;font:600 10.5px/1.2 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);max-width:22ch;text-align:right}
+.ll-go{flex:none;width:15px;height:15px;color:var(--dim);transition:transform .25s ease,color .25s ease}
+.ll-go svg{width:100%;height:100%;display:block}
+.llist a:hover .ll-go{transform:translate(3px,-3px);color:var(--ink)}
+main section:is(.raised,.band) .ll-pic{background:var(--bg)}
+@media (max-width:600px){.ll-type{display:none}.llist a{gap:14px}.ll-pic{width:46px;height:46px}}
+/* THE SHELF (2026-10-27): picture cards in a row that scrolls sideways,
+   one card at a time on a phone, with arrows on a computer. */
+.shelf{position:relative}
+.sh-row{list-style:none;margin:0;padding:4px 2px 16px;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,290px);gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;text-align:left;overscroll-behavior-x:contain}
+.sh-row li{scroll-snap-align:start}
+.sh-card{display:flex;flex-direction:column;height:100%;border-radius:14px;overflow:hidden;background:var(--panel);border:1px solid var(--line);color:var(--fg);text-decoration:none;transition:transform .3s ease,border-color .3s ease}
+.sh-card:hover,.sh-card:focus-visible{transform:translateY(-4px);border-color:var(--acc);outline:none}
+.sh-pic{aspect-ratio:4/3;background:var(--bg);display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line);overflow:hidden}
+.sh-pic img{width:100%;height:100%;object-fit:contain;padding:18px;box-sizing:border-box}
+.sh-body{padding:16px 18px 20px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.sh-body b{font:600 17px/1.3 var(--display)}
+.sh-type{font:600 10.5px/1.2 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.sh-desc{color:var(--dim);font-size:12px;line-height:1.7}
+.sh-nav{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.al-center .sh-nav{justify-content:center}.al-right .sh-nav{justify-content:flex-start}
+.sh-nav button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--fg);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .2s}
+.sh-nav button:hover{border-color:var(--acc)}.sh-nav svg{width:16px;height:16px}
+@media (hover:none){.sh-nav{display:none}}
+main section:is(.raised,.band) .sh-card{background:var(--bg)}main section:is(.raised,.band) .sh-pic{background:var(--panel)}
+@media (prefers-reduced-motion:reduce){.sh-card,.llist a,.ll-go{transition:none}.sh-card:hover{transform:none}}
+/* BUTTONS, STACKED (2026-10-27): one under another, as wide as a phone,
+   each with its own picture beside its words — a link page, as they are on
+   a phone. In a row they stay the site's own buttons. */
+.lstack{display:flex;flex-direction:column;gap:12px;max-width:560px;margin-top:30px}
+.al-center .lstack{margin-left:auto;margin-right:auto}.al-right .lstack{margin-left:auto}
+.lstack .btn{width:100%;justify-content:flex-start;gap:14px;padding:12px 20px;border-radius:14px;font-size:16px;min-height:58px}
+.ls-pic{flex:none;width:34px;height:34px;border-radius:8px;overflow:hidden;background:color-mix(in srgb,currentColor 14%,transparent)}
+.ls-pic img{width:100%;height:100%;object-fit:cover}
+main section.pics-whole .ls-pic img{object-fit:contain}main section.pics-round .ls-pic{border-radius:50%}
+.ls-t{flex:1;text-align:left}.al-center .ls-t{text-align:center}.al-right .ls-t{text-align:right}
+.ls-go{flex:none;opacity:.75;transition:transform .25s ease}.lstack .btn:hover .ls-go{transform:translateX(3px)}
+.lstack .btn:has(.ls-pic) .ls-t{text-align:left}
 .data .lede{margin-bottom:28px}
 .wanted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;
   border:1.5px dashed var(--line);border-radius:inherit;color:var(--dim);font-size:14px;background:color-mix(in srgb,var(--fg) 4%,transparent)}
@@ -711,6 +834,14 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-center .btns{justify-content:center}
 .al-center .bandrow{flex-direction:column;text-align:center}
 .al-center .bandrow>*{width:100%}
+/* centered, a band is the heading, its words and the button under them —
+   spaced as every other section's button is, so a Give band and a section
+   of words with a button line up exactly (Chase, 2026-10-27: the Give and
+   Pray tabs "have different section sizes … the words on the page should
+   just be replaced with other text, not moved") */
+.al-center .bandrow{gap:0}.al-center .bandrow>.btns{margin-top:10px!important}
+/* 10px, not 30: the heading's own 20px stays inside its column here, where
+   between plain siblings it folds into the button's 30 */
 .al-right :is(.kicker,.h,.lede,.prose,.spaced,.quote blockquote,cite,.caption,figcaption,.past){text-align:right}
 .al-right :is(.h,.lede,.prose p,.spaced,.quote blockquote,.rule){margin-left:auto;margin-right:0}
 .al-right .btns{justify-content:flex-end}
@@ -718,6 +849,9 @@ main section.is-editing{outline:2px solid var(--acc);outline-offset:-2px}
 .al-right :is([data-thauma],.news,.linklist,.formbox,.latest){margin-left:auto;margin-right:0}
 .al-left .signcard{margin-left:0}.al-right .signcard{margin-right:0}
 .al-indent>.wrap,.al-indent>figure>figcaption{padding-left:clamp(20px,9vw,140px)}
+/* JUSTIFIED (2026-10-27): the words run edge to edge, broken where the
+   language breaks them; titles, labels and buttons stay at the left. */
+.al-justify :is(.lede,.prose p,.spaced,.ph-sub,.ccards p,.rc-desc,.rc-note,.ll-desc,.sh-desc,.verse blockquote,.quote blockquote){text-align:justify;-webkit-hyphens:auto;hyphens:auto}
 .al-indent .signcard{margin-left:0}
 /* INDENTED, on any line-up: the words move in from the side they line up on
    — both sides when centered. */
@@ -796,26 +930,13 @@ body.only-foot .foot{border-top:0}
 @supports (animation-timeline:scroll()){.progress{animation:progress linear both;animation-timeline:scroll(root block)}}
 html[data-progress="off"] .progress{display:none}
 /* HOW LONG THINGS TAKE TO ARRIVE (Chase, 2026-10-19: "We should add the
-   ability to have some custom timing … I want the transition slowed down
-   some more as the middle default value"): Slow, Medium (the default, slower
-   than before) and Fast; --mstep is the stagger between things arriving
-   together. */
+   ability to have some custom timing"; 2026-10-27: "make it a slider …
+   with much further extremes"): the seconds chosen, set on the page's
+   <html> (speedVars); --mstep is the stagger between things arriving
+   together and --cstep between letters, both in step with it. */
 html{--mt:1.25s;--mstep:110ms;--cstep:42ms}
-html[data-speed="slow"]{--mt:1.7s;--mstep:150ms;--cstep:58ms}
-html[data-speed="fast"]{--mt:.8s;--mstep:70ms;--cstep:26ms}
 .m{transition:opacity var(--mt) cubic-bezier(.16,1,.3,1),transform var(--mt) cubic-bezier(.16,1,.3,1),filter var(--mt) cubic-bezier(.16,1,.3,1),clip-path var(--mt) cubic-bezier(.16,1,.3,1)}
-html[data-entrance="fade"] .m:not(.in){opacity:0}
-html[data-entrance="rise"] .m:not(.in){opacity:0;transform:translateY(36px)}
-html[data-entrance="slide"] .m:not(.in){opacity:0;transform:translateX(-40px)}
-html[data-entrance="zoom"] .m:not(.in){opacity:0;transform:scale(.94)}
-/* THREE MORE (2026-10-19): out of a soft focus; wiped up into place; and
-   Layered — each kind of thing its own way: words rise, photos settle from a
-   little larger, buttons simply appear last */
-html[data-entrance="blur"] .m:not(.in){opacity:0;filter:blur(12px)}
-html[data-entrance="reveal"] .m:not(.in){opacity:0;clip-path:inset(0 0 100% 0);transform:translateY(14px)}
-html[data-entrance="layered"] .m:not(.in){opacity:0;transform:translateY(30px)}
-html[data-entrance="layered"] .pic.m:not(.in),html[data-entrance="layered"] .hero-media.m:not(.in){transform:scale(1.04)}
-html[data-entrance="layered"] .btns.m:not(.in){transform:none}
+${entranceCss()}
 /* a photo fades in where it will sit, as it arrives — never a jump */
 .pic img,.hero-media img,.frame img,.ccards img,.vtile img{transition:opacity .7s ease}
 img.ldg{opacity:0}
@@ -838,6 +959,8 @@ html{--da:4.5%}
 .h.in .ch{opacity:1;transform:none}
 html[data-pages="fade"]{view-transition-name:root}
 @view-transition{navigation:auto}
+/* a short cross-fade, so the page's own entrances follow it at once (MOTION_JS hold) */
+::view-transition-old(root),::view-transition-new(root){animation-duration:.32s}
 /* A preview redrawn after a change arrives as it was, not arriving again
    (?settled, from the Site Creator; staff-site.js refreshFrame). */
 html.settled .m,html.settled .h .ch{opacity:1!important;transform:none!important;filter:none!important;clip-path:none!important;transition:none!important}
@@ -851,6 +974,7 @@ html.settled .m,html.settled .h .ch{opacity:1!important;transform:none!important
 `;
 }
 
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
 /* ---------------------------------------------------------------- icons -- */
 
 /* -------------------------------------------------------------- helpers -- */
@@ -905,10 +1029,28 @@ function heading(h, tag = "h2") {
 }
 function prose(html) {
   if (!html) return "";
-  return `<div class="prose m">${html.split(/\n{2,}/).map((p) => `<p>${p}</p>`).join("")}</div>`;
+  const whole = wholeSize(html);
+  return `<div class="prose m"${whole ? ` style="font-size:${whole.size}"` : ""}>${(whole ? whole.inner : html).split(/\n{2,}/).map((p) => `<p>${p}</p>`).join("")}</div>`;
 }
+/* Words that are ALL one size, paragraphs and all: the size, and the words
+   without the run around them (hoistSizes, for a box of paragraphs). */
+function wholeSize(html) {
+  const m = /^<span (?:style="font-size:([0-9.]+(?:px|em))"|class="ts-(sm|lg|xl)")>/.exec(html);
+  if (!m || !html.endsWith("</span>")) return null;
+  const re = /<(\/?)span\b[^>]*>/g;
+  re.lastIndex = m[0].length;
+  let depth = 1, x;
+  while ((x = re.exec(html))) { depth += x[1] ? -1 : 1; if (!depth) break; }
+  if (!x || x.index !== html.length - 7) return null;
+  return { size: m[1] || { sm: ".82em", lg: "1.25em", xl: "1.6em" }[m[2]], inner: html.slice(m[0].length, -7) };
+}
+/* Each photo's size (doc.dims, measured by the Site Creator), so the page
+   holds the photo's place before it arrives. Set per page by renderPage,
+   which draws the whole page in one go. */
+let DIMS = {};
+const dimsOf = (src) => { const d = DIMS[src]; return d ? ` width="${+d[0]}" height="${+d[1]}"` : ""; };
 function img(src, alt = "") {
-  return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">` : "";
+  return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy"${dimsOf(src)}>` : "";
 }
 /* A photo as the photo editor left it (src/js/photo-editor.js). A crop is an
    exact window onto the ORIGINAL: a box of the crop's shape with the photo
@@ -927,7 +1069,7 @@ function edited(src, e, alt = "") {
       (e.darken ? `<i class="pe-dark" style="opacity:${+e.darken}"></i>` : "") + `</span>`;
   }
   if (e && e.fx != null) {
-    return `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" style="object-position:${+e.fx}% ${+e.fy}%;scale:${+e.zoom};transform-origin:${+e.fx}% ${+e.fy}%">` +
+    return `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy"${dimsOf(src)} style="object-position:${+e.fx}% ${+e.fy}%;scale:${+e.zoom};transform-origin:${+e.fx}% ${+e.fy}%">` +
       (e.darken ? `<i class="pe-dark" style="opacity:${+e.darken}"></i>` : "");
   }
   return img(src, alt);
@@ -940,7 +1082,7 @@ const rel = (href) => (/^https?:/.test(href) ? ' rel="noopener"' : "");
 function renderSection(sec, ctx) {
   const { lang, fallback } = ctx;
   const raw = (f) => wf(sec, lang, fallback, f);
-  const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`)
+  const rich = (x) => styledSpans(String(x || "").replace(/href="page:([a-z0-9]+)"/g, (m0, id) => `href="${esc(ctx.linkHref("page:" + id) || "#")}"`)
     /* a link written into the words leaves by its clean address too */
     .replace(/href="(https?:\/\/[^"]+)"/g, (m0, u) => `href="${esc(ctx.linkHref(u.replace(/&amp;/g, "&")))}"`));
   /* Formatted fields come out ready for the page; plain ones are escaped where used. */
@@ -962,9 +1104,10 @@ function renderSection(sec, ctx) {
   const words = (text) => {
     const v = verse();
     if (!v) return prose(text);
-    const paras = text ? text.split(/\n{2,}/) : [];
+    const whole = text ? wholeSize(text) : null;
+    const paras = text ? (whole ? whole.inner : text).split(/\n{2,}/) : [];
     const at = sec.versePos === "start" ? 0 : /^p\d+$/.test(sec.versePos || "") ? Math.min(+sec.versePos.slice(1), paras.length) : paras.length;
-    const part = (a) => (a.length ? `<div class="prose m">${a.map((p) => `<p>${p}</p>`).join("")}</div>` : "");
+    const part = (a) => (a.length ? `<div class="prose m"${whole ? ` style="font-size:${whole.size}"` : ""}>${a.map((p) => `<p>${p}</p>`).join("")}</div>` : "");
     return part(paras.slice(0, at)) + v + part(paras.slice(at));
   };
   /* The title of a Words or Words-and-Photo section: its own alignment and,
@@ -1220,6 +1363,25 @@ function renderSection(sec, ctx) {
       }
       return `<section${cls()}><div class="wrap">${sec.variant === "card" ? '<div class="card">' : '<div class="bandrow">'}<div>${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}</div><div class="btns m" style="margin:0"><a class="btn solid" href="${esc(ctx.giveUrl)}">${esc(w("button") || word(lang, "giveBtn"))} →</a></div></div></div></section>`;
     }
+    case "define": {
+      /* A WORD AND WHAT IT MEANS (thauma.one's About): the word large and
+         thin, how it is said in the accent, the meanings numbered. */
+      if (!raw("word") && !ctx.draft) return "";
+      const means = String(w("text") || "").split(/\n{2,}/).filter((x) => x.replace(/<[^>]+>/g, "").trim());
+      return `<section${cls("define")}><div class="wrap"><p class="df-word m">${esc(w("word"))}</p>` +
+        `${w("say") ? `<p class="df-say m">${esc(w("say"))}</p>` : ""}` +
+        `${means.length ? `<ol class="df-means m">${means.map((x) => `<li>${x.replace(/\n/g, "<br>")}</li>`).join("")}</ol>` : ""}</div></section>`;
+    }
+    case "rows": {
+      /* LABELED ROWS (thauma.one's Mission): a small label beside a title
+         and its words, one row each, between hairlines. */
+      const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
+      const items = (sec.items || []).filter((it) => t(it, "title") || t(it, "text"));
+      if (!items.length) return "";
+      return `<section${cls("rowsec")}><div class="wrap">${heading(w("heading"))}${sub}<div class="lrows m">${items.map((it) =>
+        `<div class="lrow"><div class="lr-label">${esc(t(it, "label"))}</div><div>${t(it, "title") ? `<h3>${inline(rich(t(it, "title")))}</h3>` : ""}` +
+        `${t(it, "text") ? `<p>${inline(rich(t(it, "text")))}</p>` : ""}</div></div>`).join("")}</div></div></section>`;
+    }
     case "cards": {
       /* chaseroush.com's Mission: numbered cards joined by a line between
          the numbers (Attached), or side by side as separate cards. */
@@ -1231,7 +1393,7 @@ function renderSection(sec, ctx) {
       const dir = sec.variant === "open" ? "open" : sec.variant === "detached" || sec.variant === "horizontal" ? "horizontal" : "vertical";
       const lines = typeof sec.lines === "boolean" ? sec.lines : dir === "vertical";
       return `<section${cls("cards-" + dir, lines ? "cards-lines" : "")}><div class="wrap">${heading(w("heading"))}${sub}<ol class="ccards m${num ? " numbered" : ""}">${items.map((it, i) =>
-        `<li>${num ? `<span class="cnum" aria-hidden="true">${i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${inline(rich(t(it, "title")))}</h3>` : ""}${t(it, "text") ? `<p>${inline(rich(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
+        `<li>${num ? `<span class="cnum${sec.numStyle === "roman" ? " roman" : ""}" aria-hidden="true">${sec.numStyle === "roman" ? ROMAN[i] || i + 1 : i + 1}</span>` : ""}<div>${t(it, "title") ? `<h3>${inline(rich(t(it, "title")))}</h3>` : ""}${t(it, "text") ? `<p>${inline(rich(t(it, "text")))}</p>` : ""}</div></li>`).join("")}</ol></div></section>`;
     }
     case "links": {
       const items = (sec.items || []).map((it) => ({ ...it, href: ctx.linkHref(it.url) })).filter((it) => it.href);
@@ -1239,53 +1401,67 @@ function renderSection(sec, ctx) {
       const t = (it, f) => (it.words[lang] && it.words[lang][f]) || (it.words[fallback] && it.words[fallback][f]) || "";
       /* A link's words are inside the link: formatted, but no link of their own. */
       const lw = (it, f) => inline(rich(t(it, f)).replace(/<\/?a\b[^>]*>/g, ""));
-      /* Large first, then the section's own style, then Small; each keeps
-         the owner's order. Small cards carry no picture. */
-      const card = (it, pic) => `<li><a href="${esc(it.href)}"${rel(it.href)}>${sec.showKind !== false && t(it, "type") ? `<em class="ltype">${esc(t(it, "type"))}</em>` : ""}` +
-        `${pic && it.photo ? `<span class="lpic">${img(it.photo)}</span>` : ""}<b>${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>${sec.showDesc !== false && t(it, "text") ? `<span>${lw(it, "text")}</span>` : ""}</a></li>`;
-      /* BUTTONS (2026-10-07, Chase: "The list section should also include a
-         buttons layout with different coloring options for each individual
-         button"): a row of the site's buttons, each its own color — the
-         accent, the second color, an outline, or any color picked. */
+      /* WHAT EACH SHOWS (2026-10-13, 2026-10-27): what it is, its description
+         and the owner's note, each for the whole section; and its picture,
+         whole, filling its frame, round, or none (sec.pics). */
+      const pics = sec.pics || "whole";
+      const pic = (it) => (pics !== "none" && it.photo ? img(it.photo) : "");
+      const kindOf = (it) => (sec.showKind === false ? "" : [t(it, "type"), t(it, "by")].filter(Boolean).map(esc).join(" · "));
+      const desc = (it, c) => (sec.showDesc !== false && t(it, "text") ? `<span class="${c}">${lw(it, "text")}</span>` : "");
+      const note = (it, c) => (sec.showNote !== false && t(it, "note") ? `<span class="${c}">${lw(it, "note")}</span>` : "");
+      const title = (it) => (t(it, "title") ? lw(it, "title") : esc(it.href));
+      const OUT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 3H3v10h10V9M9.5 3H13v3.5M13 3 7.5 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const open = (c) => `<section${cls("links-" + c, "pics-" + pics)}><div class="wrap">${heading(w("heading"))}${sub}`;
+      /* BUTTONS (2026-10-07: "a buttons layout with different coloring
+         options for each individual button"), each its own color — in a
+         row, the site's own buttons; STACKED (2026-10-27), one under
+         another with its picture beside its words. */
       if (sec.variant === "buttons") {
-        const b = (it) => ownButton(it, t(it, "title") ? lw(it, "title") : esc(it.href));
-        return `<section${cls("links-buttons")}><div class="wrap">${heading(w("heading"))}${sub}<div class="btns linkbtns m">${items.map(b).join("")}</div></div></section>`;
+        if (sec.stack) {
+          return `${open("buttons")}<div class="lstack m">${items.map((it) => ownButton(it,
+            `${pic(it) ? `<span class="ls-pic">${pic(it)}</span>` : ""}<span class="ls-t">${title(it)}</span><span class="ls-go" aria-hidden="true">→</span>`)).join("")}</div></div></section>`;
+        }
+        return `${open("buttons")}<div class="btns linkbtns m">${items.map((it) => ownButton(it, title(it))).join("")}</div></div></section>`;
+      }
+      /* THE LIST (2026-10-27): a row each between hairlines. */
+      if (sec.variant === "list") {
+        return `${open("list")}<ul class="llist m">${items.map((it) => `<li><a href="${esc(it.href)}"${rel(it.href)}>` +
+          (pic(it) ? `<span class="ll-pic">${pic(it)}</span>` : "") +
+          `<span class="ll-body"><b class="ll-title">${title(it)}</b>${desc(it, "ll-desc")}${note(it, "ll-note")}</span>` +
+          (kindOf(it) ? `<span class="ll-type">${kindOf(it)}</span>` : "") + `<span class="ll-go">${OUT}</span></a></li>`).join("")}</ul></div></section>`;
+      }
+      /* THE SHELF (2026-10-27): picture cards in a row that scrolls sideways. */
+      if (sec.variant === "shelf") {
+        const ARROW = (d) => `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        return `${open("shelf")}<div class="shelf m"><ul class="sh-row">${items.map((it) => `<li><a class="sh-card" href="${esc(it.href)}"${rel(it.href)}>` +
+          (pic(it) ? `<span class="sh-pic">${pic(it)}</span>` : "") +
+          `<span class="sh-body">${kindOf(it) ? `<span class="sh-type">${kindOf(it)}</span>` : ""}<b>${title(it)}</b>${desc(it, "sh-desc")}${note(it, "sh-desc rc-note")}</span></a></li>`).join("")}</ul>` +
+          (items.length > 1 ? `<div class="sh-nav"><button type="button" class="sh-prev" aria-label="${esc(word(lang, "previous"))}">${ARROW("M10 3 5 8l5 5")}</button><button type="button" class="sh-next" aria-label="${esc(word(lang, "next"))}">${ARROW("M6 3l5 5-5 5")}</button></div>` : "") +
+          `</div></div></section>`;
       }
       /* RESOURCE CARDS (2026-10-12, Chase: "work like CR site's Resources
          page"): Large two to a row with the picture above; Wide across the
          page with the picture beside; Small two to a row with a little one.
-         Each: the title, a colored label (what it is · who made it), a few
-         words, the owner's own note set apart, and an arrow out. The whole
-         card is the link. A card with no picture has no empty frame. */
-      if (sec.variant === "cards" || sec.variant === "tiles") {
-        const OUT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 3H3v10h10V9M9.5 3H13v3.5M13 3 7.5 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        const rc = (it, tier) => {
-          const kind = sec.showKind === false ? "" : [t(it, "type"), t(it, "by")].filter(Boolean).map(esc).join(" · ");
-          return `<li class="rc rc-${tier}"><a href="${esc(it.href)}"${rel(it.href)}>` +
-            (it.photo ? `<span class="rc-pic">${img(it.photo)}</span>` : "") +
-            `<span class="rc-body"><b class="rc-title">${t(it, "title") ? lw(it, "title") : esc(it.href)}</b>` +
-            (kind ? `<span class="rc-type">${kind}</span>` : "") +
-            (sec.showDesc !== false && tier !== "small" && t(it, "text") ? `<span class="rc-desc">${lw(it, "text")}</span>` : "") +
-            (sec.showNote !== false && t(it, "note") ? `<span class="rc-note">${lw(it, "note")}</span>` : "") +
-            `</span><span class="rc-go">${OUT}</span></a></li>`;
-        };
-        const set = (tier) => {
-          const g = items.filter((it) => (it.tier || "std") === tier);
-          return g.length ? `<ul class="rcards rc-g-${tier} m">${g.map((it) => rc(it, tier)).join("")}</ul>` : "";
-        };
-        /* TILES (2026-10-13): every resource the same size, the picture
-           above, three to a row — a shelf rather than a list. */
-        if (sec.variant === "tiles") {
-          return `<section${cls("links-tiles")}><div class="wrap">${heading(w("heading"))}${sub}<ul class="rcards rc-tiles m">${items.map((it) => rc(it, "tile")).join("")}</ul></div></section>`;
-        }
-        return `<section${cls("links-cards")}><div class="wrap">${heading(w("heading"))}${sub}${set("big")}${set("std")}${set("small")}</div></section>`;
+         Each: the title, a colored label (what it is · who made it), its
+         description, the owner's own note set apart — each shown when the
+         section shows it, on every size of card (2026-10-27) — and an arrow
+         out. The whole card is the link. No picture, no empty frame. */
+      const rc = (it, tier) => `<li class="rc rc-${tier}"><a href="${esc(it.href)}"${rel(it.href)}>` +
+        (pic(it) ? `<span class="rc-pic">${pic(it)}</span>` : "") +
+        `<span class="rc-body"><b class="rc-title">${title(it)}</b>` +
+        (kindOf(it) ? `<span class="rc-type">${kindOf(it)}</span>` : "") +
+        desc(it, "rc-desc") + note(it, "rc-note") +
+        `</span><span class="rc-go">${OUT}</span></a></li>`;
+      /* TILES (2026-10-13): every resource the same size, the picture
+         above, three to a row — a shelf rather than a list. */
+      if (sec.variant === "tiles") {
+        return `${open("tiles")}<ul class="rcards rc-tiles m">${items.map((it) => rc(it, "tile")).join("")}</ul></div></section>`;
       }
-      const group = (tier, cls2, pic) => {
+      const set = (tier) => {
         const g = items.filter((it) => (it.tier || "std") === tier);
-        return g.length ? `<ul class="linklist m${cls2}">${g.map((it) => card(it, pic)).join("")}</ul>` : "";
+        return g.length ? `<ul class="rcards rc-g-${tier} m">${g.map((it) => rc(it, tier)).join("")}</ul>` : "";
       };
-      return `<section${cls("links-" + sec.variant)}><div class="wrap">${heading(w("heading"))}${sub}` +
-        `${group("big", " lt-big", true)}${group("std", "", true)}${group("small", " lt-small", false)}</div></section>`;
+      return `${open("cards")}${set("big")}${set("std")}${set("small")}</div></section>`;
     }
     default:
       return "";
@@ -1307,6 +1483,7 @@ function renderSection(sec, ctx) {
  *   draft    true: a preview of what is not published yet
  */
 export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft, only = null, langNames = {} }) {
+  DIMS = doc.dims || {};
   const fallback = doc.fallback;
   const design = doc.design;
   const navOpt = design.nav || {};
@@ -1315,12 +1492,15 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const L = { ...L0, display: F.display, body: F.body };
   const pages = doc.pages.filter((p) => p.on);
   const page = doc.pages.find((p) => p.id === pageId);
+  /* A page of the owner's own is named in this language, else in any it
+     has a name in, else "New Page". */
   const label = (id) => {
     const p = doc.pages.find((x) => x.id === id) || {};
-    return (p.label && (p.label[lang] || p.label[fallback])) || word(lang, id);
+    return (p.label && (p.label[lang] || p.label[fallback])) ||
+      (p.custom ? Object.values(p.label || {}).find(Boolean) || word(lang, "newPage") : word(lang, id));
   };
   /* A preview stays a preview as it is clicked through. */
-  const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : id + "/"}${draft ? "?draft" : ""}`;
+  const href = (id, l = lang) => `${base}/${l}/${id === "home" ? "" : pagePath(doc.pages.find((p) => p.id === id) || { id }) + "/"}${draft ? "?draft" : ""}`;
   /* CLEAN LINKS (Chase, 2026-10-12: "make sure all links on the site creator
      are clean links … the Give section button isn't clean"): the giving link
      is written as <site>/Give, a channel as <site>/YouTube, an own link as
@@ -1416,7 +1596,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
       /* A section of THIS page: its anchor, or nowhere once it is gone. */
       const sec = /^section:([a-z0-9]{2,24})$/i.exec(link);
       if (sec) return allSections(page).some((s) => s.id === sec[1]) ? "#s-" + sec[1] : "";
-      const m = /^page:([a-z]+)$/.exec(link);
+      const m = /^page:([a-z0-9]+)$/.exec(link);
       if (!m) return /^https?:/.test(link) ? cleanHref(link, "") : link;
       return pages.some((p) => p.id === m[1]) ? href(m[1]) : "";
     },
@@ -1452,7 +1632,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     if (!html) {
       return draft ? `<section id="s-${esc(s.id)}" class="empty"><div class="wrap"><p>${esc(word(lang, "emptyPreview"))}</p></div></section>` : "";
     }
-    return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}"${s.join && i > 0 ? " data-joined" : ""}>`);
+    return html.replace(/^<section([^>]*)>/, `<section$1 id="s-${esc(s.id)}"${s.join && i > 0 ? " data-joined" : ""}${s.enter ? ` data-enter="${esc(s.enter)}"` : ""}>`);
   }).join("\n");
   /* THE PAGE'S TABS: the bar where it sits among the page's own sections
      (tabs.at; the end unless moved), then a panel per tab, the first one
@@ -1549,7 +1729,14 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const socials = socialIcons + (asWordsF ? "" : inl.map(iconOf).join(""));
   const custom = (asWordsF ? inl.map(wordOf).join("") : "") + apart.filter((k) => k.show !== "icon").map(wordOf).join("");
   const ownIcons = apart.filter((k) => k.show === "icon").map(iconOf).join("");
-  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons, socialHref: ctx.socialHref, app: `${base}/app${draft ? "?draft" : ""}` });
+  /* THE APP, ON A PHONE ONLY: the last line of the phone's menu, and — once,
+     after a second visit — a small card asking to add the site to the phone. */
+  const appUrl = `${base}/app${draft ? "?draft" : ""}`;
+  const PHONE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.2"/><path d="M11 18h2"/></svg>';
+  const appLink = `<a class="navapp" href="${esc(appUrl)}">${PHONE}${esc(word(lang, "getApp"))}</a>`;
+  const appAsk = draft ? "" : `<div class="appask" id="appask" hidden role="dialog" aria-label="${esc(word(lang, "getApp"))}"><span class="appask-i">${PHONE}</span><span class="appask-t">${esc(word(lang, "appInvite").replace("{name}", name))}</span>` +
+    `<a class="btn solid" href="${esc(appUrl)}">${esc(word(lang, "appAdd"))}</a><button type="button" class="appask-x" aria-label="${esc(word(lang, "appLater"))}" title="${esc(word(lang, "appLater"))}">×</button></div>`;
+  const foot = footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons, socialHref: ctx.socialHref });
 
   const thePage = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const seo = thePage.seo || {};
@@ -1583,7 +1770,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const shareImage = mode === "none" ? null : absolute(mode === "custom" && thisPage.shareImage ? thisPage.shareImage
     : mode === "card" && card ? card : fallbackPic);
   const publicBase = site.subdomain ? `https://${site.subdomain}.thauma.one` : origin + base;
-  const publicUrl = (id, l) => `${publicBase}/${l}/${id === "home" ? "" : id + "/"}`;
+  const publicUrl = (id, l) => `${publicBase}/${l}/${id === "home" ? "" : pagePath(doc.pages.find((p) => p.id === id) || { id }) + "/"}`;
   const LOCALE = { en: "en_US", hr: "hr_HR", sr: "sr_RS", sl: "sl_SI", de: "de_DE", es: "es_ES" };
   const social = draft ? "" : [
     `<link rel="canonical" href="${esc(publicUrl(pageId, lang))}">`,
@@ -1600,7 +1787,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     shareImage ? `<meta name="twitter:image" content="${esc(shareImage)}">` : "",
   ].filter(Boolean).join("\n");
   /* Full public addresses, as search engines require; drafts keep their own. */
-  const altHref = (l) => (draft ? href(pageId, l) : `${site.subdomain ? `https://${site.subdomain}.thauma.one` : origin + base}/${l}/${pageId === "home" ? "" : pageId + "/"}`);
+  const altHref = (l) => (draft ? href(pageId, l) : publicUrl(pageId, l));
   const alternates = doc.languages.map((l) => `<link rel="alternate" hreflang="${esc(l)}" href="${esc(altHref(l))}">`).join("") +
     (draft ? "" : `<link rel="alternate" hreflang="x-default" href="${esc(altHref(doc.fallback))}">`);
   const m = design.motion;
@@ -1613,7 +1800,7 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
   const fold = 820;
 
   const out = `<!doctype html>
-<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-navcur="${esc(navOpt.current || "lit")}" data-navtint="${esc(navOpt.tint || "white")}" data-navline="${esc(navOpt.line || "subtle")}" data-navphone="${esc(navOpt.phone || "drop")}" data-entrance="${esc(m.entrance)}" data-speed="${esc(m.speed || "medium")}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
+<html lang="${esc(lang)}" data-menu="${esc(design.menu)}" data-navcur="${esc(navOpt.current || "lit")}" data-navtint="${esc(navOpt.tint || "white")}" data-navline="${esc(navOpt.line || "subtle")}" data-navphone="${esc(navOpt.phone || "drop")}" data-entrance="${esc(m.entrance)}" style="${speedVars(m.speed)}" data-photos="${esc(m.photos)}" data-headings="${esc(m.headings)}" data-buttons="${esc(m.buttons)}" data-pages="${esc(m.pages)}" data-progress="${esc(m.progress)}" data-cue="${esc(m.cue)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1636,14 +1823,14 @@ ${draft ? `<div style="background:#F5B845;color:#1a1200;font:600 13px system-ui;
 <header class="top"><div class="wrap">
 <a class="brand" href="${esc(href("home"))}">${brand}</a>
 <button class="menubtn burger" type="button" aria-expanded="false" aria-controls="sitenav" aria-label="${esc(word(lang, "menu"))}"><i></i><i></i><i></i></button>
-<nav class="nav" id="sitenav">${nav}${pages.length > 3 ? `<span class="more" hidden><button type="button" class="morebtn" aria-expanded="false">${esc(word(lang, "moreMenu"))}<i aria-hidden="true"></i></button><span class="more-set"></span></span>` : ""}${give}${design.headerLinks && socials ? `<span class="socials headlinks"><button type="button" class="follow" aria-expanded="false" aria-label="${esc(word(lang, "follow"))}" title="${esc(word(lang, "follow"))}"></button><span class="hl-set">${socials}</span></span>` : ""}${navLang}</nav>
+<nav class="nav" id="sitenav">${nav}${pages.length > 3 ? `<span class="more" hidden><button type="button" class="morebtn" aria-expanded="false">${esc(word(lang, "moreMenu"))}<i aria-hidden="true"></i></button><span class="more-set"></span></span>` : ""}${give}${appLink}${design.headerLinks && socials ? `<span class="socials headlinks"><button type="button" class="follow" aria-expanded="false" aria-label="${esc(word(lang, "follow"))}" title="${esc(word(lang, "follow"))}"></button><span class="hl-set">${socials}</span></span>` : ""}${navLang}</nav>
 ${langMenu(false)}
 </div></header>
 <script>${NAV_JS}</script>
 <main id="main">
 ${body}
 </main>
-${foot}`}
+${foot}${appAsk}`}
 ${widgets ? `<script>window.__thaumaPreview=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script><script src="${esc(origin)}/embed/v1/widget.js" async></script>` : ""}
 ${ctx.needs.signup ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/form.js" defer></script>` : ""}
 ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/contact.js" defer></script>` : ""}
@@ -1658,7 +1845,36 @@ ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/co
     if (firstPic && !/\/embed\/v1\/icon/.test(src)) { firstPic = false; return `<img src=${src} alt=${alt} loading="eager" fetchpriority="high" decoding="async"`; }
     return `<img src=${src} alt=${alt} loading="lazy" decoding="async"`;
   });
-  return newTabs(withPics, outgoing);
+  return newTabs(hoistSizes(withPics), outgoing);
+}
+
+/* A BOX WHOSE WORDS ARE ALL ONE SIZE carries the size itself (Chase,
+   2026-10-27: "the space between lines needs to scale with the size of the
+   text"). A size picked for every word of a box is stored as one sized run
+   inside it; the box kept its own size, so its lines stayed spaced for that
+   and small words sat far apart. Here the run's size becomes the box's, and
+   the box's line height — always a multiple — follows it. Only a run that
+   is the box's whole content, and carries nothing but a size. */
+const SIZE_EM = { sm: ".82em", lg: "1.25em", xl: "1.6em" };
+export function hoistSizes(html) {
+  const OPEN = /<(p|h[1-3]|blockquote|cite|figcaption|span|b|div)(\s[^>]*)?>(<span (?:style="font-size:([0-9.]+(?:px|em))"|class="ts-(sm|lg|xl)")>)/g;
+  let out = "", last = 0, m;
+  while ((m = OPEN.exec(html))) {
+    const tag = m[1], attrs = m[2] || "", innerStart = m.index + m[0].length;
+    /* the run's own end */
+    const re = /<(\/?)span\b[^>]*>/g;
+    re.lastIndex = innerStart;
+    let depth = 1, x, end = -1;
+    while ((x = re.exec(html))) { depth += x[1] ? -1 : 1; if (!depth) { end = x.index; break; } }
+    const close = `</${tag}>`;
+    if (end < 0 || html.slice(end + 7, end + 7 + close.length) !== close) continue;
+    const size = m[4] || SIZE_EM[m[5]];
+    const withSize = /\sstyle="/.test(attrs) ? attrs.replace(/\sstyle="/, ` style="font-size:${size};`) : `${attrs} style="font-size:${size}"`;
+    out += html.slice(last, m.index) + `<${tag}${withSize}>` + html.slice(innerStart, end) + close;
+    last = end + 7 + close.length;
+    OPEN.lastIndex = last;
+  }
+  return out + html.slice(last);
 }
 
 /* EVERY LINK THAT LEAVES THE SITE OPENS A NEW TAB (Chase, 2026-10-01:
@@ -1678,7 +1894,7 @@ export function newTabs(html, outgoing = new Set()) {
  * The foot of the page, in the owner's chosen layout (model.FOOTERS). The
  * credit line is in every one of them.
  */
-function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "", socialHref = (k) => k.url, app = "" }) {
+function footer({ doc, lang, fallback, name, pages, href, label, socials, custom, ownIcons = "", socialHref = (k) => k.url }) {
   const F = doc.footer || { layout: "split", menu: false, socials: "icons", words: {} };
   const fw = (f) => (F.words[lang] && F.words[lang][f]) || (F.words[fallback] && F.words[fallback][f]) || "";
   const tagline = fw("tagline") ? `<p class="tagline tagline-${esc(F.tagline || "plain")}">${esc(fw("tagline"))}</p>` : "";
@@ -1693,8 +1909,11 @@ function footer({ doc, lang, fallback, name, pages, href, label, socials, custom
   const linkRow = (asWords ? socialWords : "") + custom;
   const words = (linkRow ? `<span class="words">${linkRow}</span>` : "") + (ownIcons ? `<span class="socials owns">${ownIcons}</span>` : "");
   const icons = !asWords && socials ? `<span class="socials">${socials}</span>` : "";
-  /* THE MINISTRY'S APP (site/app.js) — every site has one, found here. */
-  const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}${app ? ` · <a href="${esc(app)}">${esc(word(lang, "getApp"))}</a>` : ""}</span>`;
+  /* The ministry's app is no longer offered here (Chase, 2026-10-20: "I'm
+     not sure I want the Get the App button to be so prominent in the
+     footer"; 2026-10-27: a computer should not hear of an app at all): it
+     is in the phone's menu, and asked about once on a phone (APP_JS). */
+  const credit = `<span class="powered">© ${new Date().getFullYear()} ${esc(name)} · ${esc(word(lang, "poweredBy"))}</span>`;
   /* NOT IN THE FOOTER (Chase, 2026-10-01): the name as a brand, and the
      language menu — both are already in the header. */
   let inner;
@@ -1753,18 +1972,38 @@ if(b)b.addEventListener('click',function(){var o=d.classList.toggle('menu-open')
 var settled=/[?&]settled(&|$)/.test(location.search);if(settled)d.classList.add('settled');
 var calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches,still=settled||calm;if(calm)d.classList.add('calm');
 if(!still)[].forEach.call(document.querySelectorAll('.pic img,.hero-media img,.frame img,.ccards img,.vtile img'),function(i){if(i.complete)return;i.classList.add('ldg');var f=function(){i.classList.remove('ldg')};i.addEventListener('load',f);i.addEventListener('error',f)});
-addEventListener('pagereveal',function(e){if(!e.viewTransition)return;[].forEach.call(document.querySelectorAll('.m,.h'),function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){el.style.transition='none';[].forEach.call(el.querySelectorAll('.ch'),function(c){c.style.transition='none'});el.classList.add('in');requestAnimationFrame(function(){requestAnimationFrame(function(){el.style.transition='';[].forEach.call(el.querySelectorAll('.ch'),function(c){c.style.transition=''})})})}})});
-var hs=d.getAttribute('data-headings');
-if(!still&&hs!=='plain'){[].forEach.call(document.querySelectorAll('.h'),function(h){
+/* ARRIVING FROM ANOTHER PAGE (Chase, 2026-10-27: the transitions "mainly"
+   fail "when loading a new page. Refreshing a page seems to have the
+   transition happen correctly"): the sections arrive as they do on a
+   refresh, just after the short cross-fade between the pages. Moving them
+   during the fade would redraw the new page's picture every frame. */
+var hold=false;
+addEventListener('pagereveal',function(e){if(!e.viewTransition||still)return;hold=true;var go=function(){hold=false;if(q.length&&!qf)qf=requestAnimationFrame(flush)};e.viewTransition.finished.then(go,go)});
+var hs=d.getAttribute('data-headings'),split=false;
+function splitHeads(){if(split||hs==='plain')return;split=true;[].forEach.call(document.querySelectorAll('.h'),function(h){
  var n=0;[].slice.call(h.childNodes).forEach(function(c){var el=c.nodeType===3?null:c;var t=c.textContent;var parts=hs==='words'?t.split(/(\\s+)/):t.split('');
   var f=document.createDocumentFragment();parts.forEach(function(p){if(/^\\s+$/.test(p)||p===' '){f.appendChild(document.createTextNode(p));return}
    var s=document.createElement('span');s.className='ch';s.textContent=p;s.style.transitionDelay='calc(var(--d,0ms) + '+(n++*(hs==='words'?2.6:1))+' * var(--cstep))';f.appendChild(s)});
   if(el){el.textContent='';el.appendChild(f)}else{h.replaceChild(f,c)}});
  h.classList.remove('m')})}
+if(!still)splitHeads();
 var q=[],qf=0;function flush(){qf=0;var step=parseFloat(getComputedStyle(d).getPropertyValue('--mstep'))||110;
  q.sort(function(a,b){var x=a.getBoundingClientRect(),y=b.getBoundingClientRect();return (x.top-y.top)||(x.left-y.left)});
  q.forEach(function(el,i){var t=Math.round(i*step)+'ms';el.style.transitionDelay=t;el.style.setProperty('--d',t);el.classList.add('in')});q=[]}
-var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){q.push(e.target);io.unobserve(e.target)}});if(q.length&&!qf)qf=requestAnimationFrame(flush)},{rootMargin:'0px 0px -8% 0px'}):null;
+var io=('IntersectionObserver' in window)&&!still?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){q.push(e.target);io.unobserve(e.target)}});if(q.length&&!qf&&!hold)qf=requestAnimationFrame(flush)},{rootMargin:'0px 0px -8% 0px'}):null;
+/* PLAYED AGAIN, for the Site Creator's preview (Chase, 2026-10-27: "some
+   kind of rolling preview when trying to choose an option for the Sections
+   Arrive part"): what is on screen arrives again — the site's way, or a
+   section's own — and the rest is simply there. */
+window.__siteReplay=function(o){o=o||{};if(calm)return;
+ if(o.entrance)d.setAttribute('data-entrance',o.entrance);
+ var root=document;if(o.sid){root=document.getElementById('s-'+o.sid);if(!root)return;if('enter' in o){if(o.enter)root.setAttribute('data-enter',o.enter);else root.removeAttribute('data-enter')}}
+ splitHeads();var vh=innerHeight,els=[],all=[].slice.call(document.querySelectorAll('.m,.h')),off=function(el,v){el.style.transition=v;[].forEach.call(el.querySelectorAll('.ch'),function(c){c.style.transition=v})};
+ all.forEach(function(el){var r=el.getBoundingClientRect(),now=r.top<vh&&r.bottom>0&&root.contains(el);off(el,'none');el.style.transitionDelay='';if(now){el.classList.remove('in');els.push(el)}else el.classList.add('in')});
+ d.classList.remove('settled');void d.offsetWidth;all.forEach(function(el){off(el,'')});
+ if(qf)cancelAnimationFrame(qf);q=els;qf=requestAnimationFrame(function(){qf=requestAnimationFrame(flush)})};
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.sh-prev,.sh-next');if(!b)return;var row=b.closest('.shelf').querySelector('.sh-row'),li=row&&row.querySelector('li');if(!row)return;
+ row.scrollBy({left:(li?li.getBoundingClientRect().width+18:row.clientWidth*.8)*(b.classList.contains('sh-prev')?-1:1),behavior:still?'auto':'smooth'})});
 function watch(){[].forEach.call(document.querySelectorAll('.m,.h'),function(el){if(io)io.observe(el);else el.classList.add('in')})}
 if(document.prerendering)document.addEventListener('prerenderingchange',watch,{once:true});else watch();
 var sv=!!(window.CSS&&CSS.supports&&CSS.supports('animation-timeline: view()')),ss=!!(window.CSS&&CSS.supports&&CSS.supports('animation-timeline: scroll()'));
@@ -1806,6 +2045,10 @@ document.addEventListener('click',function(e){if(e.defaultPrevented||e.button||e
 [].forEach.call(document.querySelectorAll('.favi img'),function(im){var a=im.parentNode;function no(){a.classList.add('no-icon')}
  function ok(){if(!im.naturalWidth)return no();try{var c=document.createElement('canvas');c.width=c.height=16;var x=c.getContext('2d');x.drawImage(im,0,0,16,16);var p=x.getImageData(0,0,16,16).data,n=0;for(var i=3;i<p.length;i+=4)if(p[i]<40)n++;if(n>40){a.style.setProperty('--fi','url("'+im.src+'")');a.classList.add('mono')}}catch(e){}}
  if(im.complete)ok();else{im.addEventListener('load',ok);im.addEventListener('error',no)}});
+(function(){var ask=document.getElementById('appask');if(!ask)return;var phone=matchMedia('(hover: none) and (pointer: coarse)').matches,app=matchMedia('(display-mode: standalone)').matches||navigator.standalone;if(!phone||app)return;
+ var k='site.app.',n=0;try{if(localStorage.getItem(k+'asked'))return;if(!sessionStorage.getItem(k+'seen')){sessionStorage.setItem(k+'seen','1');n=+(localStorage.getItem(k+'visits')||0)+1;localStorage.setItem(k+'visits',n)}else n=+(localStorage.getItem(k+'visits')||0)}catch(e){return}
+ if(n<2)return;var done=function(){ask.hidden=true;try{localStorage.setItem(k+'asked','1')}catch(e){}};
+ setTimeout(function(){ask.hidden=false},4000);ask.querySelector('.appask-x').addEventListener('click',done);ask.querySelector('a').addEventListener('click',done)})();
 var cue=document.querySelector('.scrollcue');if(cue)cue.addEventListener('click',function(){var n=cue.closest('section').nextElementSibling;if(n)glideTo(n)});
 document.addEventListener('click',function(e){var h=e.target.closest&&e.target.closest('[data-widget="roadmap"]');if(!h)return;
  setTimeout(function(){var p=h.shadowRoot&&h.shadowRoot.querySelector('.detail:not(.leaving)'),s=h.closest('section'),t=s&&(s.querySelector('.h')||s);if(!p||!t)return;
