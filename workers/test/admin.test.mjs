@@ -600,7 +600,7 @@ await check("an answer to a bio, part by part, is kept for the person and told t
   assert(/&lt;Chase&gt;<\/b> approved[\s\S]*changes of their own/.test(w.body) && w.note === "Tidied it", "words: " + JSON.stringify(w));
   assert(noticeWords("profile_declined", "hr", { by: "C", _v: "nonsense" }).body.startsWith("<b>C</b>: izmjene"), "an unknown wording does not fall back to the plain one");
   const partly = noticeEmail("profile_approved", { lang: "en", by: "C", _v: "partly", origin, link: "/staff/settings/#bio" });
-  assert(/answered/.test(partly.subject) && /some are approved, some are not/.test(partly.html), "partly is not worded as partly: " + partly.subject);
+  assert(/Answered/.test(partly.subject) && /some are approved, some are not/.test(partly.html), "partly is not worded as partly: " + partly.subject);
   const mail = noticeEmail("profile_declined", { lang: "sr", by: "C", note: "Не сада", origin: "https://thauma.one", link: "/staff/settings/#bio" });
   assert(/нису одобрене/.test(mail.subject) && /Не сада/.test(mail.html) && /Не сада/.test(mail.text), "the email has no note, or not in Serbian");
 });
@@ -634,8 +634,8 @@ await check("Publish: a release of what changed, by page, each person seeing the
   eq(await cutRelease({ query: async () => { throw new Error("no such table: releases"); } }, { by: "C" }), null, "before 0062: no release, no failure");
 
   const pub = fs.readFileSync(new URL("../src/admin-publish.js", import.meta.url), "utf8");
-  assert(/dispatchWorkflow\(env, workflow, branch\)[\s\S]{0,1800}if \(action === "publish"\) \{\s*try \{[\s\S]{0,300}cutRelease\(db[\s\S]{0,200}notify\(env, db, "site_published"[\s\S]{0,200}"\/staff\/changes\/"/.test(pub),
-    "not told after the build is started, not linked to the release, or a failed notice could fail the publish");
+  assert(/dispatchWorkflow\(env, workflow, branch\)[\s\S]{0,1800}if \(action === "publish"\) \{\s*try \{[\s\S]{0,300}cutRelease\(db[\s\S]{0,600}release_wait[\s\S]{0,400}tellRelease\(env, db, release\)/.test(pub),
+    "Publish does not set its release waiting for the deploy (0064), or has no fallback before 0064");
   const people = [{ user_id: "u_a", email: "a@x.org", preferred_lang: "en" }, { user_id: "u_s", email: "s@x.org", preferred_lang: "hr" }];
   const bells = [], sent = [];
   const ndb = { query: async (name, p) => {
@@ -648,7 +648,7 @@ await check("Publish: a release of what changed, by page, each person seeing the
   eq([bells.map((b) => b.user_id), bells[0].link, sent.map((m) => m.to)], [["u_a", "u_s"], "/staff/changes/#r_1", ["a@x.org"]],
      "everyone's bell, opening the release; email for everyone but whoever switched it off");
   const w = noticeWords("site_published", "en", { by: "<C>" });
-  eq(w.summary, "<b>&lt;C&gt;</b> published the site — see what's new", "one line in the bell, escaped");
+  eq(w.summary, "Thauma was updated by <b>&lt;C&gt;</b>", "one line in the bell, escaped");
   for (const k of ["invite_accepted", "profile_proposed", "profile_approved", "profile_declined", "site_published"]) {
     for (const l of ["en", "hr", "sr", "sl"]) assert(!/notify\./.test(noticeWords(k, l, { name: "N", by: "B" }).summary), `${k} has no ${l} summary`);
   }
@@ -679,8 +679,57 @@ await check("what a person cannot see is counted, never told, and a release with
   await notify({}, db, "site_published", { by: "C" }, { link: "/staff/changes/#r_1", send: async () => ({ ok: true }), only: (who) => tells(only, String(who.roles).split(",")) });
   eq(bells, ["u_a"], "only whoever has something in it");
   assert(/GROUP_CONCAT\(r\.role\)/.test(QUERIES.notify_everyone), "the people asked for carry no roles to decide by");
-  const pub = fs.readFileSync(new URL("../src/admin-publish.js", import.meta.url), "utf8");
-  assert(/only: release \? \(who\) => tells\(release,/.test(pub), "Publish tells everyone whatever is in it");
+  const rn = fs.readFileSync(new URL("../src/lib/release-notice.js", import.meta.url), "utf8");
+  assert(/only: \(who\) => tells\(release, rolesOf\(who\)\)/.test(rn), "a release tells only whoever has something in it");
+});
+
+await check("the site-was-updated notice goes once the deploy is LIVE, once, naming each person's own pages, linked to thauma.one (Chase, 2026-10-19)", async () => {
+  const { releaseVars, sendWaitingReleases, LIVE } = await import("../src/lib/release-notice.js");
+  const rel = { id: "r_1", by_name: "Chase", content: [], entries: [
+    { id: "a", page: "staff:website", text: { en: "x" } }, { id: "b", page: "staff:updates", text: { en: "y" } }, { id: "c", page: "site", text: { en: "z" } }] };
+  eq(releaseVars({ ...rel, entries: rel.entries.slice(0, 2) }, { roles: "partner", preferred_lang: "en" }), { _v: "console", areas: "Updates and Site Creator" }, "a partner: the Staff Console, their pages");
+  eq(releaseVars(rel, { roles: "staff", preferred_lang: "hr" }).areas, "thauma.one, Novosti i Kreator stranice", "in their language, joined their way");
+  eq(releaseVars(rel, { roles: "staff" })._v, "both", "console and website: both");
+  eq(releaseVars({ ...rel, entries: [rel.entries[2]] }, { roles: "board" })._v, "site", "the website alone");
+  const w = noticeWords("site_published", "en", { by: "Chase", _v: "console", areas: "Updates and Site Creator" });
+  eq([w.heading, w.summary], ["The Staff Console Was Updated", "Staff Console updated: <b>Updates and Site Creator</b>"], "Title Case heading; the bell names the pages");
+  assert(!/few minutes/.test(w.body), "no 'live in a few minutes'");
+  /* the scheduled job: waits for a deploy that STARTED after the press, claims once */
+  const claims = [], bells = [];
+  const mk = (started) => ({ query: async (name, p) => {
+    if (name === "releases_waiting") return [{ id: "r_1", by_name: "Chase", entries: JSON.stringify(rel.entries), content: "[]", notify_after: "2026-10-19T10:00:00Z" }];
+    if (name === "release_claim") { claims.push(p.id); return claims.length === 1 ? [{ id: p.id }] : []; }
+    if (name === "notify_everyone") return [{ user_id: "u_1", email: "a@x.org", roles: "staff", preferred_lang: "en" }];
+    if (name === "notify_prefs_for_user") return [{ kind: "site_published", is_on: 0 }];
+    if (name === "notice_add") { bells.push(p); return []; }
+    return [];
+  } });
+  const gh = (started) => async () => new Response(JSON.stringify({ workflow_runs: [{ head_sha: "x", run_started_at: started, created_at: started, updated_at: started }] }), { status: 200 });
+  const env = { GITHUB_TOKEN: "t", GITHUB_REPO: "o/r", CONTENT_BRANCH: "main" };
+  eq(await sendWaitingReleases(env, mk(), { fetchImpl: gh("2026-10-19T09:58:00Z") }), { sent: 0 }, "a deploy that began before the press does not count");
+  eq(claims.length, 0, "nothing claimed yet");
+  await sendWaitingReleases(env, mk(), { fetchImpl: gh("2026-10-19T10:01:00Z") });
+  eq([claims, bells.length, bells[0] && bells[0].link], [["r_1"], 1, "/staff/changes/#r_1"], "once live: claimed and told");
+  await sendWaitingReleases(env, mk(), { fetchImpl: gh("2026-10-19T10:01:00Z") });
+  eq(bells.length, 1, "another site finds it claimed and sends nothing");
+  eq(LIVE, "https://thauma.one", "links point at the live console");
+});
+
+await check("stopping work in somebody's console always tells them, in the bell only, opening their Activity (Chase, 2026-10-19)", async () => {
+  const bells = [], mails = [];
+  const db = { query: async (name, p) => {
+    if (name === "notify_person") return [{ user_id: "u_a", email: "a@x.org", preferred_lang: "en", roles: "partner" }];
+    if (name === "notify_prefs_for_user") return [{ kind: "bell:console_shared", is_on: 0 }, { kind: "console_shared", is_on: 1 }];
+    if (name === "notice_add") { bells.push(p); return []; }
+    return [];
+  }, queryOne: async (name) => (await db.query(name))[0] || null };
+  const { notifyPerson } = await import("../src/lib/notify.js");
+  await notifyPerson({}, db, "console_shared", "u_a", { by: "Chase" }, { link: "/staff/activity/", send: async (e, m) => { mails.push(m); return { ok: true }; } });
+  eq([bells.length, bells[0].link, mails.length], [1, "/staff/activity/", 0], "the bell even with its switch off; never an email");
+  eq((await noticesFor({ query: async () => [] }, "u_a", ["partner"], { self: true })).some((n) => n.kind === "console_shared"), false, "no switch for it in Settings");
+  const w = noticeWords("console_shared", "en", { by: "Chase" });
+  eq(w.heading, "Your Console Was Shared", "Title Case");
+  assert(/notifyPerson\(env, db, "console_shared", id/.test(fs.readFileSync(new URL("../src/admin-actas.js", import.meta.url), "utf8")), "stopping does not tell them");
 });
 
 await check("the bell: cleared, or read six hours ago, is Past — kept a year, not deleted (0061)", async () => {

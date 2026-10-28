@@ -11,7 +11,7 @@
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
 
-const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/admin/website/resources/index.html`)
+const PAGE = ["_site", "_site_next", "_site_prod"].map((d) => `${d}/admin/website/updates/resources/index.html`)
   .find((f) => existsSync(f));
 
 let pass = 0, fail = 0;
@@ -32,7 +32,7 @@ const ITEM = { slug: "test", title: { en: "Field guide" }, summary: { en: "How t
 
 async function boot() {
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
-    runScripts: "outside-only", pretendToBeVisual: true, url: "https://dev.thauma.one/admin/website/resources/",
+    runScripts: "outside-only", pretendToBeVisual: true, url: "https://dev.thauma.one/admin/website/updates/resources/",
   });
   const w = dom.window;
   w.fetch = async (u) => ({ ok: true, status: 200, json: async () => (/library/.test(String(u))

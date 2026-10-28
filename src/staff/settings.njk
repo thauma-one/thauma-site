@@ -2,7 +2,7 @@
 layout: layouts/staff.njk
 staffPage: settings
 staffTitle: Settings
-staffHeading: Your <b>account</b>
+staffHeading: Your <b>Account</b>
 ---
 {#- SETTINGS (mockup board "Settings, just you", the last step). The heading
    is your name, and Account is the board's rows — your address, the
@@ -30,7 +30,7 @@ staffHeading: Your <b>account</b>
   <button type="button" class="tab" role="tab" data-tab="notifications" id="setNotifyTab"
           aria-selected="false" data-i18n="set.notifications">Notifications</button>
   <button type="button" class="tab" role="tab" data-tab="bio" id="setBioTab" hidden
-          aria-selected="false" data-i18n="set.bio">Your bio</button>
+          aria-selected="false" data-i18n="set.bio">Your Bio</button>
   <button type="button" class="tab" role="tab" data-tab="languages"
           aria-selected="false" data-i18n="set.languages">Languages</button>
   <button type="button" class="tab" role="tab" data-tab="keys"
@@ -51,18 +51,18 @@ staffHeading: Your <b>account</b>
       <input type="email" id="setNewEmail" autocomplete="email" spellcheck="false"
              data-i18n-attr="placeholder:set.newEmailShort,aria-label:set.newEmail"
              placeholder="New address" aria-label="New email address">
-      <button type="submit" class="ghost-btn" data-i18n="set.sendEmailLink">Send confirmation</button>
+      <button type="submit" class="ghost-btn" data-i18n="set.sendEmailLink">Send Confirmation</button>
       <p class="set-email-note" id="setEmailNote"></p>
     </form>
   </div>
 
   <div class="set-r">
-    <label class="set-lbl" for="setPrefLang" data-i18n="set.consoleLang">Console language</label>
+    <label class="set-lbl" for="setPrefLang" data-i18n="set.consoleLang">Console Language</label>
     <div class="set-ctl"><select id="setPrefLang" class="lang-pick"></select></div>
   </div>
 
   <div class="set-r">
-    <span class="set-lbl" data-i18n="set.canDo">What you can do</span>
+    <span class="set-lbl" data-i18n="set.canDo">What You Can Do</span>
     <div class="set-ctl role-tags" id="setRoles"></div>
   </div>
 
@@ -72,8 +72,8 @@ staffHeading: Your <b>account</b>
   </div>
 
   <div class="set-r">
-    <span class="set-lbl" data-i18n="nav.signout">Sign out</span>
-    <div class="set-ctl"><a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign out</a></div>
+    <span class="set-lbl" data-i18n="nav.signout">Sign Out</span>
+    <div class="set-ctl"><a class="ghost-btn" href="/cdn-cgi/access/logout" data-i18n="nav.signout">Sign Out</a></div>
   </div>
 </section>
 
@@ -92,13 +92,13 @@ staffHeading: Your <b>account</b>
       this phone or computer even when the console is closed — one switch,
       which asks the browser's permission the first time. -#}
   <div class="set-device" id="setDevice" hidden>
-    <div class="set-device-t"><b data-i18n="set.device.label">This device</b><span id="setDeviceSay"></span></div>
+    <div class="set-device-t"><b data-i18n="set.device.label">This Device</b><span id="setDeviceSay"></span></div>
     <div class="set-device-acts">
-      <button type="button" class="ghost-btn sm" id="setDeviceTest" hidden data-i18n="set.device.test">Send a test</button>
+      <button type="button" class="ghost-btn sm" id="setDeviceTest" hidden data-i18n="set.device.test">Send a Test</button>
       <button type="button" class="switch small" role="switch" id="setDeviceSwitch" aria-checked="false" aria-labelledby="setDeviceLbl">
         <span class="switch-track"><span class="switch-state" data-i18n="switch.off">Off</span><span class="switch-knob"></span></span>
       </button>
-      <span class="sr-only" id="setDeviceLbl" data-i18n="set.device.label">This device</span>
+      <span class="sr-only" id="setDeviceLbl" data-i18n="set.device.label">This Device</span>
     </div>
   </div>
   <table class="set-notify">
@@ -127,7 +127,7 @@ staffHeading: Your <b>account</b>
   <div id="setBioForm"></div>
   <div class="set-bio-actions">
     <button type="button" class="ghost-btn" id="setBioWithdraw" data-i18n="set.bioWithdraw" hidden>Withdraw what I sent</button>
-    <button type="button" class="solid-btn" id="setBioSend" data-i18n="set.bioSend">Send for approval</button>
+    <button type="button" class="solid-btn" id="setBioSend" data-i18n="set.bioSend">Send for Approval</button>
   </div>
 </section>
 
@@ -137,7 +137,7 @@ staffHeading: Your <b>account</b>
      Your own reading language is on Account. -#}
   <div class="set-row set-row-block">
     <div class="set-label">
-      <h3 data-i18n="set.publishedLanguages">Published languages</h3>
+      <h3 data-i18n="set.publishedLanguages">Published Languages</h3>
     </div>
     <div class="set-control" id="setLangList"></div>
   </div>
@@ -154,13 +154,13 @@ staffHeading: Your <b>account</b>
            placeholder="What is this key for?">
     <div class="key-parts" id="setKeyParts"></div>
     <button type="button" class="solid-btn" id="setKeyAdd"
-            data-i18n="set.createKey">Create key</button>
+            data-i18n="set.createKey">Create Key</button>
   </div>
 
   {#- Shown once, on creation, and never again — the database stores only a
      hash. Deliberately loud, because there is no second chance to copy it. -#}
   <div class="key-reveal" id="setKeyReveal" hidden>
-    <h4 data-i18n="set.keyRevealTitle">Copy this now — it cannot be shown again</h4>
+    <h4 data-i18n="set.keyRevealTitle">Copy This Now — It Cannot Be Shown Again</h4>
     {#- The variable name is a LABEL on the value, not a sentence about it:
         it is what the partner site's build reads, so it is the one thing
         whoever pastes this has to get right. Not translated — it is a name. -#}

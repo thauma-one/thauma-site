@@ -35,6 +35,7 @@ import { t as mailWord } from "./lib/mail-i18n.js";
 import { changedSince, changedAnswer } from "./lib/fresh.js";
 import { readTexts, cleanTexts } from "./lib/texts.js";
 import { lookFor } from "./embed-colour.js";
+import { cleanFormDraft, draftFormScripts } from "./lib/form-preview.js";
 
 const MAX = { name: 120, slug: 60, desc: 400, from_name: 80, email: 200 };
 
@@ -1308,6 +1309,18 @@ const api = {
           await db.query("form_word_insert", { partner_id: partnerId, form, now, ...r });
         }
         return json({ form_words: formWords(await db.query("form_words_for_owner", { partner_id: partnerId })) });
+      }
+
+      /* A FORM AS SHARING HAS IT ON SCREEN, saved or not (lib/form-preview.js):
+         the script a visitor would get, for the console's preview. Stores
+         nothing. */
+      if (body.action === "form-preview") {
+        const form = body.form === "contact" ? "contact" : body.form === "signup" ? "signup" : null;
+        if (!form) return json({ error: "Which form?" }, 400);
+        const forms = cleanFormDraft(body.draft);
+        const scripts = await draftFormScripts(db, { partnerId, slug: s.partner ? s.partner.slug : "thauma",
+          origin: siteOrigin(env, request), look: null, forms });
+        return json({ script: scripts[form] || "" }, 200, { "Cache-Control": "no-store" });
       }
 
       if (body.action === "signup-form") {

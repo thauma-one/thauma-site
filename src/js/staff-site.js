@@ -47,6 +47,10 @@
     photoText: { variants: ['left', 'right', 'above', 'wrapLeft', 'wrapRight'], words: ['heading', 'text', 'verse', 'verseRef', 'button'], photo: true, link: 'both' },
     photo: { variants: ['drift', 'still', 'zoom'], words: ['caption'], photo: true, link: 'photo' },
     quote: { variants: ['large', 'quiet'], words: ['quote', 'who'] },
+    /* from thauma.one's own pages (2026-10-27): a word and its meanings;
+       labeled rows, edited like cards with a label each */
+    define: { variants: ['entry'], words: ['word', 'say', 'text'] },
+    rows: { variants: ['rows'], words: ['heading', 'text'], items: 'cards', label: true },
     timeline: { variants: ['condensed', 'full'], words: ['heading', 'text'], data: 'updates/#milestones', align: true },
     goals: { variants: ['cards'], words: ['heading', 'text'], data: 'updates/#goals', align: true },
     prayer: { variants: ['list'], words: ['heading', 'text'], data: 'updates/#prayer', align: true },
@@ -56,20 +60,40 @@
     contact: { variants: ['form', 'split', 'wide', 'open'], words: ['heading', 'text'], data: 'sharing/#contact', align: true },
     give: { variants: ['band', 'card', 'split', 'spotlight'], words: ['heading', 'text', 'button'] },
     cards: { variants: ['vertical', 'horizontal', 'open'], words: ['heading', 'text'], items: 'cards' },
-    links: { variants: ['cards', 'tiles', 'list', 'buttons'], words: ['heading', 'text'], items: true, align: true },
+    links: { variants: ['cards', 'tiles', 'list', 'buttons', 'shelf'], words: ['heading', 'text'], items: true, align: true },
   };
   /* On a section of the ministry's data, "text" is the line under the heading;
      on a header it is the small print below the title. */
   function fieldName(type, f) {
     if (type === 'header' && f === 'text') return tr('ws.f.below');
+    if (type === 'define' && f === 'text') return tr('ws.f.meanings');
     return f === 'text' && (SECTIONS[type].data || type === 'links') && type !== 'signup' && type !== 'contact' ? tr('ws.f.subtitle') : tr('ws.f.' + f);
   }
-  var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'cards', 'links'];
+  var ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  var ORDER = ['hero', 'header', 'text', 'photoText', 'photo', 'quote', 'define', 'timeline', 'goals', 'prayer', 'videos', 'newsletters', 'signup', 'contact', 'give', 'cards', 'rows', 'links'];
   var MOTION = {
-    entrance: ['rise', 'fade', 'slide', 'zoom', 'none'], photos: ['drift', 'zoom', 'still'],
+    entrance: ['rise', 'fade', 'slide', 'zoom', 'blur', 'reveal', 'layered', 'drop', 'sweep', 'none'],
+    photos: ['drift', 'zoom', 'still'],
     headings: ['letters', 'words', 'plain'], buttons: ['lift', 'glow', 'plain'],
     pages: ['fade', 'cut'], progress: ['on', 'off'], cue: ['line', 'arrow', 'mouse', 'none'],
   };
+  /* THE FONTS (workers/src/site/model.js FONT_CHOICES; a test checks the
+     two lists agree). NO_CYR: the ones without Cyrillic. */
+  var FONT_FAMILY = {
+    playfair: 'Playfair Display', fraunces: 'Fraunces', dmserif: 'DM Serif Display', cormorant: 'Cormorant Garamond',
+    lora: 'Lora', merriweather: 'Merriweather', sora: 'Sora', montserrat: 'Montserrat', manrope: 'Manrope',
+    unbounded: 'Unbounded', spacegrotesk: 'Space Grotesk', oswald: 'Oswald', bebas: 'Bebas Neue', caveat: 'Caveat',
+    comfortaa: 'Comfortaa', inter: 'Inter', sourcesans: 'Source Sans 3', nunito: 'Nunito', worksans: 'Work Sans', dmsans: 'DM Sans',
+  };
+  var FONT_Q = { playfair: 'wght@400..900', fraunces: 'wght@100..900', cormorant: 'wght@300;400;500;600;700', lora: 'wght@400..700',
+    merriweather: 'wght@300;400;700;900', sora: 'wght@100..800', montserrat: 'wght@100..900', manrope: 'wght@200..800', unbounded: 'wght@200..900',
+    spacegrotesk: 'wght@300..700', oswald: 'wght@200..700', caveat: 'wght@400..700', comfortaa: 'wght@300..700', inter: 'wght@100..900',
+    sourcesans: 'wght@200..900', nunito: 'wght@200..1000', worksans: 'wght@100..900', dmsans: 'wght@100..1000' };
+  var NO_CYR = ['fraunces', 'dmserif', 'sora', 'spacegrotesk', 'bebas', 'worksans', 'dmsans'];
+  var HEADING_FONTS = ['look', 'playfair', 'fraunces', 'dmserif', 'cormorant', 'lora', 'sora', 'montserrat', 'manrope', 'unbounded', 'spacegrotesk', 'oswald', 'bebas', 'caveat', 'comfortaa', 'own'];
+  var BODY_FONTS = ['look', 'same', 'inter', 'manrope', 'sourcesans', 'nunito', 'worksans', 'dmsans', 'lora', 'merriweather', 'montserrat'];
+  var LOOK_FONTS = { night: ['Sora', 'Inter'], paper: ['Fraunces', 'Manrope'], bold: ['Manrope', 'Manrope'], custom: ['Sora', 'Inter'] };
+  var CYR_LANGS = ['sr', 'ru', 'uk', 'bg', 'mk', 'be'];
   var SOCIALS = ['youtube', 'instagram', 'facebook', 'x', 'tiktok', 'linkedin', 'spotify', 'email'];
   var LOOKS = ['night', 'paper', 'bold', 'custom'];
   var FOOTERS = ['split', 'center', 'columns'];
@@ -318,9 +342,56 @@
      back, so the page starts again from the server. */
   window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
 
+  /* EVERY PHOTO'S SIZE (Chase, 2026-10-27: "photos still load a bit
+     jagged"): a page holds a photo's place only if it knows the photo's
+     shape before it arrives. A photo uploaded here is measured as it is
+     made; one from before is measured once here and kept with the site
+     ("sizes"), in the working copy and the published one alike — it
+     changes nothing a visitor sees except the jump, so it is never a
+     change of its own to publish. */
+  function photosOf(doc) {
+    var out = [];
+    doc.pages.forEach(function (p) {
+      allSecs(p).forEach(function (sec) {
+        if (sec.photo) out.push(sec.photo);
+        (sec.items || []).forEach(function (it) { if (it.photo) out.push(it.photo); });
+      });
+    });
+    return out.filter(function (u, i, a) { return a.indexOf(u) === i; });
+  }
+  async function measurePhotos() {
+    if (!canEdit() || !state.doc) return;
+    var have = state.doc.dims || {};
+    var want = photosOf(state.doc).filter(function (u) { return !have[u]; }).slice(0, 60);
+    if (!want.length) return;
+    var got = {};
+    await Promise.all(want.map(function (u) {
+      return new Promise(function (ok) {
+        var im = new Image();
+        im.onload = function () { if (im.naturalWidth && im.naturalHeight) got[u] = [im.naturalWidth, im.naturalHeight]; ok(); };
+        im.onerror = function () { ok(); };
+        im.src = u;
+      });
+    }));
+    if (!Object.keys(got).length) return;
+    /* never beside a save of the words: the server's copy and this one's
+       base must stay the same thing */
+    while (state.saving || state.timer_pending) await new Promise(function (r) { setTimeout(r, 300); });
+    state.saving = true;
+    try {
+      var body = await send({ action: 'sizes', dims: got });
+      state.doc.dims = Object.assign(state.doc.dims || {}, got);
+      if (state.body.published) state.body.published.dims = Object.assign(state.body.published.dims || {}, got);
+      state.base = body.draft;
+    } catch (e) { /* measured again next time */ }
+    state.saving = false;
+    if (state.again) { state.again = false; save(); }
+  }
+
   function apply(body) {
     state.body = body;
     state.doc = body.draft;
+    setTimeout(measurePhotos, 1200);
     noteMedia(JSON.stringify(body.draft)); noteMedia(JSON.stringify(body.published));
     /* the draft as the server holds it, for a save to be compared against */
     state.base = JSON.parse(JSON.stringify(body.draft));
@@ -421,7 +492,7 @@
       design: JSON.stringify(d),
       nav: JSON.stringify(nav),
       pages: JSON.stringify(doc.pages.map(function (p) { var q = Object.assign({}, p); delete q.seo; delete q.shareImage; delete q.shareCards; return q; })),
-      advanced: JSON.stringify(doc.pages.map(function (p) { return [p.seo, p.shareImage, p.shareCards]; })),
+      advanced: JSON.stringify([doc.pages.map(function (p) { return [p.seo, p.shareImage, p.shareCards]; }), doc.shareLine || null]),
       links: JSON.stringify(doc.links),
       footer: JSON.stringify(doc.footer),
       settings: JSON.stringify([doc.languages, doc.fallback, doc.give]),
@@ -443,7 +514,61 @@
       dot.hidden = !was || now[t] === was[t];
       dot.title = dot.hidden ? '' : tr('ws.changedHere');
     });
+    drawRevert(now, was);
   }
+
+  /* DISCARD ONE PART (Chase, 2026-10-19: "we need the ability to discard
+     changes of certain section"). Where a dot says a part differs from what
+     visitors see, that part alone can go back to it: the open tab (or, on
+     Pages, the open page) from the line under the tabs, a section from the
+     arrow on its row. It is one more change: Undo brings it back. */
+  function drawRevert(now, was) {
+    var box = $('wsRevert'); if (!box) return;
+    var what = null;
+    if (was && canEdit()) {
+      if (state.tab === 'pages' && state.page) {
+        var rp = realPage();
+        if (pubPage(rp.id) && pageChanged(rp)) what = tr('ws.revert.page');
+      } else if (now[state.tab] !== was[state.tab]) what = fill('ws.revert.area', { area: tr('ws.tab.' + state.tab) });
+    }
+    box.hidden = !what;
+    if (what) $('wsRevertBtn').textContent = what;
+  }
+  function pubPage(id) { var pub = state.body.published; return pub && pub.pages.filter(function (x) { return x.id === id; })[0]; }
+  function copy(x) { return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }
+  function revertArea(tab) {
+    var doc = state.doc, pub = state.body.published;
+    if (tab === 'design') {
+      var keep = { headerLinks: doc.design.headerLinks, nav: doc.design.nav, giveTo: doc.design.giveTo };
+      doc.design = Object.assign(copy(pub.design), keep);
+    } else if (tab === 'nav') {
+      doc.design.nav = copy(pub.design.nav); doc.design.giveTo = copy(pub.design.giveTo); doc.design.headerLinks = copy(pub.design.headerLinks);
+    } else if (tab === 'pages') {
+      doc.pages = pub.pages.map(function (pp) {
+        var mine = doc.pages.filter(function (x) { return x.id === pp.id; })[0], q = copy(pp);
+        if (mine) { q.seo = copy(mine.seo); q.shareImage = copy(mine.shareImage); q.shareCards = copy(mine.shareCards); }
+        return q;
+      });
+    } else if (tab === 'advanced') {
+      doc.pages.forEach(function (p) {
+        var was = pubPage(p.id) || {};
+        p.seo = copy(was.seo); p.shareImage = copy(was.shareImage); p.shareCards = copy(was.shareCards);
+      });
+      doc.shareLine = copy(pub.shareLine);
+    } else if (tab === 'links') doc.links = copy(pub.links);
+    else if (tab === 'footer') doc.footer = copy(pub.footer);
+    else if (tab === 'settings') { doc.languages = copy(pub.languages); doc.fallback = pub.fallback; doc.give = copy(pub.give); fillPair(); }
+  }
+  if ($('wsRevertBtn')) $('wsRevertBtn').addEventListener('click', async function () {
+    var ok = window.StaffConfirm ? await window.StaffConfirm({ title: tr('ws.revert.title'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true }) : true;
+    if (!ok || !state.body.published) return;
+    if (state.tab === 'pages' && state.page) {
+      var i = state.doc.pages.indexOf(realPage());
+      state.doc.pages[i] = copy(pubPage(state.doc.pages[i].id));
+      state.view = null; state.edit = null;
+    } else revertArea(state.tab);
+    draw(); changed(); toast(tr('toast.discarded'));
+  });
 
   function drawBar() {
     var show = canEdit() && state.body.site.unpublished;
@@ -601,6 +726,7 @@
     if (state.tab === 'nav') drawNav();
     if (state.tab === 'advanced') drawAdvanced();
     if (state.tab === 'settings') drawSettings();
+    if (state.body) drawDots();
     /* The site beside whatever is being changed: the page being arranged, or
        Home for the look, the links and the footer. */
     var showFrame = state.tab === 'pages' || state.tab === 'design' || state.tab === 'links' || state.tab === 'footer' || state.tab === 'nav';
@@ -644,12 +770,13 @@
   function frameWant() {
     var s = state.body.site, lang = state.langA;
     var page = state.tab === 'pages' && state.page ? currentPage().id : 'home';
-    var path = s.preview.replace(/\?draft$/, '') + lang + '/' + (page === 'home' ? '' : page + '/');
+    var pagePath = page === 'home' ? '' : pathOf(state.doc.pages.filter(function (x) { return x.id === page; })[0] || { id: page }) + '/';
+    var path = s.preview.replace(/\?draft$/, '') + lang + '/' + pagePath;
     /* On Footer and Links, the footer and nothing else — links show there. */
     var foot = state.tab === 'footer' || state.tab === 'links';
     var open = state.tab === 'pages' && state.page && state.edit != null && currentPage().sections[state.edit];
     var vt = state.tab === 'pages' && state.page ? activeTab(realPage()) : null;
-    return { label: '/' + lang + '/' + (page === 'home' ? '' : page + '/'), foot: foot,
+    return { label: '/' + lang + '/' + pagePath, foot: foot,
       base: path + '?draft' + (foot ? '&part=footer' : ''), target: open ? 's-' + open.id : null, tab: vt ? vt.id : '' };
   }
   function frameDoc(f) { try { return f.contentWindow.document; } catch (e) { return null; } }
@@ -768,12 +895,13 @@
        never show different pages. Same origin, so its address is readable. */
     try {
       var m = this.contentWindow.location.pathname.match(/\/site\/[^/]+\/([a-z-]+)\/(?:([a-z0-9-]+)\/)?$/);
-      var seen = m && (m[2] || 'home');
+      var seenPage = m && (m[2] ? state.doc.pages.filter(function (x) { return pathOf(x) === m[2]; })[0] : null);
+      var seen = m && (m[2] ? seenPage && seenPage.id : 'home');
       var cur = state.page ? currentPage().id : 'home';
       if (seen && seen !== cur && state.doc.pages.some(function (x) { return x.id === seen; })) {
         state.page = seen; state.edit = null;
         if (state.tab === 'pages') drawPages();
-        $('wsPreviewPath').textContent = '/' + m[1] + '/' + (seen === 'home' ? '' : seen + '/');
+        $('wsPreviewPath').textContent = '/' + m[1] + '/' + (seen === 'home' ? '' : m[2] + '/');
         this.dataset.base = frameWant().base; this.dataset.tab = '';
       }
     } catch (e) { /* another origin: nothing to follow */ }
@@ -828,10 +956,11 @@
   var ALIGN_ICON = {
     left: '<path d="M2 3.5h12M2 6.5h8M2 9.5h12M2 12.5h7"/>',
     center: '<path d="M2 3.5h12M4 6.5h8M2 9.5h12M4.5 12.5h7"/>',
-    right: '<path d="M2 3.5h12M6 6.5h8M2 9.5h12M7 12.5h7"/>'
+    right: '<path d="M2 3.5h12M6 6.5h8M2 9.5h12M7 12.5h7"/>',
+    justify: '<path d="M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12"/>'
   };
-  function alignPick(name, current, words) {
-    return '<div class="ws-seg ws-seg-icons" role="group">' + ['left', 'center', 'right'].map(function (o) {
+  function alignPick(name, current, words, justify) {
+    return '<div class="ws-seg ws-seg-icons" role="group">' + ['left', 'center', 'right'].concat(justify ? ['justify'] : []).map(function (o) {
       var label = tr(words + o);
       return '<button type="button" class="ws-segbtn" data-chip="' + esc(name) + '" data-value="' + o + '" aria-pressed="' + (o === current) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '">' +
         '<svg viewBox="0 0 16 16" aria-hidden="true">' + ALIGN_ICON[o] + '</svg></button>';
@@ -878,6 +1007,192 @@
       (label ? ' aria-label="' + esc(label) + '"' : '') + '><span class="switch-track"><span class="switch-state">' + esc(tr(on ? 'switch.on' : 'switch.off')) +
       '</span><span class="switch-knob"></span></span>' + (label ? '<span class="switch-label">' + esc(label) + '</span>' : '') + '</button>';
   }
+  /* FONTS (Chase, 2026-10-19: "we should add a font selection/upload, with
+     a fallback text in case one of the languages doesn't support the
+     font"). Each choice is a tile showing itself; a site writing Cyrillic
+     sees which fonts cannot, and those letters come out in the fallback. */
+  function fontsOf() {
+    var d = state.doc.design;
+    d.fonts = d.fonts || { heading: 'look', body: 'look', fallback: 'look', own: null, ownName: '' };
+    return d.fonts;
+  }
+  function loadConsoleFonts() {
+    if (document.getElementById('wsFontFaces')) return;
+    var fams = Object.keys(FONT_FAMILY).map(function (k) { return FONT_FAMILY[k]; });
+    var chars = 'Aa' + fams.join('') + tr('ws.font.look') + 'ČčĆćŠšŽžĐđ';
+    var uniq = chars.split('').filter(function (c, i, a) { return a.indexOf(c) === i; }).join('');
+    var l = document.createElement('link'); l.id = 'wsFontFaces'; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?' + fams.map(function (f) { return 'family=' + f.replace(/ /g, '+'); }).join('&') + '&text=' + encodeURIComponent(uniq) + '&display=swap';
+    document.head.appendChild(l);
+  }
+  /* A LIST TO CHOOSE FROM THAT SHOWS WHAT IT DOES (Chase, 2026-10-27: "a
+     dropdown instead of a selection like you currently have. But it would
+     be nice to have the visualizer change when you hover over a new font,
+     even if you don't select it … It would need to be almost
+     instantaneous"). The box shows the one chosen; opened, each option is
+     itself (a font in its own face), and pointing at one — or moving to it
+     with the arrow keys — shows it in the preview at once (peek), without
+     choosing it. Leaving the list puts the preview back. The same open and
+     close as a choice with pictures (.ws-pp). `opts`: [{ value, label,
+     style, tag }]. */
+  function ddPick(name, current, opts, extra) {
+    var cur = opts.filter(function (o) { return o.value === current; })[0] || opts[0];
+    var open = state.ppOpen === name;
+    var face = function (o) {
+      return '<span class="ws-dd-name"' + (o.style ? ' style="' + esc(o.style) + '"' : '') + '>' + esc(o.label) + '</span>' +
+        (o.tag ? '<span class="ws-font-tag">' + esc(o.tag) + '</span>' : '');
+    };
+    return '<div class="ws-pp ws-dd' + (open ? ' is-open' : '') + '"' + (extra || '') + '>' +
+      '<button type="button" class="ws-pp-btn" data-pp-toggle="' + esc(name) + '" aria-haspopup="listbox" aria-expanded="' + open + '">' +
+        face(cur) + '<span class="ws-chev" aria-hidden="true"></span></button>' +
+      '<div class="ws-pp-list" role="listbox"' + (open ? '' : ' hidden') + '>' + opts.map(function (o) {
+        return '<button type="button" role="option" class="ws-pp-opt" data-chip="' + esc(name) + '" data-value="' + esc(o.value) + '" data-peek="' + esc(name) + '" aria-selected="' + (o.value === current) + '">' + face(o) + '</button>';
+      }).join('') + '</div></div>';
+  }
+  function fontsHtml(d) {
+    loadConsoleFonts();
+    var f = fontsOf(), look = LOOK_FONTS[d.look] || LOOK_FONTS.night;
+    var cyr = state.doc.languages.some(function (l) { return CYR_LANGS.indexOf(l) !== -1; });
+    if (f.own && !document.getElementById('wsOwnFace')) {
+      var st = document.createElement('style'); st.id = 'wsOwnFace';
+      st.textContent = "@font-face{font-family:'WsOwn';src:url(" + f.own + ");font-display:swap}";
+      document.head.appendChild(st);
+    }
+    var opts = function (list, lookFam) {
+      return list.filter(function (id) { return id !== 'own' || f.own; }).map(function (id) {
+        var fam = id === 'look' ? lookFam : id === 'own' ? 'WsOwn' : id === 'same' ? null : FONT_FAMILY[id];
+        var noCyr = cyr && id !== 'same' && (id === 'own' || NO_CYR.indexOf(id) !== -1 || (id === 'look' && NO_CYR.indexOf(String(lookFam).toLowerCase()) !== -1));
+        return { value: id, style: fam ? "font-family:'" + fam + "',sans-serif" : '',
+          label: id === 'look' ? tr('ws.font.look') + ' · ' + lookFam : id === 'own' ? (f.ownName || tr('ws.font.own')) : id === 'same' ? tr('ws.font.same') : FONT_FAMILY[id],
+          tag: noCyr ? tr('ws.font.noCyr') : '' };
+      });
+    };
+    var fallbacks = ['look'].concat(Object.keys(FONT_FAMILY).filter(function (k) { return NO_CYR.indexOf(k) === -1; }));
+    var upload = '<label class="link-btn ws-font-change">' + esc(f.own ? tr('ws.font.change') : tr('ws.font.upload')) +
+      '<input type="file" accept=".woff2,.woff,.ttf,.otf" data-font-file hidden></label>';
+    return '<div class="ws-head"><h2>' + esc(tr('ws.fonts')) + '</h2></div><div class="ws-rows">' +
+      row(tr('ws.font.heading'), ddPick('font:heading', f.heading || 'look', opts(HEADING_FONTS, look[0])) + upload) +
+      row(tr('ws.font.body'), ddPick('font:body', f.body || 'look', opts(BODY_FONTS, look[1]))) +
+      row(tr('ws.font.fallback'), choice('font:fallback', fallbacks, f.fallback || 'look', function (v) { return v === 'look' ? tr('ws.font.look') : FONT_FAMILY[v]; })) +
+      '</div>';
+  }
+
+  /* ---- showing a choice in the preview before it is made (peek) ---------
+     Straight into the preview's own page, which is the site itself (same
+     origin): a font is a style laid over the page's own; an entrance is the
+     page's own entrance played again (render.js __siteReplay). Nothing is
+     drawn again, so it is instant. */
+  function frameNow() { var f = $('wsFrame'); try { return f && f.contentWindow && f.contentWindow.document && f.contentWindow.document.documentElement ? f.contentWindow : null; } catch (e) { return null; } }
+  /* every font on the list, loaded into the preview once its list opens, so
+     pointing at one shows it with no wait */
+  function framePrepFonts(w) {
+    var doc = w.document;
+    if (doc.getElementById('wsPeekFonts')) return;
+    var l = doc.createElement('link'); l.id = 'wsPeekFonts'; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?' + Object.keys(FONT_FAMILY).map(function (k) {
+      return 'family=' + FONT_FAMILY[k].replace(/ /g, '+') + (FONT_Q[k] ? ':' + FONT_Q[k] : '');
+    }).join('&') + '&display=swap';
+    l.onload = function () {
+      if (!doc.fonts) return;
+      Object.keys(FONT_FAMILY).forEach(function (k) { ['300', '600'].forEach(function (wt) { doc.fonts.load(wt + ' 1em "' + FONT_FAMILY[k] + '"').catch(function () {}); }); });
+    };
+    doc.head.appendChild(l);
+    var f = fontsOf();
+    if (f.own) { var st = doc.createElement('style'); st.textContent = "@font-face{font-family:'WsOwn';src:url(" + f.own + ");font-display:swap}"; doc.head.appendChild(st); }
+  }
+  function famOf(id, which) {
+    var look = LOOK_FONTS[state.doc.design.look] || LOOK_FONTS.night;
+    if (id === 'same') return famOf(fontsOf().heading || 'look', 'heading');
+    if (id === 'own') return 'WsOwn';
+    if (id === 'look') return look[which === 'heading' ? 0 : 1];
+    return FONT_FAMILY[id] || look[0];
+  }
+  function peek(name, value) {
+    var w = frameNow();
+    if (!w) return;
+    var doc = w.document;
+    if (name === 'font:heading' || name === 'font:body') {
+      framePrepFonts(w);
+      var f = fontsOf(), hd = name === 'font:heading' ? value : f.heading || 'look', bd = name === 'font:body' ? value : f.body || 'look';
+      var st = doc.getElementById('wsPeek');
+      if (!st) { st = doc.createElement('style'); st.id = 'wsPeek'; doc.head.appendChild(st); }
+      st.textContent = ":root:root{--display:'" + famOf(hd, 'heading') + "',system-ui,sans-serif;--body:'" + (bd === 'same' ? famOf(hd, 'heading') : famOf(bd, 'body')) + "',system-ui,sans-serif}";
+      state.peeked = name;
+    } else if (name === 'motion:entrance' && w.__siteReplay) {
+      w.__siteReplay({ entrance: value });
+      state.peeked = name;
+    } else if (name.indexOf('enter:') === 0 && w.__siteReplay) {
+      var sec = currentPage().sections[+name.slice(6)];
+      if (sec) { w.__siteReplay({ sid: sec.id, enter: value === 'site' ? '' : value }); state.peeked = name; }
+    }
+  }
+  function unpeek() {
+    var name = state.peeked, w = frameNow();
+    state.peeked = null;
+    if (!name || !w) return;
+    var doc = w.document;
+    if (name.indexOf('font:') === 0) { var st = doc.getElementById('wsPeek'); if (st) st.remove(); }
+    if (name === 'motion:entrance') doc.documentElement.setAttribute('data-entrance', state.doc.design.motion.entrance);
+    if (name.indexOf('enter:') === 0) {
+      var sec = currentPage().sections[+name.slice(6)], el = sec && doc.getElementById('s-' + sec.id);
+      if (el) { if (sec.enter) el.setAttribute('data-enter', sec.enter); else el.removeAttribute('data-enter'); }
+    }
+  }
+  /* the arrival played again, as it is set (the Play button, the speed) */
+  function replay() { var w = frameNow(); if (w && w.__siteReplay) w.__siteReplay({}); }
+  $('wsRoot').addEventListener('pointerover', function (e) {
+    var o = e.target.closest && e.target.closest('.ws-pp-opt[data-peek]');
+    if (o && o.dataset.peekShown !== '1') { [].forEach.call(o.parentNode.children, function (x) { x.dataset.peekShown = ''; }); o.dataset.peekShown = '1'; peek(o.dataset.peek, o.dataset.value); }
+  });
+  $('wsRoot').addEventListener('focusin', function (e) {
+    var o = e.target.closest && e.target.closest('.ws-pp-opt[data-peek]');
+    if (o) peek(o.dataset.peek, o.dataset.value);
+  });
+  /* THE SPEED, as a slider (Chase, 2026-10-27): 0.2 to 4 seconds, spread so
+     each step feels like the same change — the middle is the default. */
+  var SPEED = { min: 0.2, max: 4, def: 1.25 };
+  function speedOf(v) { return Math.round(SPEED.min * Math.pow(SPEED.max / SPEED.min, v / 1000) * 100) / 100; }
+  function speedPos(sec) { return Math.round(1000 * Math.log(sec / SPEED.min) / Math.log(SPEED.max / SPEED.min)); }
+  function speedNum(v) { v = +v; return isFinite(v) && v > 0 ? v : ({ slow: 1.7, medium: 1.25, fast: 0.8 }[v] || SPEED.def); }
+  function speedHtml(sec) {
+    return '<div class="ws-speed"><span class="ws-speed-end">' + esc(tr('ws.m.speed.quick')) + '</span>' +
+      '<input type="range" min="0" max="1000" step="1" value="' + speedPos(sec) + '" data-speed aria-label="' + esc(tr('ws.m.speed')) + '">' +
+      '<span class="ws-speed-end">' + esc(tr('ws.m.speed.slow')) + '</span>' +
+      '<output class="ws-speed-val" data-speed-val>' + esc(fill('ws.m.speed.secs', { n: sec.toLocaleString(state.langA || undefined, { maximumFractionDigits: 2 }) })) + '</output></div>';
+  }
+  function speedVars(t) { return '--mt:' + t + 's;--mstep:' + Math.round(t * 88) + 'ms;--cstep:' + Math.round(t * 33.6) + 'ms'; }
+  var speedTimer = null;
+  $('wsRoot').addEventListener('input', function (e) {
+    if (e.target.dataset.speed === undefined) return;
+    var t = speedOf(+e.target.value);
+    state.doc.design.motion.speed = t;
+    var out = e.target.parentNode.querySelector('[data-speed-val]');
+    if (out) out.textContent = fill('ws.m.speed.secs', { n: t.toLocaleString(state.langA || undefined, { maximumFractionDigits: 2 }) });
+    var w = frameNow();
+    if (w) w.document.documentElement.setAttribute('style', speedVars(t));
+    clearTimeout(speedTimer);
+    speedTimer = setTimeout(replay, 260);
+    changed(false);
+  });
+  async function uploadFont(input) {
+    var file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    var type = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' }[ext];
+    if (!type) return toast(tr('ws.font.kinds'), 'err');
+    try {
+      var res = await fetch('/api/admin/media?kind=partnersite', { method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': type, 'X-File-Name': fileName(file.name) }, body: file });
+      var body = await res.json();
+      if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
+      noteMedia(body.url);
+      var f = fontsOf();
+      f.own = body.url; f.ownName = fileName(file.name).replace(/\.[a-z0-9]+$/i, '').slice(0, 60); f.heading = 'own';
+      var old = document.getElementById('wsOwnFace'); if (old) old.remove();
+      drawDesign(); changed();
+    } catch (err) { toast(err.message, 'err'); }
+  }
   function row(label, control) {
     /* a choice with pictures takes the row's whole width, under its name */
     var wide = control.indexOf('<div class="ws-pp') === 0;
@@ -895,7 +1210,22 @@
     return (n && n[id]) || tr('ws.page.' + id);
   }
   function pageLabel(p, lang) {
+    if (p.custom) return (p.label && (p.label[lang] || p.label[state.doc.fallback])) || Object.values(p.label || {}).filter(Boolean)[0] || tr('ws.newPage');
     return (p.label && p.label[lang]) || builtInName(p.id, lang);
+  }
+  /* A page's part of the address: its id, or a page of the owner's own's
+     own address (site/model.js pagePath). */
+  function pathOf(p) { return p && p.custom ? p.slug : p ? p.id : ''; }
+  function slugOf(name) {
+    return String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  }
+  /* an address no other page has, made from a name */
+  function freeSlug(name, self) {
+    var base = slugOf(name) || 'page', slug = base, n = 2;
+    var taken = state.doc.pages.filter(function (x) { return x !== self; }).map(pathOf);
+    while (taken.indexOf(slug) !== -1) slug = base + '-' + n++;
+    return slug;
   }
   /* The Reference line under a page's name: what that language's visitors
      read in the menu, renamed or not. */
@@ -1042,6 +1372,10 @@
     var was = allSecs(pub.pages.filter(function (x) { return x.id === p.id; })[0] || { sections: [] }).filter(function (x) { return x.id === s.id; })[0];
     return JSON.stringify(s) !== JSON.stringify(was);
   }
+  function pubSection(id) {
+    var was = pubPage(realPage().id);
+    return was && allSecs(was).filter(function (x) { return x.id === id; })[0];
+  }
   function dot(on) { return on ? '<i class="ws-dot" title="' + esc(tr('ws.changedHere')) + '"></i>' : ''; }
 
   /* ALL PAGES, then ONE PAGE (Chase, 2026-09-29, after the page tabs: "didn't
@@ -1053,7 +1387,7 @@
      the top of every page. */
   function drawPages() {
     keepPlace();
-    if (!state.page) return drawOverview();
+    if (!state.page) { drawOverview(); if (state.body) drawDots(); return; }
     var p = currentPage();
     if (state.edit != null && !p.sections[state.edit]) state.edit = null;
 
@@ -1074,7 +1408,10 @@
       (p.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + pi + '"', p.on, tr(p.on ? 'ws.shown' : 'ws.hidden'))) +
       '</div>' +
       '<label class="ws-pagename"><span>' + esc(tr('ws.nameInMenu')) + '</span>' + refPage(p) +
-        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>';
+        '<input type="text" maxlength="40" data-page-label="' + pi + '" value="' + esc((p.label || {})[state.langA] || '') + '" placeholder="' + esc(p.custom ? pageLabel(p, state.langA) : builtInName(p.id, state.langA)) + '" lang="' + esc(state.langA) + '"></label>' +
+      /* a page of your own: its address, made from its name until it is published */
+      (p.custom ? '<label class="ws-pagename ws-pageaddr"><span>' + esc(tr('ws.page.address')) + '</span>' +
+        '<span class="ws-addr"><span class="ws-addr-base">/' + esc(state.langA) + '/</span><input type="text" maxlength="40" data-page-slug="' + pi + '" value="' + esc(p.slug || '') + '" spellcheck="false" autocapitalize="off"><span class="ws-addr-base">/</span></span></label>' : '');
     html += tabsHtml(realPage());
 
     var n = p.sections.length;
@@ -1105,6 +1442,8 @@
               '<span class="ws-stile-words"><b>' + esc(tr('ws.sec.' + x.type)) + dot(sectionChanged(x)) + '</b><span>' + esc(summary(x)) + '</span>' + missingNote(sectionMissing(x)) + '</span>' +
               '<span class="ws-chev" aria-hidden="true"></span></button>' +
             '<span class="ws-stile-tools">' + grip() +
+              (pubSection(x.id) && sectionChanged(x) && canEdit()
+                ? '<button type="button" class="ws-icon" data-sec-revert="' + i + '" aria-label="' + esc(tr('ws.revert.sec')) + '" title="' + esc(tr('ws.revert.sec')) + '">↺</button>' : '') +
               '<button type="button" class="ws-icon del" data-sec-remove="' + i + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button>' +
             '</span></div>' +
           '<div class="ws-acc-body"><div class="ws-acc-inner">' + (open ? panelHtml(p, i) : '') + '</div></div>' +
@@ -1129,6 +1468,7 @@
       (n || tAt >= 0 ? insert(0, false) : '<p class="empty">' + esc(tr('ws.noSections')) + '</p>') + rows +
       (n || tAt >= 0 ? '' : '<button type="button" class="ws-addbtn" data-insert-at="0">+ ' + esc(tr('ws.addSection')) + '</button>') + '</div>';
     $('wsPages').innerHTML = html;
+    if (state.body) drawDots();
     sizeOnScreen($('wsPages'));
     if (!canEdit()) [].forEach.call($('wsPages').querySelectorAll('[contenteditable]'), function (el) { el.setAttribute('contenteditable', 'false'); });
 
@@ -1164,8 +1504,14 @@
             missingNote(allSecs(x).reduce(function (o, sec) { return sectionMissing(sec, o); }, {})) + '</span>' +
             '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' +
           (x.id === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : sw('data-page-on="' + i + '"', x.on, tr(x.on ? 'ws.shown' : 'ws.hidden'))) +
-          grip() + '</li>';
-      }).join('') + '</ol>';
+          grip() +
+          /* only a page of the owner's own can go (2026-10-27) */
+          (x.custom ? '<button type="button" class="ws-icon del" data-page-remove="' + i + '" aria-label="' + esc(tr('ws.page.remove')) + '" title="' + esc(tr('ws.page.remove')) + '">✕</button>' : '') +
+          '</li>';
+      }).join('') + '</ol>' +
+      /* A PAGE OF YOUR OWN, under the rest (Chase, 2026-10-27) */
+      (canEdit() && pages.filter(function (x) { return x.custom; }).length < 12
+        ? '<button type="button" class="ws-addbtn ws-addpage" data-page-add>+ ' + esc(tr('ws.page.add')) + '</button>' : '');
   }
 
   /* One section, alone. Only the tabs it has something for. */
@@ -1214,7 +1560,7 @@
     var src = function (f) { var o = {}; Object.keys(s.words || {}).forEach(function (l) { o[l] = (s.words[l] || {})[f]; }); return o; };
     var html = '<div class="ws-sectabs" role="tablist">' + tabs.map(function (t) {
         /* a Videos section's items are its buttons (2026-10-12) */
-        var tw = s.type === 'videos' && t === 'links' ? 'buttons' : t;
+        var tw = s.type === 'videos' && t === 'links' ? 'buttons' : s.type === 'rows' && t === 'cards' ? 'rows' : t;
         return '<button type="button" role="tab" data-sectab="' + t + '" aria-selected="' + (t === state.sectab) + '">' + esc(tr('ws.tabw.' + tw)) + '</button>';
       }).join('') + '</div><div class="ws-panelbody">';
 
@@ -1274,15 +1620,16 @@
       html += '<div class="ws-linkrows ws-sec-items">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
         var head = '<div class="ws-linkitem" data-k="c' + j + '"><div class="ws-linkrow' + (open ? ' is-open' : '') + '">' + grip() +
-          (s.numbers !== false ? '<span class="ws-cnum">' + (j + 1) + '</span>' : '') +
+          (spec.label ? '<span class="ws-cnum ws-rowlabel">' + esc(t.label || '·') + '</span>' : s.numbers !== false ? '<span class="ws-cnum">' + (s.numStyle === 'roman' ? ROMAN[j] || j + 1 : j + 1) + '</span>' : '') +
           '<b>' + esc(plain(t.title || '') || tr('ws.itemUntitled')) + '</b><span>' + esc(plain(t.text || '')) + '</span>' +
           '<button type="button" class="link-btn" data-item-open="' + j + '">' + esc(open ? tr('ws.close') : tr('ws.edit')) + '</button>' +
           '<button type="button" class="ws-icon del" data-item-remove="' + k + '" aria-label="' + esc(tr('ws.remove')) + '">✕</button></div>';
         if (!open) return head + '</div>';
         return head + '<div class="ws-linkedit">' +
-          itemRich(k, 'title', t.title, tr('ws.itemTitle'), ph('card', 'title'), true) +
-          itemRich(k, 'text', t.text, tr('ws.itemText'), ph('card', 'text'), true) + '</div></div>';
-      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr('ws.addCard')) + '</button>';
+          (spec.label ? '<label class="fld"><span>' + esc(tr('ws.itemLabel')) + '</span><input type="text" maxlength="40" data-item="' + k + ':label" value="' + esc(t.label || '') + '" placeholder="' + esc(ph('row', 'label')) + '" lang="' + esc(state.langA) + '"></label>' : '') +
+          itemRich(k, 'title', t.title, tr('ws.itemTitle'), ph(spec.label ? 'row' : 'card', 'title'), true) +
+          itemRich(k, 'text', t.text, spec.label ? tr('ws.f.text') : tr('ws.itemText'), ph(spec.label ? 'row' : 'card', 'text'), true) + '</div></div>';
+      }).join('') + '</div><button type="button" class="ghost-btn" data-item-add="' + i + '">+ ' + esc(tr(spec.label ? 'ws.addRow' : 'ws.addCard')) + '</button>';
     }
 
     if (state.sectab === 'links') {
@@ -1290,7 +1637,26 @@
          like the Links section's Buttons, drawn by the site like every other
          button, in place of the ones set on Updates › Videos. */
       var asButtons = s.variant === 'buttons' || s.type === 'videos';
+      /* a stacked button carries its picture (2026-10-27) */
+      var withPic = !asButtons || (s.type === 'links' && s.stack);
       if (s.type === 'videos') html += '<p class="ws-note">' + esc(tr('ws.videoButtons')) + '</p>';
+      /* WHAT EACH LINK SHOWS, beside the words it shows (Chase, 2026-10-27:
+         "both Your Own Note, and the Description show up IF THEY ARE BOTH
+         WANTED … Maybe with a toggle switch on both?"): a switch for each
+         part, for the whole section, and how the pictures look. A part
+         switched off leaves its box out below. */
+      if (s.type === 'links') {
+        var lflag = function (key, on, label) { return sw('data-sec-flag="' + i + ':' + key + '"', on, label); };
+        html += '<div class="ws-linkshow">' + (asButtons
+          ? '<div class="ws-lrow"><span class="ws-lbl2">' + esc(tr('ws.stack')) + '</span><div class="ws-lctl">' +
+              choice('stack:' + i, ['row', 'stack'], s.stack ? 'stack' : 'row', function (v) { return tr('ws.stack.' + v); }) + '</div></div>'
+          : '<div class="ws-lrow"><span class="ws-lbl2">' + esc(tr('ws.shows')) + '</span><div class="ws-lctl ws-flags">' +
+              lflag('showKind', s.showKind !== false, tr('ws.shows.kind')) + lflag('showDesc', s.showDesc !== false, tr('ws.shows.desc')) +
+              lflag('showNote', s.showNote !== false, tr('ws.shows.note')) + '</div></div>') +
+          (withPic ? '<div class="ws-lrow"><span class="ws-lbl2">' + esc(tr('ws.pics')) + '</span><div class="ws-lctl">' +
+              choice('pics:' + i, ['whole', 'fill', 'round', 'none'], s.pics || 'whole', function (v) { return tr('ws.pics.' + v); }) + '</div></div>' : '') +
+          '</div>';
+      }
       html += '<div class="ws-linkrows ws-sec-items">' + (s.items || []).map(function (it, j) {
         var t = (it.words || {})[state.langA] || {}, k = i + ':' + j, open = state.openItem === j;
         var jump = it.url && it.url.indexOf('section:') === 0 &&
@@ -1309,12 +1675,12 @@
              is and who made it on one line, its words, and the owner's own
              note set apart. A button has only its title. */
           (asButtons ? '' :
-            '<div class="ws-fields">' +
+            (s.showKind === false ? '' : '<div class="ws-fields">' +
               '<label class="fld"><span>' + esc(tr('ws.itemType')) + '</span><input type="text" maxlength="40" data-item="' + k + ':type" value="' + esc(t.type || '') + '" lang="' + esc(state.langA) + '"></label>' +
-              (s.variant === 'cards' ? '<label class="fld"><span>' + esc(tr('ws.itemBy')) + '</span><input type="text" maxlength="80" data-item="' + k + ':by" value="' + esc(t.by || '') + '" lang="' + esc(state.langA) + '"></label>' : '') +
-            '</div>' +
-            itemRich(k, 'text', t.text, tr('ws.itemText'), ph('item', 'text'), false) +
-            (s.variant === 'cards' ? itemRich(k, 'note', t.note, tr('ws.itemNote'), tr('ws.itemNotePh'), false) : '')) +
+              '<label class="fld"><span>' + esc(tr('ws.itemBy')) + '</span><input type="text" maxlength="80" data-item="' + k + ':by" value="' + esc(t.by || '') + '" lang="' + esc(state.langA) + '"></label>' +
+            '</div>') +
+            (s.showDesc === false ? '' : itemRich(k, 'text', t.text, tr('ws.itemText'), ph('item', 'text'), false)) +
+            (s.showNote === false ? '' : itemRich(k, 'note', t.note, tr('ws.itemNote'), tr('ws.itemNotePh'), false))) +
           (asButtons
             /* each button its own color (2026-10-07) */
             ? '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.lcolor')) + '</span>' +
@@ -1323,8 +1689,8 @@
             : '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.tier')) + '</span>' +
               choice('tier:' + k, ['big', 'std', 'small'], it.tier || 'std', function (v) { return tr('ws.tier.' + v); }) + '</div>') +
           '<div class="ws-field"><span class="ws-lbl2">' + esc(tr('ws.link.goesTo')) + '</span>' + linkPicker('item:' + k, it.url || 'https://', false) + '</div>' +
-          /* a button carries no picture */
-          (asButtons ? '' : '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
+          /* a button in a row carries no picture */
+          (!withPic || s.pics === 'none' ? '' : '<div class="ws-sec-row">' + (it.photo ? '<img class="ws-thumb" src="' + esc(it.photo) + '" alt="">' : '') +
             '<label class="ghost-btn sm ws-file">' + esc(it.photo ? tr('ws.changePhoto') : tr('ws.choosePhoto')) + '<input type="file" accept="image/*" data-item-photo="' + k + '" hidden></label>' +
             (it.photo ? '<button type="button" class="link-btn" data-item-unphoto="' + k + '">' + esc(tr('ws.removePhoto')) + '</button>' : '') +
             '<span class="hint"></span></div>') + '</div></div>';
@@ -1372,6 +1738,9 @@
         lay += lrow(tr('ws.vTitle'), choice('vtitle:' + i, ['words', 'latest'], s.titleFrom || 'words', function (v) { return tr('ws.vTitle.' + v); })) +
           lrow(tr('ws.vLinks'), choice('vlinks:' + i, ['buttons', 'outline', 'subtle'], s.linkStyle || 'buttons', function (v) { return tr('ws.vLinks.' + v); }));
       }
+      if (s.type === 'cards' && s.numbers !== false) {
+        lay += lrow(tr('ws.numStyle'), choice('numstyle:' + i, ['digits', 'roman'], s.numStyle || 'digits', function (v) { return tr('ws.numStyle.' + v); }));
+      }
       if (s.type === 'cards') {
         /* Open cards: Detached draws the upright lines between them, Attached none */
         lay += lrow(tr('ws.cardLines'), choice('clines:' + i, ['attached', 'detached'], s.variant === 'open' ? (s.lines ? 'detached' : 'attached')
@@ -1391,15 +1760,10 @@
         lay += lrow(tr('ws.reach'), flag('reachLinks', !!s.reachLinks, tr('ws.reachLinks')) + flag('reachGive', !!s.reachGive, tr('ws.reachGive')));
         if (s.reachLinks || s.reachGive) lay += lrow(tr('ws.reachStyle'), choice('reachstyle:' + i, ['line', 'tiles', 'icons'], s.reachStyle || 'line', function (v) { return tr('ws.reachStyle.' + v); }));
       }
-      /* what each resource shows, for the whole section (2026-10-13) */
-      if (s.type === 'links' && s.variant !== 'buttons') {
-        lay += lrow(tr('ws.shows'), flag('showKind', s.showKind !== false, tr('ws.shows.kind')) +
-          flag('showDesc', s.showDesc !== false, tr('ws.shows.desc')) +
-          (s.variant === 'list' ? '' : flag('showNote', s.showNote !== false, tr('ws.shows.note'))));
-      }
+      /* what each resource shows lives beside its words, on the Links tab (2026-10-27) */
       html += grp(tr('ws.layout'), lay);
 
-      var lu = lrow(tr('ws.lineup.words'), alignPick('align:' + i, s.align === 'indent' ? 'left' : s.align || defaultAlign(s), 'ws.align.'),
+      var lu = lrow(tr('ws.lineup.words'), alignPick('align:' + i, s.align === 'indent' ? 'left' : s.align || defaultAlign(s), 'ws.align.', true),
         flag('indent', !!s.indent || s.align === 'indent', tr('ws.indent')));
       if (s.type === 'text' || s.type === 'photoText') {
         var tA = s.titleAlign || (s.align === 'center' || s.align === 'right' ? s.align : 'left');
@@ -1416,6 +1780,15 @@
           s.type === 'header' ? flag('topline', s.topline !== false, tr('ws.topline')) : ''
         ].join('') + '</div>');
       }
+
+      /* HOW IT ARRIVES (Chase, 2026-10-27: "each section should have a way
+         to override the way the section loads in once they scroll past
+         it"): the site's way, or its own — each played on the section in
+         the preview as it is pointed at. */
+      var siteEnter = (state.doc.design.motion || {}).entrance || 'rise';
+      html += grp(tr('ws.grp.motion'), lrow(tr('ws.enter'), ddPick('enter:' + i, s.enter || 'site', ['site'].concat(MOTION.entrance).map(function (v) {
+        return { value: v, label: v === 'site' ? fill('ws.enter.site', { way: tr('ws.m.entrance.' + siteEnter) }) : tr('ws.m.entrance.' + v) };
+      })), '<button type="button" class="ghost-btn sm ws-play" data-replay-sec="' + i + '">' + esc(tr('ws.m.play')) + '</button>'));
 
       var grounds = s.type === 'header' ? ['plain', 'raised', 'tint', 'accent'] : ['plain', 'raised', 'tint'];
       var joined = i > 0 && !!s.join;
@@ -1490,6 +1863,8 @@
     contact: [[10,14,80,12,'l'],[10,34,80,12,'l'],[10,54,80,20,'l'],[10,80,20,10,'a']],
     give: [[10,20,60,12,'t'],[10,42,76,6,'l'],[10,54,70,6,'l'],[10,70,26,12,'a']],
     links: [[8,14,84,20,'l'],[8,40,84,20,'l'],[8,66,84,20,'l']],
+    define: [[10,16,56,22,'t'],[10,44,30,6,'a'],[10,60,4,6,'a'],[18,60,64,6,'l'],[10,74,4,6,'a'],[18,74,56,6,'l']],
+    rows: [[8,14,16,6,'a'],[30,12,40,8,'t'],[30,24,60,5,'l'],[8,44,84,1,'l'],[8,54,16,6,'a'],[30,52,40,8,'t'],[30,64,60,5,'l']],
     cards: [[8,12,10,14,'a','50%'],[22,12,70,14,'l'],[12,30,2,10,'l'],[8,42,10,14,'a','50%'],[22,42,70,14,'l'],[12,60,2,10,'l'],[8,72,10,14,'a','50%'],[22,72,70,14,'l']],
   };
   function sketch(type) {
@@ -1516,7 +1891,25 @@
     if (e.target === this) return closeAdd();
     var t = e.target.closest('[data-add-type]');
     if (!t) return;
-    var type = t.getAttribute('data-add-type'), spec = SECTIONS[type], words = {}, fills = loremFields(type);
+    var type = t.getAttribute('data-add-type'), spec = SECTIONS[type];
+    var s = makeSection(type);
+    /* Where it was asked for, and straight into it: a new section is one
+       to be filled in. */
+    var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
+    /* Above the tabs pushes them down one; at the tabs' own place, the
+       button under the Tabs row adds below them and the one over it above. */
+    var rp = realPage(), ta = activeTab(rp) ? -1 : tabsAt(rp);
+    if (ta >= 0) rp.tabs.at = at < ta || (at === ta && !state.insertAfterTabs) ? ta + 1 : ta;
+    currentPage().sections.splice(at, 0, s);
+    state.edit = at; state.animate = at; state.sectab = spec.items && s.type !== 'videos' ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
+    closeAdd(); drawPages(); changed(); refreshFrame();
+    var row = $('wsPages').querySelector('.ws-acc[data-si="' + at + '"]');
+    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+  /* A NEW SECTION: stand-in words in every language, in the shape of what
+     it holds, so it shows what it can do (and that it waits for words). */
+  function makeSection(type) {
+    var spec = SECTIONS[type], words = {}, fills = loremFields(type);
     state.doc.languages.forEach(function (l) {
       words[l] = {};
       spec.words.forEach(function (f) { words[l][f] = fills.indexOf(f) !== -1 ? lorem(f) : ''; });
@@ -1533,24 +1926,17 @@
       state.doc.languages.forEach(function (l) { w[l] = { title: lorem('title'), text: lorem('caption') + '.' }; });
       return w;
     };
-    if (spec.items === 'cards') s.items = [0, 1, 2].map(function () { return { words: itemWords() }; });
+    if (spec.items === 'cards') s.items = [0, 1, 2].map(function () {
+      var iw = itemWords();
+      if (spec.label) Object.keys(iw).forEach(function (l) { iw[l].label = lorem('label'); });
+      return { words: iw };
+    });
     /* a Videos section starts with no buttons of its own: Updates' show */
     else if (spec.items && s.type !== 'videos') s.items = ['page:about', 'page:mission'].map(function (u) { return { url: u, photo: null, words: itemWords() }; });
-    if (spec.items === 'cards') s.numbers = true;
+    if (spec.items === 'cards' && !spec.label) s.numbers = true;
     if (s.type === 'contact') { s.reachLinks = true; s.reachGive = true; }
-    /* Where it was asked for, and straight into it: a new section is one
-       to be filled in. */
-    var at = Math.min(state.insertAt == null ? 1e9 : state.insertAt, currentPage().sections.length);
-    /* Above the tabs pushes them down one; at the tabs' own place, the
-       button under the Tabs row adds below them and the one over it above. */
-    var rp = realPage(), ta = activeTab(rp) ? -1 : tabsAt(rp);
-    if (ta >= 0) rp.tabs.at = at < ta || (at === ta && !state.insertAfterTabs) ? ta + 1 : ta;
-    currentPage().sections.splice(at, 0, s);
-    state.edit = at; state.animate = at; state.sectab = spec.items && s.type !== 'videos' ? (spec.items === 'cards' ? 'cards' : 'links') : 'words'; state.openItem = null;
-    closeAdd(); drawPages(); changed(); refreshFrame();
-    var row = $('wsPages').querySelector('.ws-acc[data-si="' + at + '"]');
-    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  });
+    return s;
+  }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('wsAddBack').hidden) closeAdd(); });
 
   /* ---- Design ---------------------------------------------------------- */
@@ -1612,10 +1998,17 @@
             (d.favicon ? '<button type="button" class="link-btn" data-unfavicon>' + esc(tr('ws.removePhoto')) + '</button>' : '')
           : '') +
         '<span class="hint"></span>') +
-      '</div><div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
+      '</div>' + fontsHtml(d) + '<div class="ws-head"><h2>' + esc(tr('ws.motion')) + '</h2></div><div class="ws-rows">' +
       Object.keys(MOTION).map(function (k) {
         /* on or off is a switch, not two chips */
         if (k === 'progress') return row(tr('ws.m.' + k), sw('data-motion-progress', d.motion.progress === 'on', ''));
+        /* how sections arrive: a list that plays each one in the preview
+           as it is pointed at, and the speed under it (2026-10-27) */
+        if (k === 'entrance') {
+          return row(tr('ws.m.entrance'), ddPick('motion:entrance', d.motion.entrance, MOTION.entrance.map(function (v) { return { value: v, label: tr('ws.m.entrance.' + v) }; })) +
+              '<button type="button" class="ghost-btn sm ws-play" data-replay>' + esc(tr('ws.m.play')) + '</button>') +
+            row(tr('ws.m.speed'), speedHtml(speedNum(d.motion.speed)));
+        }
         return row(tr('ws.m.' + k), choice('motion:' + k, MOTION[k], d.motion[k], function (v) { return tr('ws.m.' + k + '.' + v); }));
       }).join('') + '</div>';
     $('wsDesign').innerHTML = html;
@@ -1818,12 +2211,19 @@
     }
     if (!en) return text;
     var ws = String(text || '').split(/(\s+)/), real = [];
-    ws.forEach(function (w, i) { if (/\S/.test(w)) real.push(i); });
+    ws.forEach(function (w, i) { if (/\p{L}/u.test(w)) real.push(i); });
+    /* a word starting a sentence is capitalized like the first (model.js) */
+    var opens = real.filter(function (i, k) { return k > 0 && /[.!?:]["'”’)\]]*$/.test(ws[real[k - 1]]); });
     return ws.map(function (w, i) {
       if (!/\S/.test(w)) return w;
       var bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
-      if (i !== real[0] && i !== real[real.length - 1] && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
-      return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+      if (i !== real[0] && i !== real[real.length - 1] && opens.indexOf(i) === -1 && SMALL_EN.indexOf(bare) !== -1) return w.toLowerCase();
+      if (/\p{Lu}/u.test(w.slice(1))) return w;
+      var parts = w.split('-');
+      return parts.map(function (part, k) {
+        var b = part.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '').toLowerCase();
+        return k > 0 && k < parts.length - 1 && SMALL_EN.indexOf(b) !== -1 ? part.toLowerCase() : part.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+      }).join('-');
     }).join('');
   }
   function autoDesc(p, l) { return titleOf(autoDesc0(p, l), l); }
@@ -1848,14 +2248,37 @@
   /* The look a name card wears: the site's own ground, ink and accent. */
   function cardLook() {
     var d = state.doc.design, acc = siteAccent();
-    if (d.look === 'paper') return { bg: '#F6F2EA', fg: '#1A1C22', dim: '#5B5E66', acc: acc, font: 'Georgia, serif' };
-    if (d.look === 'bold') return { bg: acc, fg: '#041D24', dim: 'rgba(4,29,36,.7)', acc: '#041D24', font: 'Sora, system-ui' };
+    if (d.look === 'paper') return withHeadingFont({ bg: '#F6F2EA', fg: '#1A1C22', dim: '#5B5E66', acc: acc, font: 'Georgia, serif' });
+    if (d.look === 'bold') return withHeadingFont({ bg: acc, fg: '#041D24', dim: 'rgba(4,29,36,.7)', acc: '#041D24', font: 'Sora, system-ui' });
     var bg = (d.look === 'custom' && d.colors && d.colors.background) || '#0A0D12';
     var n = parseInt(bg.slice(1), 16), light = ((n >> 16) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 140;
-    return light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
-                 : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' };
+    return withHeadingFont(light ? { bg: bg, fg: '#15171C', dim: '#5B5E66', acc: acc, font: 'Sora, system-ui' }
+                 : { bg: bg, fg: '#EDF2F8', dim: '#9AA6B6', acc: acc, font: 'Sora, system-ui' });
   }
-  function cardSig(p, l) { var k = cardLook(); return [siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, state.body.site.subdomain].join('|'); }
+  /* the card's name in the site's chosen heading font, when there is one */
+  function withHeadingFont(k) {
+    var f = state.doc.design.fonts || {};
+    if (f.heading === 'own' && f.own) k.font = "'WsOwnCard', " + k.font;
+    else if (FONT_FAMILY[f.heading]) k.font = "'" + FONT_FAMILY[f.heading] + "', " + k.font;
+    return k;
+  }
+  async function loadCardFont() {
+    var f = state.doc.design.fonts || {};
+    if (f.heading === 'own' && f.own && window.FontFace) {
+      if (window.__cardOwn !== f.own) { window.__cardOwn = f.own; var ff = new FontFace('WsOwnCard', 'url(' + f.own + ')', { weight: '100 900' }); document.fonts.add(ff); await ff.load(); }
+    } else if (FONT_FAMILY[f.heading] && !document.getElementById('wsCardFont-' + f.heading)) {
+      var l = document.createElement('link'); l.id = 'wsCardFont-' + f.heading; l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=' + FONT_FAMILY[f.heading].replace(/ /g, '+') + (FONT_Q[f.heading] ? ':' + FONT_Q[f.heading] : '') + '&display=swap';
+      await new Promise(function (r) { l.onload = r; l.onerror = r; document.head.appendChild(l); });
+    }
+  }
+  /* the line at the card's foot: the owner's phrase, or the address */
+  function cardLine(l) { var o = state.doc.shareLine || {}; return o[l] || (state.body.site.subdomain + '.thauma.one'); }
+  /* WHAT THE CARD SHOWS, as its fingerprint — the font and the line too, and
+     a version, so a card drawn before a change to how cards are drawn is
+     made again (Chase, 2026-10-19: the name "isn't in the correct font
+     still" — cards from before the font fix were never redrawn). */
+  function cardSig(p, l) { var k = cardLook(); return ['v3', siteName(), p.id === 'home' ? '' : pageLabel(p, l), k.bg, k.fg, k.acc, k.font, cardLine(l)].concat(/WsOwnCard/.test(k.font) ? [state.doc.design.fonts.own] : []).join('|'); }
   /* A 1200×630 card: the page's name light, the ministry's name bold, a short
      line in the accent, the address small. */
   async function makeCard(p, l) {
@@ -1871,7 +2294,7 @@
         }));
       }, [])).catch(function () {});
     }
-    try { await window.__cardFonts; await Promise.all([document.fonts.load('100 96px ' + fam), document.fonts.load('600 96px ' + fam)]); } catch (e) { /* system fonts */ }
+    try { await loadCardFont(); await window.__cardFonts; await Promise.all([document.fonts.load('100 96px ' + fam), document.fonts.load('600 96px ' + fam)]); } catch (e) { /* system fonts */ }
     var c = document.createElement('canvas'); c.width = 1200; c.height = 630;
     var g = c.getContext && c.getContext('2d');
     if (!g) return null;
@@ -1885,11 +2308,22 @@
     };
     g.textBaseline = 'alphabetic'; g.fillStyle = k.fg;
     var y = 330;
-    if (page) { fit(page, 100, 104, 1040); g.fillText(page, 80, y); y += 104; fit(nm, 600, 72, 1040); g.fillText(nm, 80, y); }
-    else { fit(nm, 600, 112, 1040); g.fillText(nm, 80, y + 40); y += 60; }
+    /* THE NAME AS THE SITE WRITES IT: the first word thin, the rest bold
+       ("Chase Roush"), at one size that fits both */
+    var name = function (size, at) {
+      var parts = nm.split(/\s+/), a = parts[0] || '', b = parts.slice(1).join(' ');
+      var z = size, wa, wb;
+      do { g.font = '100 ' + z + 'px ' + k.font; wa = g.measureText(a + (b ? ' ' : '')).width;
+           g.font = '600 ' + z + 'px ' + k.font; wb = b ? g.measureText(b).width : 0; z -= 4; } while (wa + wb > 1040 && z > 30);
+      z += 4;
+      g.font = '100 ' + z + 'px ' + k.font; g.fillText(a + (b ? ' ' : ''), 80, at);
+      if (b) { g.font = '600 ' + z + 'px ' + k.font; g.fillText(b, 80 + wa, at); }
+    };
+    if (page) { fit(page, 100, 104, 1040); g.fillText(page, 80, y); y += 104; name(72, y); }
+    else { name(112, y + 40); y += 60; }
     g.fillStyle = k.acc; g.fillRect(80, y + 34, 120, 6);
     g.fillStyle = k.dim; g.font = '500 30px ' + k.font;
-    g.fillText(state.body.site.subdomain + '.thauma.one', 80, 560);
+    g.fillText(cardLine(l), 80, 560);
     return c;
   }
   /* Before publishing: every shown page's card in every language whose card
@@ -2015,7 +2449,9 @@
       '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.titleField')) + ' <small class="ws-count">' + (o.title[l] || '').length + ' / 60</small></span>' +
         '<input type="text" maxlength="70" data-adv-title value="' + esc(o.title[l] || '') + '" placeholder="' + esc(autoTitle(p, l)) + '" lang="' + esc(l) + '"></label>' +
       '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.descField')) + ' <small class="ws-count">' + (o.desc[l] || '').length + ' / 160</small></span>' +
-        '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label></div>';
+        '<textarea rows="3" maxlength="200" data-adv-desc placeholder="' + esc(autoDesc(p, l)) + '" lang="' + esc(l) + '">' + esc(o.desc[l] || '') + '</textarea></label>' +
+      (mode === 'card' ? '<label class="fld ws-wide"><span>' + esc(tr('ws.adv.lineField')) + '</span>' +
+        '<input type="text" maxlength="60" data-adv-line value="' + esc((state.doc.shareLine || {})[l] || '') + '" placeholder="' + esc(host) + '" lang="' + esc(l) + '"></label>' : '') + '</div>';
     html += '<div class="ws-rows">' + row(tr('ws.adv.picture'), chips('advpic', ['card', 'photo', 'custom', 'none'], mode, function (v) { return tr('ws.adv.picture.' + v); }) +
       (mode === 'custom' ? '<label class="ghost-btn sm ws-file">' + esc(tr('ws.sharePic.choose')) + '<input type="file" accept="image/*" data-adv-upload hidden></label>' +
         (p.shareImage && window.PhotoEditor ? '<button type="button" class="ghost-btn sm" data-adv-edit>' + esc(tr('pe.edit')) + '</button>' : '') : '')) + '</div>';
@@ -2154,7 +2590,24 @@
 
   $('wsRoot').addEventListener('input', function (e) {
     var t = e.target, p = currentPage(), v = t.value;
-    if (t.dataset.pageLabel !== undefined) { var pg = state.doc.pages[+t.dataset.pageLabel]; pg.label = pg.label || {}; pg.label[state.langA] = v; return changed(); }
+    if (t.dataset.pageLabel !== undefined) {
+      var pg = state.doc.pages[+t.dataset.pageLabel]; pg.label = pg.label || {};
+      /* a page of your own: its address follows its name until it is first
+         published, unless an address of its own was typed */
+      var nameOf = function (x) { return (x.label || {})[state.doc.fallback] || Object.values(x.label || {}).filter(Boolean)[0] || tr('ws.newPage'); };
+      var follows = pg.custom && !pubPage(pg.id) && pg.slug === freeSlug(nameOf(pg), pg);
+      pg.label[state.langA] = v;
+      if (follows) {
+        pg.slug = freeSlug(nameOf(pg), pg);
+        var sb = $('wsPages').querySelector('[data-page-slug]'); if (sb) sb.value = pg.slug;
+      }
+      return changed();
+    }
+    if (t.dataset.pageSlug !== undefined) {
+      var ps = state.doc.pages[+t.dataset.pageSlug], typed = slugOf(v);
+      if (typed) ps.slug = freeSlug(typed, ps);
+      return changed();
+    }
     if (t.dataset.tabName !== undefined) {
       var tn = activeTab(realPage()); if (!tn) return;
       tn.label = tn.label || {}; tn.label[state.langA] = v;
@@ -2195,6 +2648,14 @@
       return changed();
     }
     if (t.dataset.give !== undefined) { state.doc.give = v.trim(); return changed(); }
+    if (t.dataset.advLine !== undefined) {
+      state.doc.shareLine = state.doc.shareLine || {};
+      if (v.trim()) state.doc.shareLine[state.langA] = v; else delete state.doc.shareLine[state.langA];
+      /* the preview card follows as it is typed */
+      var pv = $('wsSharePic');
+      if (pv) makeCard(advPage(), state.langA).then(function (c) { if (c) pv.style.backgroundImage = 'url(' + c.toDataURL('image/jpeg', 0.8) + ')'; }).catch(function () {});
+      return changed();
+    }
     if (t.dataset.advTitle !== undefined || t.dataset.advDesc !== undefined) {
       var aq = advPage(); aq.seo = aq.seo || { title: {}, desc: {} };
       var key = t.dataset.advTitle !== undefined ? 'title' : 'desc';
@@ -2268,6 +2729,7 @@
        2026-10-04). Canceling keeps the photo as it came. */
     if (t.dataset.secPhoto) return upload(t, function (url) { var ps = p.sections[+t.dataset.secPhoto]; ps.photo = url; ps.photoEdit = null; drawSections(); editSectionPhoto(ps); });
     if (t.dataset.customIcon) return upload(t, function (url) { state.doc.links[+t.dataset.customIcon].iconImg = url; drawLinks(); }, 256);
+    if (t.dataset.fontFile !== undefined) return uploadFont(t);
     if (t.dataset.logo !== undefined) return upload(t, function (url) { state.doc.design.logo = url; drawDesign(); });
     if (t.dataset.favicon !== undefined) return upload(t, function (url) { state.doc.design.favicon = url; drawDesign(); }, 256);
   });
@@ -2376,6 +2838,41 @@
       drawSections(); return changed();
     }
     if (d.pageOn) { var pg = state.doc.pages[+d.pageOn]; pg.on = !pg.on; drawPages(); return changed(); }
+    if (d.pageAdd !== undefined) {
+      /* A NEW PAGE OF YOUR OWN: named, with a header and words to replace,
+         switched off until it is ready, and opened to be filled in. */
+      var name = {}; name[state.langA] = tr('ws.newPage');
+      var np = { id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), custom: true, on: false, cue: true, label: name,
+        seo: { title: {}, desc: {}, image: null }, shareCards: {}, sections: [makeSection('header'), makeSection('text')] };
+      np.slug = freeSlug(tr('ws.newPage'), np);
+      state.doc.pages.push(np);
+      state.page = np.id; state.edit = null;
+      drawPages(); changed(); refreshFrame(); editorIntoView();
+      var nm = $('wsPages').querySelector('[data-page-label]'); if (nm) { nm.focus(); nm.select(); }
+      return;
+    }
+    if (d.pageRemove !== undefined) {
+      var rp0 = state.doc.pages[+d.pageRemove];
+      if (!rp0 || !rp0.custom) return;
+      var okP = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.page.removeQ', { name: pageLabel(rp0, state.langA) }),
+        body: tr('ws.page.removeBody'), confirm: tr('ws.page.remove'), cancel: tr('ms.cancel'), danger: true }) : true;
+      if (!okP) return;
+      state.doc.pages.splice(+d.pageRemove, 1);
+      /* nothing points at a page that is gone */
+      state.doc.pages.forEach(function (x) { allSecs(x).forEach(function (sec) {
+        if (sec.link === 'page:' + rp0.id) sec.link = '';
+        (sec.items || []).forEach(function (it) { if (it.url === 'page:' + rp0.id) it.url = 'https://'; });
+      }); });
+      state.doc.links.forEach(function (l) { if (l.url === 'page:' + rp0.id) l.url = 'https://'; });
+      if (state.page === rp0.id) state.page = null;
+      drawPages(); return changed();
+    }
+    if (d.secRevert) {
+      var rs = p.sections[+d.secRevert], rwas = pubSection(rs.id);
+      var rok = window.StaffConfirm ? await window.StaffConfirm({ title: tr('ws.revert.title'), confirm: tr('ms.discard'), cancel: tr('ms.cancel'), danger: true }) : true;
+      if (rok && rwas) { p.sections[+d.secRevert] = copy(rwas); drawSections(); changed(); toast(tr('toast.discarded')); }
+      return;
+    }
     if (d.secRemove) {
       var s = p.sections[+d.secRemove];
       var ok = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.removeTitle', { kind: tr('ws.sec.' + s.type) }), confirm: tr('ws.remove'), cancel: tr('ms.cancel'), danger: true }) : true;
@@ -2422,8 +2919,13 @@
     }
     if (d.motionProgress !== undefined) { var mo = state.doc.design.motion; mo.progress = mo.progress === 'on' ? 'off' : 'on'; drawDesign(); return changed(); }
     if (d.headerLinks !== undefined) { state.doc.design.headerLinks = !state.doc.design.headerLinks; drawNav(); return changed(); }
+    if (d.replay !== undefined) { replay(); return; }
+    if (d.replaySec !== undefined) { var rsx = p.sections[+d.replaySec], rw = frameNow(); if (rsx && rw && rw.__siteReplay) rw.__siteReplay({ sid: rsx.id }); return; }
     if (d.ppToggle !== undefined) {
+      if (state.ppOpen === d.ppToggle) unpeek();
       state.ppOpen = state.ppOpen === d.ppToggle ? null : d.ppToggle;
+      /* the fonts are fetched into the preview as their list opens */
+      if (state.ppOpen && state.ppOpen.indexOf('font:') === 0 && frameNow()) framePrepFonts(frameNow());
       var pp = t.closest('.ws-pp'), open = state.ppOpen === d.ppToggle;
       pp.classList.toggle('is-open', open);
       t.setAttribute('aria-expanded', open);
@@ -2431,7 +2933,7 @@
       if (open) { var sel = pp.querySelector('.ws-pp-opt[aria-selected="true"]'); if (sel) sel.focus(); }
       return;
     }
-    if (d.chip) { state.ppOpen = null; return applyChip(d.chip, d.value); }
+    if (d.chip) { state.ppOpen = null; if (!d.peek) unpeek(); else state.peeked = null; return applyChip(d.chip, d.value); }
     if (d.start) {
       var ok2 = window.StaffConfirm ? await window.StaffConfirm({ title: fill('ws.startTitle', { kind: tr('ws.start.' + d.start) }),
         body: tr('ws.startBody'), confirm: tr('ws.startGo'), cancel: tr('ms.cancel'), danger: true }) : true;
@@ -2448,6 +2950,7 @@
      move with the arrow keys. */
   function closePicks(focusBtn) {
     if (!state.ppOpen) return;
+    unpeek();
     var open = $('wsRoot').querySelector('.ws-pp.is-open');
     state.ppOpen = null;
     if (!open) return;
@@ -2478,6 +2981,10 @@
     else if (name.indexOf('clines:') === 0) { var cs = p.sections[+name.slice(7)]; cs.lines = cs.variant === 'open' ? val === 'detached' : val === 'attached'; drawSections(); }
     else if (name.indexOf('raised:') === 0) { var rs = p.sections[+name.slice(7)]; rs.raised = val === 'raised'; rs.tint = val === 'tint'; if (rs.type === 'header') rs.bg = val === 'accent' ? 'accent' : 'plain'; drawSections(); }
     else if (name === 'advpic') { var ap = advPage(); ap.seo = ap.seo || { title: {}, desc: {} }; ap.seo.image = val; drawAdvanced(); }
+    else if (name.indexOf('numstyle:') === 0) { p.sections[+name.slice(9)].numStyle = val; drawSections(); }
+    else if (name.indexOf('pics:') === 0) { p.sections[+name.slice(5)].pics = val; drawSections(); }
+    else if (name.indexOf('stack:') === 0) { p.sections[+name.slice(6)].stack = val === 'stack'; drawSections(); }
+    else if (name.indexOf('enter:') === 0) { var es = p.sections[+name.slice(6)]; if (val === 'site') delete es.enter; else es.enter = val; state.playMotion = true; drawSections(); }
     else if (name.indexOf('vpos:') === 0) { p.sections[+name.slice(5)].versePos = val; drawSections(); }
     else if (name.indexOf('talign:') === 0) { p.sections[+name.slice(7)].titleAlign = val; drawSections(); }
     else if (name.indexOf('tinline:') === 0) { p.sections[+name.slice(8)].titleInline = val === 'with'; drawSections(); }
@@ -2509,6 +3016,7 @@
       drawNav();
     }
     else if (name === 'giveTo') { state.doc.design.giveTo = val; drawNav(); }
+    else if (name.indexOf('font:') === 0) { fontsOf()[name.slice(5)] = val; drawDesign(); }
     else if (name.indexOf('motion:') === 0) { state.doc.design.motion[name.slice(7)] = val; state.playMotion = true; drawDesign(); }
     else if (name === 'menu') { state.doc.design.menu = val; drawNav(); }
     else if (name === 'look' || name === 'brand' || name === 'mode' || name === 'faviconStyle') { state.doc.design[name] = val; drawDesign(); }
@@ -2539,6 +3047,8 @@
       var body = await res.json();
       if (!res.ok) throw new Error(body.error || tr('common.saveFailed'));
       noteMedia(body.url);
+      /* its size, so the page keeps its place before it arrives */
+      (state.doc.dims = state.doc.dims || {})[body.url] = [c.width, c.height];
       done(body.url);
       changed();
     } catch (err) {

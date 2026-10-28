@@ -111,7 +111,7 @@ await check("removing somebody who is not there is not an error", async () => {
 });
 
 await check("a missing group names itself instead of failing vaguely", async () => {
-  stub({ name: "Something else" });
+  stub({ name: "Something Else" });
   let threw = null;
   try { await addEmail(ENV, "x@thauma.one"); } catch (e) { threw = e.message; }
   assert(threw && /Thauma console/.test(threw) && /Zero Trust/.test(threw),

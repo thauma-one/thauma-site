@@ -201,6 +201,20 @@ await check("a site photo is the site's, for the people who edit the site", asyn
   eq(staff.MEDIA.objects.size, 0, "nothing stored for staff");
 });
 
+await check("a ministry site may store its own font, checked by its bytes; nowhere else takes one", async () => {
+  const SITE = "https://dev.thauma.one/api/admin/media?kind=partnersite";
+  const woff2 = new Uint8Array(40); woff2.set([0x77, 0x4f, 0x46, 0x32], 0);   // wOF2
+  const env = envWith("admin,staff");
+  const res = await put(env, woff2, "font/woff2", SITE);
+  eq(res.status, 200, "stored");
+  const url = (await res.json()).url;
+  assert(url.startsWith("/media/partnersite/") && url.endsWith(".woff2"), `url was ${url}`);
+  eq((await put(env, woff2, "font/woff2")).status, 415, "a team photo is never a font");
+  const html = new TextEncoder().encode("<html><script>alert(1)</script></html>");
+  eq((await put(env, html, "font/woff2", SITE)).status, 415, "HTML wearing a font type");
+  eq(env.MEDIA.objects.size, 1, "only the real font stored");
+});
+
 await check("a misconfigured deploy FAILS CLOSED", async () => {
   const res = await put({ ACCESS_TEAM_DOMAIN: TEAM, ACCESS_AUD: AUD }, webp(), "image/webp");
   eq(res.status, 500, "no bucket bound");

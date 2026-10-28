@@ -45,6 +45,7 @@ import { sendMail, listConfirmEmail } from "./lib/mail.js";
 import { detectLang } from "./contact-form.js";
 import { COLOUR_JS, rowLook } from "./embed-colour.js";
 import { escapeHtml, palette, formStyles, LIGHT, DARK, BEHAVIOUR_JS, WORDS_JS, LOOK_JS } from "./lib/embed-form.js";
+import { SIZE_JS } from "./site/size.js";
 import { t, wordsFor } from "./lib/mail-i18n.js";
 import { siteOrigin, subscriberOrigin } from "./lib/origin.js";
 import { isOrgSlug } from "./lib/org.js";
@@ -207,6 +208,7 @@ ${BEHAVIOUR_JS}
   var WORDS = ${JSON.stringify(wordsFor("form."))};
 ${WORDS_JS}
 ${LOOK_JS}
+${SIZE_JS}
   /* The ministry's own words, per language. < is escaped: this is text in a
      script served to strangers' pages. */
   var OWN = ${JSON.stringify(own || {}).replace(/</g, "\\u003c")};
@@ -246,9 +248,10 @@ ${LOOK_JS}
        otherwise reach in and reshape controls somebody has to type into. */
     var root = node.attachShadow ? node.attachShadow({ mode: 'open' }) : node;
     var style = document.createElement('style');
-    style.textContent = STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'form') +
+    /* on a ministry's site, in its units (site/size.js) */
+    style.textContent = (node.getAttribute('data-look') ? sized : String)(STYLES.replace('SCHEME', scheme) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'form') +
       ':host{--acc:' + accent + ';--acc2:' + second + ';--on-acc:' + onColor(accent) + ';' +
-      '--faint:' + alpha(accent, 0.22) + '}';
+      '--faint:' + alpha(accent, 0.22) + '}');
     root.appendChild(style);
 
     var host = document.createElement('div');

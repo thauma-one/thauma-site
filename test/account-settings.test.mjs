@@ -62,7 +62,7 @@ await check("the heading is your name: first thin, the rest bold", async () => {
 
 await check("Account is the board's five lines, in its order", async () => {
   const { d } = await boot();
-  eq(labels(d, "account"), ["Email", "Console language", "What you can do", "Activity", "Sign out"], "rows");
+  eq(labels(d, "account"), ["Email", "Console Language", "What You Can Do", "Activity", "Sign Out"], "rows");
   eq(d.getElementById("setEmail").textContent, "chase@thauma.one", "the address");
   assert(d.querySelector('[data-panel="account"] a[href="/staff/activity/"]'), "Activity links to the page");
   assert(d.querySelector('[data-panel="account"] a[href*="access/logout"]'), "Sign out signs out");
@@ -78,7 +78,7 @@ await check("Notifications: its own tab, one table — a row per notice, Email a
   ANSWER.you.notices = [{ kind: "invite_accepted", on: true, bell: false }, { kind: "site_published", on: false, bell: true }];
   try {
     const { w, d } = await boot();
-    eq(labels(d, "account"), ["Email", "Console language", "What you can do", "Activity", "Sign out"], "Account unchanged");
+    eq(labels(d, "account"), ["Email", "Console Language", "What You Can Do", "Activity", "Sign Out"], "Account unchanged");
     assert(!d.getElementById("setNotifyTab").hidden, "no Notifications tab");
     eq([...d.querySelectorAll(".set-notify thead th")].slice(1).map((h) => h.textContent), ["Email", "Web"], "two columns");
     eq([...d.querySelectorAll(".set-notify tbody tr")].map((r) => [r.querySelector("th").textContent,

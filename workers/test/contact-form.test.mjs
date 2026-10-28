@@ -180,7 +180,7 @@ await check("the notification is a letter, not a field dump", async () => {
   assert(!/^Name: /m.test(m.html), "the aligned field dump is still in the HTML");
   assert(/border:1px solid #1A222D;border-top:2px solid #2FD8FF/i.test(m.html),
     "the message is not set apart — it should read as their words, not ours");
-  assert(/white-space:nowrap;">Contact form</.test(m.html), "not using the shared frame");
+  assert(/white-space:nowrap;">Contact Form</.test(m.html), "not using the shared frame");
 });
 
 await check("replying is one tap", async () => {

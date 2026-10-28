@@ -2,6 +2,286 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-28-sharing-shown-on",
+      "date": "2026-10-28",
+      "page": "staff:sharing",
+      "text": {
+        "en": "Sharing's preview can now show each piece on your own site — the page it is on, drawn by the site itself in its own design — or as it looks pasted on other websites (Shown On, above the preview). Everything you change shows straight away, before Save: the colors, the timeline's dates, the lists on the sign-up form, the contact form's reasons and the forms' words.",
+        "hr": "Pregled u Dijeljenju sada može prikazati svaki dio na vašoj stranici — na stranici na kojoj se nalazi, kako je sama stranica crta u svom izgledu — ili kako izgleda kad se zalijepi na druge web-stranice (Prikazano na, iznad pregleda). Sve što promijenite vidi se odmah, prije spremanja: boje, datumi vremenske crte, popisi na obrascu za prijavu, razlozi kontaktnog obrasca i riječi obrazaca.",
+        "sr": "Преглед у Дијељењу сада може приказати сваки дио на вашој страници — на страници на којој се налази, како је сама страница црта у свом изгледу — или како изгледа кад се залијепи на друге веб-странице (Приказано на, изнад прегледа). Све што промијените види се одмах, прије спремања: боје, датуми временске црте, спискови на обрасцу за пријаву, разлози контактног обрасца и ријечи образаца."
+      }
+    },
+    {
+      "id": "2026-10-28-admin-sharing-shown-on",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Sharing can now show each one on thauma.one — the Events, Resources and Contact pages and the Stay Connected window — or as it looks pasted on other websites. The contact form's reasons and the sign-up lists show there before Save.",
+        "hr": "Web-stranica › Dijeljenje sada može prikazati svaki dio na thauma.one — stranice Događaji, Resursi i Kontakt te prozor za prijavu — ili kako izgleda zalijepljen na druge web-stranice. Razlozi kontaktnog obrasca i popisi za prijavu vide se ondje prije spremanja.",
+        "sr": "Веб-страница › Дијељење сада може приказати сваки дио на thauma.one — странице Догађаји, Ресурси и Контакт те прозор за пријаву — или како изгледа залијепљен на друге веб-странице. Разлози контактног обрасца и спискови за пријаву виде се ондје прије спремања."
+      }
+    },
+    {
+      "id": "2026-10-28-site-smaller",
+      "date": "2026-10-28",
+      "page": "staff:website",
+      "text": {
+        "en": "Your site is drawn smaller on a computer — the way Chrome shows it at 80% — so more of each page fits on the screen. Text, spacing, photos, the timeline and the forms all shrink together, and the widths that follow the window still follow it. A phone is unchanged. The Header's watermark now arrives with the rest of its words.",
+        "hr": "Vaša se stranica na računalu prikazuje manjom — kao što je Chrome prikazuje na 80% — pa na zaslon stane više svake stranice. Tekst, razmaci, fotografije, vremenska crta i obrasci smanjuju se zajedno, a širine koje prate prozor i dalje ga prate. Na mobitelu se ništa ne mijenja. Vodeni žig u Zaglavlju sada stiže zajedno s ostatkom riječi.",
+        "sr": "Ваша се страница на рачунару приказује мањом — као што је Chrome приказује на 80% — па на екран стане више сваке странице. Текст, размаци, фотографије, временска линија и обрасци смањују се заједно, а ширине које прате прозор и даље га прате. На мобилном се ништа не мијења. Водени жиг у Заглављу сада стиже заједно с остатком ријечи."
+      }
+    },
+    {
+      "id": "2026-10-28-admin-sharing",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Sharing is laid out like the staff Sharing page: Events, Resources, the Sign-Up Form and the Contact Form on the left, the real thing in the middle at a computer's or a phone's width in any language, and on the right what decides it and the code to paste on another website. Events and Resources can now be shown on other websites; they are shared while their page is on. The forms' words for other websites are written here too.",
+        "hr": "Web-stranica › Dijeljenje složeno je kao stranica Dijeljenje za osoblje: Događaji, Resursi, Obrazac za prijavu i Obrazac za kontakt lijevo, ono pravo u sredini u širini računala ili mobitela na bilo kojem jeziku, a desno ono što o tome odlučuje i kôd za lijepljenje na drugu web-stranicu. Događaji i Resursi sada se mogu prikazati na drugim web-stranicama; dijele se dok je njihova stranica uključena. Ovdje se pišu i riječi obrazaca za druge web-stranice.",
+        "sr": "Веб-страница › Дијељење сложено је као страница Дијељење за особље: Догађаји, Ресурси, Образац за пријаву и Образац за контакт лијево, оно право у средини у ширини рачунара или мобилног на било којем језику, а десно оно што о томе одлучује и код за лијепљење на другу веб-страницу. Догађаји и Ресурси сада се могу приказати на другим веб-страницама; дијеле се док је њихова страница укључена. Овдје се пишу и ријечи образаца за друге веб-странице."
+      }
+    },
+    {
+      "id": "2026-10-28-admin-updates",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Updates looks like the staff Updates page: Events and Resources as one list with what each is, when, and the languages it still misses under its title, and Preview on a Website to see the list as another website would show it.",
+        "hr": "Web-stranica › Novosti izgleda kao stranica Novosti za osoblje: Događaji i Resursi kao jedan popis s onim što je svaki, kada je i kojim jezicima još nedostaje ispod naslova, te Pregled na web-stranici da vidite popis kako bi ga prikazala druga web-stranica.",
+        "sr": "Веб-страница › Новости изгледа као страница Новости за особље: Догађаји и Ресурси као један попис с оним што је сваки, када је и којим језицима још недостаје испод наслова, те Преглед на веб-страници да видите попис како би га приказала друга веб-страница."
+      }
+    },
+    {
+      "id": "2026-10-27-admin-creator-like-staff",
+      "date": "2026-10-27",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Site Creator works more like the staff one: each menu page has its switch for the live site and a grip to drag the menu's order; the languages, the translator's file and Reload from GitHub have their own Languages tab; the browser tab's name is on Advanced. Four sections from the staff Site Creator can be added in Thauma's own design: A Quote, A Wide Photo, Links and Stay Connected.",
+        "hr": "Web-stranica › Kreator stranice radi više kao onaj za osoblje: svaka stranica izbornika ima prekidač za javnu stranicu i ručku za povlačenje redoslijeda; jezici, datoteka za prevoditelja i ponovno učitavanje s GitHuba imaju vlastitu karticu Jezici; naziv u kartici preglednika nalazi se pod Napredno. Četiri odjeljka iz Kreatora za osoblje mogu se dodati u Thauminu dizajnu: Citat, Široka fotografija, Poveznice i Ostanimo povezani.",
+        "sr": "Веб-страница › Креатор странице ради више као онај за особље: свака страница изборника има прекидач за јавну страницу и ручку за повлачење редослиједа; језици, датотека за преводиоца и поновно учитавање са GitHub-а имају властиту картицу Језици; назив у картици прегледника налази се под Напредно. Четири одјељка из Креатора за особље могу се додати у Тхаумином дизајну: Цитат, Широка фотографија, Везе и Останимо повезани."
+      }
+    },
+    {
+      "id": "2026-10-27-ministry-app-visual",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Your site's phone app is rebuilt to be seen rather than read: it opens with your initials, leads with your own photo, and shows giving as rings. A prayer request is held to pray — the ring fills, the phone buzzes and the count goes up — and requests swipe one at a time. Updates are a line of pictures and videos. “Get the App” is no longer in the footer: it is in the phone's menu, and a phone is asked once, after a second visit. A computer never hears about an app.",
+        "hr": "Aplikacija vaše stranice za mobitel izrađena je iznova da se gleda, a ne čita: otvara se vašim inicijalima, počinje vašom fotografijom, a darivanje prikazuje u krugovima. Na molbi se drži prst dok se moli — krug se puni, mobitel zavibrira i broj raste — a molbe se listaju jedna po jedna. Novosti su niz slika i videa. „Preuzmite aplikaciju” više nije u podnožju: nalazi se u izborniku na mobitelu, a mobitel se pita jednom, nakon drugog posjeta. Računalo nikad ne spominje aplikaciju.",
+        "sr": "Апликација ваше странице за мобилни израђена је изнова да се гледа, а не чита: отвара се вашим иницијалима, почиње вашом фотографијом, а даривање приказује у круговима. На молби се држи прст док се моли — круг се пуни, мобилни завибрира и број расте — а молбе се листају једна по једна. Новости су низ слика и видеа. „Преузмите апликацију” више није у подножју: налази се у изборнику на мобилном, а мобилни се пита једном, након другог посјета. Рачунар никад не спомиње апликацију."
+      }
+    },
+    {
+      "id": "2026-10-27-site-thauma-sections",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator: two sections from thauma.one's own pages — A Word and Its Meaning (a word, how it is said, and its meanings, numbered) and Labeled Rows (a short label beside a title and its words) — and Custom Cards can be numbered I, II, III.",
+        "hr": "Kreator stranice: dva odjeljka sa stranica thauma.one — Riječ i njezino značenje (riječ, kako se izgovara i njezina značenja, s brojevima) i Označeni retci (kratka oznaka uz naslov i njegove riječi) — a vlastite kartice mogu imati brojeve I, II, III.",
+        "sr": "Креатор странице: два одјељка са страница thauma.one — Ријеч и њено значење (ријеч, како се изговара и њена значења, с бројевима) и Означени редци (кратка ознака уз наслов и његове ријечи) — а властите картице могу имати бројеве I, II, III."
+      }
+    },
+    {
+      "id": "2026-10-27-site-own-pages",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator › Pages: add pages of your own with “Add a Page” under the list. Each has its own name and address, starts switched off, can be switched on and off like the others, and is the only kind of page you can delete.",
+        "hr": "Kreator stranice › Stranice: dodajte vlastite stranice gumbom „Dodajte stranicu” ispod popisa. Svaka ima svoj naziv i adresu, počinje isključena, može se uključivati i isključivati kao ostale i jedina je vrsta stranice koju možete izbrisati.",
+        "sr": "Креатор странице › Странице: додајте властите странице дугметом „Додајте страницу” испод пописа. Свака има свој назив и адресу, почиње искључена, може се укључивати и искључивати као остале и једина је врста странице коју можете избрисати."
+      }
+    },
+    {
+      "id": "2026-10-27-site-creator-motion-fonts",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator: fonts are a list where pointing at a font shows it on your site at once; \"Default\" replaces \"The Look's Own\", and text can wear the headings' font. How sections arrive plays in the preview as you point at each way (with a Play button), two new ways (Drop In, Sweep In), a speed slider from 0.2 to 4 seconds, and each section can arrive its own way. Sections now arrive properly when you move to another page, and photos keep their place while they load.",
+        "hr": "Kreator stranice: fontovi su popis na kojem pokazivanje na font odmah prikazuje kako izgleda na vašoj stranici; „Zadano” zamjenjuje „Font izgleda”, a tekst može nositi font naslova. Način na koji se odjeljci pojavljuju odvija se u pregledu dok pokazujete na svaki (uz gumb Pokreni), dva su nova načina (Spuste se, Uplove zdesna), brzina je klizač od 0,2 do 4 sekunde, a svaki odjeljak može se pojaviti na svoj način. Odjeljci se sada ispravno pojavljuju kad prijeđete na drugu stranicu, a fotografije drže svoje mjesto dok se učitavaju.",
+        "sr": "Креатор странице: фонтови су попис на којем показивање на фонт одмах приказује како изгледа на вашој страници; „Задано” замјењује „Фонт изгледа”, а текст може носити фонт наслова. Начин на који се одјељци појављују одвија се у прегледу док показујете на сваки (уз дугме Покрени), два су нова начина (Спусте се, Уплове здесна), брзина је клизач од 0,2 до 4 секунде, а сваки одјељак може се појавити на свој начин. Одјељци се сада исправно појављују кад пријеђете на другу страницу, а фотографије држе своје мјесто док се учитавају."
+      }
+    },
+    {
+      "id": "2026-10-27-site-creator-sections",
+      "date": "2026-10-27",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator sections: words can be Justified in every section; the Header takes about half the room it did; Links has a real List, a sideways Shelf, Buttons in a row or stacked with pictures, a choice of how pictures show (Whole, Fill the Frame, Round, None), and switches for what each link shows beside its words; descriptions start at 12 and a size picked for a whole box spaces its lines to match; a Give band and words with a button now line up exactly, so page tabs swap words without moving them; an opened timeline milestone takes the card color.",
+        "hr": "Odjeljci u Kreatoru stranice: riječi se u svakom odjeljku mogu poravnati obostrano; Zaglavlje zauzima otprilike upola manje mjesta; Poveznice imaju pravi popis, Policu koja se pomiče u stranu, gumbe u nizu ili jedan ispod drugog sa slikama, izbor kako se slike prikazuju (Cijele, Ispune okvir, Okrugle, Bez slika) i prekidače za ono što svaka poveznica prikazuje, uz njezine riječi; opisi počinju veličinom 12, a veličina odabrana za cijeli okvir prilagođava razmak redaka; traka za darivanje i riječi s gumbom sada su točno poravnate, pa kartice stranice mijenjaju riječi bez pomicanja; otvorena prekretnica vremenske crte nosi boju kartice.",
+        "sr": "Одјељци у Креатору странице: ријечи се у сваком одјељку могу поравнати обострано; Заглавље заузима отприлике упола мање мјеста; Везе имају прави попис, Полицу која се помиче у страну, дугмад у низу или једно испод другог са сликама, избор како се слике приказују (Цијеле, Испуне оквир, Округле, Без слика) и прекидаче за оно што свака веза приказује, уз њене ријечи; описи почињу величином 12, а величина одабрана за цијели оквир прилагођава размак редака; трака за даривање и ријечи с дугметом сада су тачно поравнате, па картице странице мијењају ријечи без помицања; отворена прекретница временске линије носи боју картице."
+      }
+    },
+    {
+      "id": "2026-10-27-mail-align",
+      "date": "2026-10-27",
+      "page": "staff:mail",
+      "text": {
+        "en": "Mail: paragraphs and headings can be aligned left, centered, right or justified.",
+        "hr": "Pošta: odlomci i naslovi mogu se poravnati lijevo, po sredini, desno ili obostrano.",
+        "sr": "Пошта: одломци и наслови могу се поравнати лијево, по средини, десно или обострано."
+      }
+    },
+    {
+      "id": "2026-10-20-title-case-everywhere",
+      "date": "2026-10-20",
+      "page": "console",
+      "text": {
+        "en": "English titles are in Title Case everywhere: the console's page headings, section headings, dialog titles, tabs, labels and buttons; the website's headings and small lines above them; and email subjects, headings and buttons. Hyphenated words are capitalized in each part (On-Site, Sign-Up).",
+        "hr": "Engleski naslovi svugdje su napisani velikim početnim slovima riječi (Title Case): naslovi stranica i odjeljaka u konzoli, naslovi dijaloga, kartice, oznake i gumbi; naslovi na web-stranici i mali redovi iznad njih; te predmeti, naslovi i gumbi e-poruka.",
+        "sr": "Енглески наслови свугдје су написани великим почетним словима ријечи (Title Case): наслови страница и одјељака у конзоли, наслови дијалога, картице, ознаке и гумби; наслови на веб-сајту и мали редови изнад њих; те предмети, наслови и гумби е-порука."
+      }
+    },
+    {
+      "id": "2026-10-20-admin-areas",
+      "date": "2026-10-21",
+      "page": "admin:website",
+      "text": {
+        "en": "Website has a row of its own under its heading: Updates (events and resources), Mail (Thauma's lists), Sharing (what Thauma's forms do) and Site Creator, named as on the staff side. Site Creator now works like a ministry's own. Each of the site's pages is its sections: open one for its words, photo, buttons and look; add one between any two (Words and a Photo, Numbered Points, Invitation, Labeled Rows, all in the site's own design); drag one to move it, or take it away. The top of a page and the parts drawn from elsewhere (the team, the form, the gatherings, the library) stay. Navigation puts the menu in your order and names each page; Footer holds what the footer says. The preview shows every change before you save, and pressing a section in it opens that section. Every box has its own Discard Changes once it is changed. A new section starts with stand-in words in every language, counted as missing until written. Pages opens faster.",
+        "hr": "Web-stranica ima vlastiti red ispod naslova: Novosti (događanja i resursi), Pošta (popisi Thaume), Dijeljenje (što rade obrasci Thaume) i Kreator stranice, nazvani kao kod osoblja. Kreator stranice sada radi kao onaj službe. Svaka stranica sastoji se od odjeljaka: otvorite jedan za njegove riječi, fotografiju, gumbe i izgled; dodajte novi između bilo koja dva (Riječi i fotografija, Numerirane točke, Poziv, Redovi s oznakama, sve u izgledu stranice); povucite ga da ga premjestite ili ga uklonite. Vrh stranice i dijelovi koji dolaze odnekud drugdje (tim, obrazac, okupljanja, knjižnica) ostaju. Navigacija slaže izbornik vašim redoslijedom i imenuje svaku stranicu; Podnožje sadrži što piše u podnožju. Pregled prikazuje svaku promjenu prije spremanja, a klik na odjeljak u pregledu otvara taj odjeljak. Svako polje ima vlastito Odbaci promjene čim se promijeni. Novi odjeljak počinje zamjenskim riječima na svim jezicima, koje se broje kao nedostajuće dok se ne napišu. Stranice se brže otvaraju.",
+        "sr": "Веб-страница има властити ред испод наслова: Новости (догађаји и ресурси), Пошта (спискови Thaume), Дијељење (шта раде обрасци Thaume) и Креатор странице, названи као код особља. Креатор странице сада ради као онај службе. Свака страница састоји се од одјељака: отворите један за његове ријечи, фотографију, дугмад и изглед; додајте нови између било која два (Ријечи и фотографија, Нумерисане тачке, Позив, Редови с ознакама, све у изгледу странице); повуците га да га премјестите или га уклоните. Врх странице и дијелови који долазе однекуд другдје (тим, образац, окупљања, библиотека) остају. Навигација слаже изборник вашим редослиједом и именује сваку страницу; Подножје садржи шта пише у подножју. Преглед приказује сваку промјену прије спремања, а клик на одјељак у прегледу отвара тај одјељак. Свако поље има властито Одбаци промјене чим се промијени. Нови одјељак почиње замјенским ријечима на свим језицима, које се броје као недостајуће док се не напишу. Странице се брже отварају."
+      }
+    },
+    {
+      "id": "2026-10-20-publish-builds-preview",
+      "date": "2026-10-20",
+      "page": "admin:index",
+      "text": {
+        "en": "Publish now rebuilds the preview (next.thauma.one) too, so it always matches what went live. Preview still works on its own for looking at changes before publishing.",
+        "hr": "Objavi sada ponovno gradi i pregled (next.thauma.one), pa uvijek odgovara onome što je objavljeno. Pregled i dalje radi zasebno, za gledanje promjena prije objave.",
+        "sr": "Објави сада поново гради и преглед (next.thauma.one), па увијек одговара ономе што је објављено. Преглед и даље ради засебно, за гледање промјена прије објаве."
+      }
+    },
+    {
+      "id": "2026-10-20-site-fonts",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator › Design: choose your site's fonts — one for headings, one for text — from a set of tiles that show each font, or upload your own for headings. Fonts that can't write Cyrillic are marked when your site has Serbian, and a fallback font writes any letters a font is missing. The share picture uses your heading font too.",
+        "hr": "Izrada stranice › Izgled: odaberite fontove svoje stranice — jedan za naslove, jedan za tekst — među pločicama koje prikazuju svaki font ili učitajte vlastiti za naslove. Fontovi koji ne pišu ćirilicu označeni su kad vaša stranica ima srpski, a zamjenski font piše sva slova koja fontu nedostaju. I slika za dijeljenje koristi vaš font naslova.",
+        "sr": "Израда странице › Изглед: одаберите фонтове своје странице — један за наслове, један за текст — међу плочицама које приказују сваки фонт или учитајте властити за наслове. Фонтови који не пишу ћирилицу означени су кад ваша страница има српски, а замјенски фонт пише сва слова која фонту недостају. И слика за дијељење користи ваш фонт наслова."
+      }
+    },
+    {
+      "id": "2026-10-20-site-menu-fit",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Your site's menu now always stays on one line. When it runs out of room it first tightens up, then gathers your social links behind one round button (showing the first and how many more), then puts the last pages under “More”. Only on a phone-sized screen does the whole menu fold behind its button.",
+        "hr": "Izbornik vaše stranice sada uvijek ostaje u jednom retku. Kad mu ponestane mjesta, najprije se zbije, zatim vaše društvene poveznice skupi iza jednog okruglog gumba (prikazuje prvu i koliko ih je još), a onda posljednje stranice stavi pod „Više”. Samo se na zaslonu veličine mobitela cijeli izbornik sklopi iza svog gumba.",
+        "sr": "Изборник ваше странице сада увијек остаје у једном ретку. Кад му понестане мјеста, најприје се збије, затим ваше друштвене повезнице скупи иза једног округлог гумба (приказује прву и колико их је још), а онда посљедње странице стави под „Више”. Само се на екрану величине мобитела цијели изборник склопи иза свог гумба."
+      }
+    },
+    {
+      "id": "2026-10-20-pages-discard-page",
+      "date": "2026-10-20",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Pages: a page with changes now has “Discard Changes to This Page” at the top of its words. It puts that page back to what visitors see now — both typed words and saved ones not yet published — for you to look over and Save.",
+        "hr": "Web-stranica › Stranice: stranica s promjenama sada na vrhu svojih riječi ima „Odbaci promjene na ovoj stranici”. Vraća tu stranicu na ono što posjetitelji sada vide — i upisane riječi i spremljene koje još nisu objavljene — da ih pregledate i spremite.",
+        "sr": "Веб-сајт › Странице: страница с промјенама сада на врху својих ријечи има „Одбаци промјене на овој страници”. Враћа ту страницу на оно што посјетиоци сада виде — и уписане ријечи и сачуване које још нису објављене — да их прегледате и сачувате."
+      }
+    },
+    {
+      "id": "2026-10-20-search-descriptions",
+      "date": "2026-10-20",
+      "page": "console",
+      "text": {
+        "en": "Search descriptions in Title Case now capitalize a word that starts a new sentence, on Thauma's site and in the Site Creator (it read “…Simple to State. the Need Is…”).",
+        "hr": "Engleski opisi za pretraživanje sada velikim slovom pišu riječ kojom počinje nova rečenica, na stranici Thauma i u Izradi stranice (pisalo je „…Simple to State. the Need Is…”).",
+        "sr": "Енглески описи за претраживање сада великим словом пишу ријеч којом почиње нова реченица, на страници Thauma и у Изради странице (писало је „…Simple to State. the Need Is…”)."
+      }
+    },
+    {
+      "id": "2026-10-20-site-discard-part",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator: you can now discard the changes to one part only. Where a dot shows changes, a line under the tabs puts that tab (or the open page) back to what visitors see, and a changed section has its own ↺ button. Undo brings it back.",
+        "hr": "Izrada stranice: sada možete odbaciti promjene samo na jednom dijelu. Gdje točka pokazuje promjene, redak ispod kartica vraća tu karticu (ili otvorenu stranicu) na ono što posjetitelji vide, a promijenjeni odjeljak ima svoj gumb ↺. Poništi to vraća.",
+        "sr": "Израда странице: сада можете одбацити промјене само на једном дијелу. Гдје тачка показује промјене, редак испод картица враћа ту картицу (или отворену страницу) на оно што посјетиоци виде, а промијењени одјељак има свој гумб ↺. Поништи то враћа."
+      }
+    },
+    {
+      "id": "2026-10-20-site-motion",
+      "date": "2026-10-20",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator, Motion: a new Speed choice (the middle one is now slower), and three new ways for sections to arrive: Into Focus, Wipe Up and Layered. Things arriving together now come in one after another, and the bold part of a heading now arrives with the rest. On your site, the line tracking the scroll and drifting photos move smoothly and gently on phones, the first photo shows at once, and the next page starts loading as soon as a visitor points at or touches its link.",
+        "hr": "Izrada stranice, Pokret: novi izbor Brzina (srednja je sada sporija) i tri nova načina na koje se odjeljci pojavljuju: Izoštre se, Otkriju se odozdo i Slojevito. Ono što se pojavljuje zajedno sada dolazi jedno za drugim, a podebljani dio naslova sada dolazi sa ostatkom. Na vašoj stranici crta koja prati listanje i fotografije koje plove kreću se glatko i blago na mobitelima, prva fotografija se odmah vidi, a sljedeća stranica počinje se učitavati čim posjetitelj pokaže ili dodirne njezinu poveznicu.",
+        "sr": "Израда странице, Покрет: нови избор Брзина (средња је сада спорија) и три нова начина на које се одјељци појављују: Изоштре се, Открију се одоздо и Слојевито. Оно што се појављује заједно сада долази једно за другим, а подебљани дио наслова сада долази са остатком. На вашој страници црта која прати листање и фотографије које плове крећу се глатко и благо на мобитељима, прва фотографија се одмах види, а сљедећа страница почиње се учитавати чим посјетитељ покаже или додирне њезину повезницу."
+      }
+    },
+    {
+      "id": "2026-10-19-landing-clock",
+      "date": "2026-10-19",
+      "page": "site",
+      "text": {
+        "en": "Landing and closed pages: the THAUMA logo's line draws in one stroke with the letters. The light passing over the logo now changes the line beneath it letter by letter, each language staying up for eight seconds. Serve, Train and Resource sit beside the words again.",
+        "hr": "Početna i zatvorena stranica: crta logotipa THAUMA crta se jednim potezom zajedno sa slovima. Svjetlo koje prelazi preko logotipa sada mijenja redak ispod njega slovo po slovo, a svaki jezik ostaje osam sekundi. Služiti, Obučavati i Opskrbiti opet su pokraj teksta.",
+        "sr": "Почетна и затворена страница: црта логотипа THAUMA црта се једним потезом заједно са словима. Свјетло које прелази преко логотипа сада мијења редак испод њега слово по слово, а сваки језик остаје осам секунди. Служити, Обучавати и Опскрбити опет су покрај текста."
+      }
+    },
+    {
+      "id": "2026-10-19-release-live",
+      "date": "2026-10-19",
+      "page": "console",
+      "text": {
+        "en": "\"Thauma Was Updated\" now arrives once the changes are actually live, says which of your pages changed, and links to the live console.",
+        "hr": "„Thauma je ažurirana” sada stiže tek kad su promjene stvarno vidljive, kaže koje su se vaše stranice promijenile i vodi na konzolu uživo.",
+        "sr": "„Thauma је ажурирана” сада стиже тек кад су промјене стварно видљиве, каже које су се ваше странице промијениле и води на конзолу уживо."
+      }
+    },
+    {
+      "id": "2026-10-19-console-shared",
+      "date": "2026-10-19",
+      "page": "console",
+      "text": {
+        "en": "When an administrator finishes working inside your console, the bell tells you, and opens your Activity page so you can see what happened.",
+        "hr": "Kad administrator završi rad u vašoj konzoli, zvonce vam to javi i otvara vašu stranicu Aktivnost da vidite što se dogodilo.",
+        "sr": "Кад администратор заврши рад у вашој конзоли, звонце вам то јави и отвара вашу страницу Активност да видите што се догодило."
+      }
+    },
+    {
+      "id": "2026-10-19-share-line",
+      "date": "2026-10-19",
+      "page": "staff:website",
+      "text": {
+        "en": "Advanced: the name on your share picture is written as your site writes it, and you can choose the line at the bottom of the picture instead of your address.",
+        "hr": "Napredno: ime na slici za dijeljenje napisano je kao na vašoj stranici, a redak na dnu slike možete odabrati umjesto adrese.",
+        "sr": "Напредно: име на слици за дијељење написано је као на вашој страници, а редак на дну слике можете одабрати умјесто адресе."
+      }
+    },
+    {
+      "id": "2026-10-19-timeline-cards",
+      "date": "2026-10-19",
+      "page": "staff:website",
+      "text": {
+        "en": "Timeline cards now take the color of the section's background (Plain, Raised or Tint). The \"Get the App\" link in the footer is quieter.",
+        "hr": "Kartice vremenske crte sada preuzimaju boju pozadine odjeljka (Obično, Izdignuto ili Nijansa). Poveznica „Preuzmite aplikaciju” u podnožju je diskretnija.",
+        "sr": "Картице временске црте сада преузимају боју позадине одјељка (Обично, Издигнуто или Нијанса). Повезница „Преузмите апликацију” у подножју је дискретнија."
+      }
+    },
+    {
+      "id": "2026-10-19-pages-closed",
+      "date": "2026-10-19",
+      "page": "admin:website",
+      "text": {
+        "en": "Pages: the closed page has its own tab, and the list of pages scrolls on its own.",
+        "hr": "Stranice: zatvorena stranica ima svoju karticu, a popis stranica pomiče se zasebno.",
+        "sr": "Странице: затворена страница има своју картицу, а попис страница помиче се засебно."
+      }
+    },
+    {
+      "id": "2026-10-19-nav-logo",
+      "date": "2026-10-19",
+      "page": "site",
+      "text": {
+        "en": "The small logo at the top now lines up with the edge of the page's text.",
+        "hr": "Mali logotip na vrhu sada je poravnan s rubom teksta stranice.",
+        "sr": "Мали логотип на врху сада је поравнан с рубом текста странице."
+      }
+    },
+    {
       "id": "2026-10-16-landing-serbian",
       "date": "2026-10-16",
       "page": "site",

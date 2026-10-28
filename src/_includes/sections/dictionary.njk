@@ -1,0 +1,12 @@
+{#- A DICTIONARY ENTRY as a page's header (About's "thauma"): the word, how
+    it is said, and what it means, one line per meaning. -#}
+{%- set wd = sec.words %}
+<header class="dict"><div class="wrap">
+  <h1 class="dict-word rise">{{ t | w(wd.word) | rich(wd.word) }}</h1>
+  <div class="dict-ipa rise-2">{{ t | w(wd.ipa) | rich(wd.ipa) }}</div>
+  <div class="dict-defs rise-3">
+    {%- for k in wd.defs %}
+    <p>{{ t | w(k) | rich(k) }}</p>
+    {%- endfor %}
+  </div>
+</div></header>

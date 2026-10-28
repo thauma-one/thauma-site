@@ -2,7 +2,7 @@
 layout: layouts/staff.njk
 staffPage: updates
 staffTitle: Updates
-staffHeading: What this ministry <b>publishes</b>
+staffHeading: What This Ministry <b>Publishes</b>
 ---
 {#- UPDATES (mockup boards 7 and "Option B"; was Ministry). Four sections, one
    page: milestones, giving goals, prayer and videos are the same job — the
@@ -128,8 +128,8 @@ staffHeading: What this ministry <b>publishes</b>
 
   <div class="ms-grid ms-neutral">
     <label class="fld">
-      <span data-i18n="ms.partOf">Part of</span>
-      <select id="msParent"><option value="" data-i18n="ms.topLevel">— top level —</option></select>
+      <span data-i18n="ms.partOf">Part Of</span>
+      <select id="msParent"><option value="" data-i18n="ms.topLevel">— Top Level —</option></select>
     </label>
   </div>
 
@@ -157,7 +157,7 @@ staffHeading: What this ministry <b>publishes</b>
 <!-- =============================================================== GOALS -->
 <section class="tab-panel" data-panel="goals" role="tabpanel" hidden>
     <div class="ms-bar">
-      <button type="button" class="solid-btn" id="glAdd" data-i18n="gl.add">Add goal</button>
+      <button type="button" class="solid-btn" id="glAdd" data-i18n="gl.add">Add Goal</button>
       <span class="hint" id="glStatus"></span>
     </div>
 
@@ -202,7 +202,7 @@ staffHeading: What this ministry <b>publishes</b>
           <span data-i18n="gl.kind">Kind</span>
           <select id="glKind">
             <option value="monthly" data-i18n="gl.monthly">Monthly</option>
-            <option value="one_time" data-i18n="gl.oneTime">One time</option>
+            <option value="one_time" data-i18n="gl.oneTime">One Time</option>
             <option value="project" data-i18n="gl.project">Project</option>
           </select>
         </label>
@@ -226,14 +226,14 @@ staffHeading: What this ministry <b>publishes</b>
          right one rather than by editing the past — and why an importer
          hooked up tomorrow needs no migration. -#}
       <div class="gl-progress">
-        <h4 data-i18n="gl.progressTitle">Where it stands</h4>
+        <h4 data-i18n="gl.progressTitle">Where It Stands</h4>
         <div class="ms-grid">
           <label class="fld">
             <span data-i18n="gl.raised">Raised</span>
             <input type="number" id="glRaised" min="0" step="1" placeholder="3060">
           </label>
           <label class="fld">
-            <span data-i18n="gl.donors">Partners giving</span>
+            <span data-i18n="gl.donors">Partners Giving</span>
             <input type="number" id="glDonors" min="0" step="1" placeholder="14">
           </label>
         </div>
@@ -252,7 +252,7 @@ staffHeading: What this ministry <b>publishes</b>
 <!-- ============================================================== PRAYER -->
 <section class="tab-panel" data-panel="prayer" role="tabpanel" hidden>
     <div class="ms-bar">
-      <button type="button" class="solid-btn" id="prAdd" data-i18n="pr.add">Add request</button>
+      <button type="button" class="solid-btn" id="prAdd" data-i18n="pr.add">Add Request</button>
       <span class="hint" id="prStatus"></span>
     </div>
 
@@ -283,14 +283,14 @@ staffHeading: What this ministry <b>publishes</b>
         <label class="fld"><span data-i18n="pr.detail">Detail</span>
           <small class="ms-ref" data-pref="description" hidden></small>
           <textarea data-ptx="description" data-col="a" rows="4"></textarea></label>
-        <label class="fld"><span data-i18n="pr.answerText">What happened</span>
+        <label class="fld"><span data-i18n="pr.answerText">What Happened</span>
           <small class="ms-ref" data-pref="answer_text" hidden></small>
           <textarea data-ptx="answer_text" data-col="a" rows="3"></textarea></label>
       </div>
 
       <div class="ms-grid ms-neutral">
         <label class="fld">
-          <span data-i18n="pr.answeredOn">Date answered</span>
+          <span data-i18n="pr.answeredOn">Date Answered</span>
           <input type="date" id="prAnsweredOn">
         </label>
         <label class="fld">
@@ -337,7 +337,7 @@ staffHeading: What this ministry <b>publishes</b>
 
   <form class="ms-form vid-form" id="vidForm">
     <label class="fld">
-      <span data-i18n="vid.channel">YouTube channel or playlist</span>
+      <span data-i18n="vid.channel">YouTube Channel or Playlist</span>
       {#- ONE FIELD, NO PICKER. Nobody thinks "I am supplying a playlist
          identifier" — they copy what is in the address bar, and the string
          already says which kind it is. A playlist address carries list=; a
@@ -353,7 +353,7 @@ staffHeading: What this ministry <b>publishes</b>
 
     <div class="ms-grid ms-neutral">
       <label class="fld">
-        <span data-i18n="vid.count">How many to show</span>
+        <span data-i18n="vid.count">How Many to Show</span>
         <input type="number" id="vidCount" min="1" max="15" step="1" value="3">
       </label>
     </div>
@@ -377,11 +377,11 @@ staffHeading: What this ministry <b>publishes</b>
     </div>
 
     <div id="vidLinks"></div>
-    <button type="button" class="ghost-btn" id="vidLinkAdd" data-i18n="vid.addButton">Add a button</button>
+    <button type="button" class="ghost-btn" id="vidLinkAdd" data-i18n="vid.addButton">Add a Button</button>
 
     <div class="ms-actions">
-      <button type="button" class="ghost-btn" id="vidCheck" data-i18n="vid.check">Check now</button>
-      <button type="button" class="ghost-btn danger" id="vidClear" data-i18n="vid.clear">Remove channel</button>
+      <button type="button" class="ghost-btn" id="vidCheck" data-i18n="vid.check">Check Now</button>
+      <button type="button" class="ghost-btn danger" id="vidClear" data-i18n="vid.clear">Remove Channel</button>
       <span class="hint" id="vidFormStatus"></span>
     </div>
   </form>
@@ -427,5 +427,5 @@ staffHeading: What this ministry <b>publishes</b>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="upCount"></span>
   <button type="button" class="ghost-btn" id="upDiscard" data-i18n="ms.discard">Discard</button>
-  <button type="button" class="solid-btn" id="upPublish" data-i18n="up.publish">Publish changes</button>
+  <button type="button" class="solid-btn" id="upPublish" data-i18n="up.publish">Publish Changes</button>
 </div>

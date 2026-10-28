@@ -1,0 +1,16 @@
+{#- THE LANGUAGE BEING WRITTEN, and one to compare with, above the tabs that
+   write words — Pages and Advanced — as the staff Site Creator has it above
+   Pages and Links: the same pair, swap and Translate as every other editor.
+   Languages (on or off, the donation page, how each is written, adding and
+   removing) is one button away, on Pages. admin-content.js shows this on
+   the tabs it serves. -#}
+<div class="ms-writing ws-writing c-writing" id="cWriting" hidden>
+  <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+    <select id="cLang" class="lang-pick" disabled data-lang-edit></select></label>
+  <span class="lang-ref" id="cBesideWrap" hidden>
+    <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+    <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+      <select id="cBeside" class="lang-pick" data-lang-ref></select></label>
+    <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+  </span>
+</div>

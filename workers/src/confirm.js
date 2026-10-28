@@ -51,6 +51,22 @@ const notValid = () => page("Link not valid",
    <p>If you are waiting to confirm a subscription, ask whoever added you to
       send it again.</p>`, 404);
 
+const esc = (v) => String(v == null ? "" : v)
+  .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
+                                 '"': "&quot;", "'": "&#39;" }[c]));
+
+/** The page, for this and for the console's preview of it. */
+export function confirmedHtml(lang, lists, brand = null) {
+  const names = lists.map(esc);
+  const listed = names.length === 1
+    ? names[0]
+    : names.slice(0, -1).join(", ") + " " + t(lang, "confirmed.and") + " " + names[names.length - 1];
+  const body = `<h1>${esc(t(lang, "confirmed.heading"))}</h1>` +
+    `<p>${t(lang, "confirmed.body", { lists: listed })}</p>` +
+    `<p>${esc(t(lang, "confirmed.stop"))}</p>`;
+  return publicPage(esc(t(lang, "confirmed.title")), body, undefined, lang, brand);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -73,23 +89,12 @@ export default {
 
     await db.query("subscriber_confirm", { token, now: new Date().toISOString() });
 
-    const esc = (v) => String(v == null ? "" : v)
-      .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
-                                     '"': "&quot;", "'": "&#39;" }[c]));
     /* In the language they signed up in (emailsAndForms.json "confirmed"). */
     const lang = subs[0].lang || null;
-    const names = subs.map((s) => esc(s.list_name));
-    const listed = names.length === 1
-      ? names[0]
-      : names.slice(0, -1).join(", ") + " " + t(lang, "confirmed.and") + " " + names[names.length - 1];
-    const body = `<h1>${esc(t(lang, "confirmed.heading"))}</h1>` +
-      `<p>${t(lang, "confirmed.body", { lists: listed })}</p>` +
-      `<p>${esc(t(lang, "confirmed.stop"))}</p>`;
-
     /* Thauma's page — in the ministry's color and name for a partner's list
        (lib/mail-brand.js), now that the token proved this is a real sign-up. */
     const brand = subs[0].partner_id ? await brandForMail(db, subs[0].partner_id).catch(() => null) : null;
-    return new Response(publicPage(esc(t(lang, "confirmed.title")), body, undefined, lang, brand),
+    return new Response(confirmedHtml(lang, subs.map((s) => s.list_name), brand),
       { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
   },
 };

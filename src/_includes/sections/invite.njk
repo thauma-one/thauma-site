@@ -1,0 +1,22 @@
+{#- AN INVITATION (sectionKinds.js invite; Home's closing "give or write"):
+    the line above, the heading, a sentence and buttons, centered on the
+    site's call-to-action ground. -#}
+{%- set wd = sec.words %}{% set look = sec.look or {} %}
+<section class="cta"><div class="wrap">
+  {%- if wd.cue %}
+  <div class="cue{% if look.voice == "ministry" %} foam{% endif %}">{{ t | w(wd.cue) | rich(wd.cue) }}</div>
+  {%- endif %}
+  {%- if wd.heading %}
+  <h2>{{ t | w(wd.heading ~ "_thin") | rich(wd.heading ~ "_thin") }} <b>{{ t | w(wd.heading ~ "_bold") | rich(wd.heading ~ "_bold") }}</b></h2>
+  {%- endif %}
+  {%- if wd.lede %}
+  <p class="lede">{{ t | w(wd.lede) | rich(wd.lede) }}</p>
+  {%- endif %}
+  {%- if sec.buttons and sec.buttons.length %}
+  <div class="btn-row center">
+    {%- for b in sec.buttons %}
+    <a class="btn {{ b.style or "solid" }}" href="{{ b.to | sectionHref(lang) }}">{{ t | w(b.label) | rich(b.label) }}</a>
+    {%- endfor %}
+  </div>
+  {%- endif %}
+</div></section>

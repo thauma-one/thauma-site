@@ -259,31 +259,34 @@
               'reading every file on each visit — worth an index before adding more.')) +
             '</p>'
           : '') +
+        /* AS STAFF UPDATES' ROWS ARE (Chase, 2026-10-27: "Admin Updates …
+           operate differently from staff"): one list with a line between
+           rows, the title and under it what it is, when, and the languages
+           it still misses; the star at the row's end. */
         groupsFor(collection, items).map(function (group) {
         return (group.label
           ? '<p class="cue bare lib-group">' + esc(group.label) + '</p>' : '') +
+        '<div class="lib-list">' +
         group.items.map(function (item) {
           var open = state.open === collection + '/' + item.slug;
           return '<div class="adm-person' + (open ? ' is-open' : '') + '"' +
                  ' data-lib-item="' + esc(collection + '/' + item.slug) + '">' +
             '<div class="adm-row" role="button" tabindex="0" aria-expanded="' +
               (open ? 'true' : 'false') + '">' +
-              '<span class="ms-chev" aria-hidden="true"></span>' +
               '<div class="adm-who">' +
-                '<span class="adm-name">' + esc(titleOf(item)) + '</span>' +
-                '<span class="adm-email">' + esc(item.slug) + '</span>' +
+                '<span class="ms-title">' + esc(titleOf(item)) + '</span>' +
+                '<div class="ms-meta">' + badges(collection, item) + langChips(item) + '</div>' +
               '</div>' +
-              '<div class="adm-tags lib-tags">' + badges(collection, item) + '</div>' +
-              '<div class="adm-access lib-langs">' + langChips(item) + '</div>' +
               star(collection, item) +
             '</div>' +
             (open ? editor(collection, item) : '') +
           '</div>';
-        }).join('');
+        }).join('') + '</div>';
         }).join('');
       /* The reference words above each box, from the boxes as drawn. */
       [].forEach.call(host.querySelectorAll('.adm-panel'), showLangs);
     });
+    drawPreviewSoon();
   }
 
   /* WHAT THE ROW SAYS WITHOUT BEING OPENED. The kind of thing it is comes
@@ -292,17 +295,15 @@
   function badges(collection, item) {
     var out = [];
     if (collection === 'resources') {
-      if (item.pinned) out.push('<span class="role-tag on-site">' +
-        esc(tr('lib.pinned', 'Pinned')) + '</span>');
-      if (item.format) out.push('<span class="role-tag partner">' + esc(label(item.format)) + '</span>');
-      if (item.moment) out.push('<span class="role-tag">' + esc(label(item.moment)) + '</span>');
+      if (item.pinned) out.push('<span class="lib-pin">' + esc(tr('lib.pinned', 'Pinned')) + '</span>');
+      if (item.format) out.push('<span>' + esc(label(item.format)) + '</span>');
+      if (item.moment) out.push('<span>' + esc(label(item.moment)) + '</span>');
     } else {
-      /* No status tag: the group heading above already says Coming up,
-         Canceled or Already happened, and saying it twice was a third of the
-         row's tags. */
-      if (item.type) out.push('<span class="role-tag partner">' + esc(label(item.type)) + '</span>');
+      /* No status: the group heading above already says Coming up,
+         Canceled or Already happened. */
+      if (item.type) out.push('<span>' + esc(label(item.type)) + '</span>');
       var when = whenText(item.date, item.end_date);
-      if (when) out.push('<span class="role-tag">' + esc(when) + '</span>');
+      if (when) out.push('<span>' + esc(when) + '</span>');
     }
     return out.join('');
   }
@@ -895,6 +896,102 @@
     Object.keys(edited).forEach(function (k) { if (k !== 'collection') item[k] = edited[k]; });
     render();
   });
+
+  /* ------------------------------------------------ preview on a website
+     As staff Updates has it (Chase, 2026-10-27: "Events and Resources need
+     the Sharing visualizers"): the real widget beside the list, drawn from
+     the list as it stands — what another website would show once it is
+     published. Thauma's words for it (site_words), its languages and its
+     look come from what the site last wrote out (/embed-data/thauma.json);
+     the events and resources are these. Sharing has the code. */
+  var pv = { on: false, base: null, device: 'wide', lang: null, h: 300 };
+  var PV_DESKTOP_W = 1000, ORIGIN = 'https://thauma.one';
+  function pvTab() {
+    var p = document.querySelector('.web-panel:not([hidden])');
+    return p && p.dataset.webPanel === 'resources' ? 'resources' : 'events';
+  }
+  function pvData() {
+    var base = pv.base || { partner: { slug: 'thauma', name: 'Thauma', display_name: 'Thauma', url: ORIGIN },
+      languages: LANGS.map(function (c) { return { code: c }; }), theme: { accent: '#2FD8FF', accent2: '#5CF2C4', mode: 'dark' } };
+    var per = function (fn) { var o = {}; LANGS.forEach(function (l) { o[l] = fn(l); }); return o; };
+    var out = JSON.parse(JSON.stringify(base));
+    out.shared = ['events', 'resources'];
+    out.events = state.gatherings.filter(function (g) { return g.status !== 'canceled'; }).map(function (g) {
+      var iso = ISO.test(String(g.date || ''));
+      return { slug: g.slug, type: g.type, status: g.status || 'upcoming', date: iso ? g.date : null,
+        date_label: g.date && !iso ? String(g.date) : null, location: g.location || null,
+        title: g.title || {}, summary: g.summary || {}, url: per(function (l) { return ORIGIN + '/' + l + '/events/'; }) };
+    });
+    out.resources = state.resources.map(function (r) {
+      return { slug: r.slug, format: r.format, moment: r.moment, title: r.title || {}, summary: r.summary || {},
+        url: per(function (l) { return ORIGIN + '/' + l + '/resources/' + r.slug + '/'; }) };
+    });
+    return out;
+  }
+  var pvTimer = null;
+  function drawPreviewSoon() { if (pv.on) { clearTimeout(pvTimer); pvTimer = setTimeout(drawPreview, 180); } }
+  function drawPreview() {
+    var frame = $('libFrame');
+    if (!frame || !pv.on) return;
+    if (!pv.lang || LANGS.indexOf(pv.lang) === -1) pv.lang = LANGS[0] || 'en';
+    $('libLang').innerHTML = LANGS.map(function (c) { return '<option value="' + esc(c) + '">' + esc(langName(c)) + '</option>'; }).join('');
+    $('libLang').value = pv.lang;
+    pvFit(pv.h);
+    frame.srcdoc = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<body style="margin:0;padding:20px;background:#0b0f15">' +
+      '<script>window.__thaumaPreview=' + JSON.stringify(pvData()).replace(/</g, '\\u003c') + '</' + 'script>' +
+      '<div data-thauma="thauma" data-widget="' + pvTab() + '" data-theme="dark" data-lang="' + esc(pv.lang) + '"></div>' +
+      '<script src="' + location.origin + '/embed/v1/widget.js"></' + 'script>';
+    $('libShareLink').href = '/admin/website/sharing/?item=' + pvTab();
+  }
+  function pvFit(h) {
+    pv.h = h;
+    var frame = $('libFrame'), wrap = $('libScale'), stage = $('libStage');
+    var scale = 1;
+    if (pv.device === 'wide') {
+      var w = stage.getBoundingClientRect().width || PV_DESKTOP_W;
+      scale = Math.min(1, w / PV_DESKTOP_W);
+      wrap.style.inlineSize = scale < 1 ? PV_DESKTOP_W + 'px' : '100%';
+    } else wrap.style.inlineSize = '100%';
+    frame.style.blockSize = h + 'px';
+    wrap.style.transform = scale < 1 ? 'scale(' + scale + ')' : '';
+    stage.style.blockSize = Math.ceil(h * scale) + 'px';
+    $('libScaleNote').textContent = scale < 0.99 ? fill('emb.shownAt', { n: Math.round(scale * 100) }) : '';
+  }
+  function pvToggle() {
+    pv.on = !pv.on;
+    var btn = $('libPreviewBtn');
+    btn.classList.toggle('is-on', pv.on);
+    btn.setAttribute('aria-pressed', pv.on ? 'true' : 'false');
+    $('libPreview').hidden = !pv.on;
+    $('libPreview').parentNode.classList.toggle('is-previewing', pv.on);
+    if (pv.on && !pv.base) {
+      fetch('/embed-data/thauma.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d) { pv.base = d; delete pv.base.events; delete pv.base.resources; } drawPreview(); })
+        .catch(drawPreview);
+    } else drawPreview();
+  }
+  if ($('libPreviewBtn') && $('libPreview')) {
+    $('libPreviewBtn').addEventListener('click', pvToggle);
+    $('libLang').addEventListener('change', function () { pv.lang = this.value; drawPreview(); });
+    [].forEach.call($('libPreview').querySelectorAll('[data-lib-width]'), function (b) {
+      b.addEventListener('click', function () {
+        pv.device = b.dataset.libWidth;
+        [].forEach.call($('libPreview').querySelectorAll('[data-lib-width]'), function (x) {
+          x.classList.toggle('is-on', x === b); x.setAttribute('aria-selected', x === b ? 'true' : 'false');
+        });
+        $('libStage').classList.toggle('is-narrow', pv.device === 'narrow');
+        drawPreview();
+      });
+    });
+    /* moving between Events and Resources shows the other */
+    document.addEventListener('click', function (e) { if (e.target.closest('[data-web-tab]')) setTimeout(drawPreviewSoon, 0); });
+    window.addEventListener('message', function (e) {
+      var h = e.data && e.data.__thaumaHeight;
+      if (h && e.source === $('libFrame').contentWindow) pvFit(Math.max(180, Math.min(2400, h)));
+    });
+    window.addEventListener('resize', function () { if (pv.on) pvFit(pv.h); });
+  }
 
   if (document.querySelector('[data-lib-list]')) load();
 })();

@@ -264,7 +264,7 @@ await check("Check now re-reads the STORED channel, sending no address", async (
 await check("with no channel set, Check and Remove are not offered", async () => {
   const { w } = await boot(payload({ channel: null, videos: [] }));
   await openTab(w);
-  eq(w.document.getElementById("vidCheck").hidden, true, "Check now");
+  eq(w.document.getElementById("vidCheck").hidden, true, "Check Now");
   eq(w.document.getElementById("vidClear").hidden, true, "Remove");
   eq(w.document.getElementById("vidFound").hidden, true, "the found line");
   eq(w.document.getElementById("vidSync").hidden, true, "the sync line");

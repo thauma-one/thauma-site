@@ -173,6 +173,9 @@ jobs:
       - name: Test · workers/admin-publish
         working-directory: workers
         run: node test/admin-publish.test.mjs
+      - name: Test · workers/admin-sections
+        working-directory: workers
+        run: node test/admin-sections.test.mjs
       - name: Test · workers/admin
         working-directory: workers
         run: node test/admin.test.mjs

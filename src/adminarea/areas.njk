@@ -1,0 +1,77 @@
+---
+layout: layouts/admin.njk
+pagination:
+  data: consoleNav.areaTabs
+  size: 1
+  alias: tab
+eleventyComputed:
+  permalink: "{{ tab.url }}index.html"
+  adminPage: "website"
+  areaId: "{{ tab.area }}"
+  areaTab: "{{ tab.tab }}"
+  adminTitle: "{{ tab.label }}"
+  areaLabel: "{{ tab.areaLabel }}"
+  adminHeading: "{{ tab.heading | safe }}"
+---
+{#- AN AREA OF THE PUBLIC SITE'S WORK, ONE PAGE (Chase, 2026-09-27; split
+   into four areas 2026-10-20, Website's own since 2026-10-21 —
+   consoleNav.js `areas`): every tab of the area
+   is here, and every tab's data loads when the page does — so moving between
+   its tabs is instant, and an unsaved edit on one tab is still there after a
+   look at another. Written at each tab's own address, opening on that tab,
+   so a reload or a bookmark returns to where you were; admin-website.js
+   moves between them without a reload and keeps the address in step.
+
+   Each tab's markup is its own include (src/_includes/website/), and each
+   tab's script finds its own elements, so the tabs do not know about one
+   another — except for one thing, the site settings they share: see
+   admin-website.js. -#}
+{%- if tab.area == "creator" %}{% include "website/writing.njk" %}{% endif %}
+{%- for t in consoleNav.areas[tab.area].tabs %}
+<section class="web-panel" data-web-panel="{{ t.tab }}"{% if t.tab != tab.tab %} hidden{% endif %}>
+  {% include "website/" + t.tab + ".njk" %}
+</section>
+{%- endfor %}
+
+{%- if tab.area == "updates" %}
+{#- PREVIEW ON A WEBSITE, as staff Updates has it (2026-10-27): the real
+   widget beside the list (admin-library.js); Sharing has the code. -#}
+<aside class="up-preview lib-preview" id="libPreview" hidden>
+  <div class="emb-stagebar">
+    <div class="emb-devices" role="tablist" aria-label="Width">
+      <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+              data-lib-width="wide" data-i18n="emb.desktop">Desktop</button>
+      <button type="button" class="emb-device" role="tab" aria-selected="false"
+              data-lib-width="narrow" data-i18n="emb.mobile">Mobile</button>
+    </div>
+    <span class="emb-scale-note" id="libScaleNote"></span>
+    <span class="c-gap"></span>
+    <select id="libLang" class="up-lang" aria-label="Language"></select>
+  </div>
+  <div class="emb-stage" id="libStage">
+    <div class="emb-scale" id="libScale">
+      <iframe id="libFrame" title="Preview" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+  <a class="up-share-link" id="libShareLink" href="/admin/website/sharing/" data-i18n="up.shareLink">Share settings and code → Sharing</a>
+</aside>
+{%- endif %}
+{%- if tab.area == "creator" %}
+{#- Unsaved words and sections — on Pages, Navigation, Footer or Advanced:
+   one bar for all of them, as the words are one set (admin-content.js).
+   data-tabs says which tabs hold them, for the marks on the tabs
+   (admin-website.js). -#}
+<div class="ms-savebar" id="cSaveBar" role="status" aria-live="polite" data-tabs="pages" hidden>
+  <span class="ms-dirty-dot" aria-hidden="true"></span>
+  <span id="cDirtyCount">0 unsaved changes</span>
+  <button type="button" class="ghost-btn" id="cDiscard" data-i18n="ms.discard">Discard</button>
+  <button type="button" class="solid-btn" id="cSave" data-i18n="con.save">Save</button>
+</div>
+{%- endif %}
+
+{#- The languages this build publishes, for Resources, Events and the contact
+   form's reasons: the same list Eleventy paginated the public pages over, so
+   the editor cannot offer a language the site does not render. -#}
+{%- if tab.area == "updates" or tab.area == "sharing" %}
+<script id="libLangs" type="application/json">{{ activeLangs | dump | safe }}</script>
+{%- endif %}

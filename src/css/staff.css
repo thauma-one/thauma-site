@@ -1364,6 +1364,7 @@ input.is-locked{opacity:.6;cursor:not-allowed;background:var(--bg2,#0b1119)}
 .cp-tools button:active{transform:translateY(1px)}
 .cp-tools button.is-on{background:var(--voice-tech);color:#0b1119}
 .cp-tools button:focus-visible{outline:2px solid var(--voice-tech);outline-offset:1px}
+.cp-ta svg{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
 .cp-tools-sep{width:1px;height:17px;background:var(--line);margin:0 5px}
 .cp-swatch span{display:block;width:13px;height:13px;border-radius:50%;
   background:var(--voice-tech);margin:0 auto;border:1px solid rgba(255,255,255,.15)}
@@ -2370,8 +2371,14 @@ html.console-menu-open{overflow:hidden}
 
 .sh-mid{min-width:0}
 .sh-mid .emb-stagebar{align-items:center;gap:12px}
+/* Shown On and Language keep together, at the right, when the bar wraps. */
+.sh-picks{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px 18px;margin-left:auto}
 #shStage{overflow:hidden}
 #shStage iframe{display:block;inline-size:100%;block-size:300px;border:0;background:transparent}
+/* The next drawing, loading behind the one shown (staff-sharing.js and
+   admin-forms.js, show). */
+.emb-scale{position:relative}
+.emb-scale iframe.is-next{position:absolute;inset:0 auto auto 0;opacity:0;pointer-events:none}
 .sh-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   padding:18px 20px;margin-bottom:14px}
 .sh-card[hidden]{display:none}
@@ -2425,15 +2432,19 @@ html.console-menu-open{overflow:hidden}
 .sh-dev-body .emb-code{white-space:pre-wrap;word-break:break-all;align-self:stretch}
 .sh-dev[hidden]{display:none}
 
-/* ---- Website › Forms: Thauma's own (admin) ----
-   Two forms, a pill for each; a card of what happens to what is sent. */
-.wf{display:flex;flex-direction:column;gap:18px;max-width:760px}
+/* ---- Website › Sharing: Thauma's own (admin), as staff Sharing is laid
+   out (2026-10-27): the four on the left, the real thing in the middle,
+   what decides it on the right. */
 .wf-panel[hidden]{display:none}
-.wf-panel .switch{margin-bottom:18px}
-.wf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px}
-.wf-panel .up-share-link{display:inline-block;margin-top:18px}
+.wf-panel > .switch{margin:0}
+.wf-panel .up-share-link{display:inline-block;margin-top:14px}
+.wf-panel .ct-topics{margin-top:6px}
 .wf-writing{margin:0 0 12px}
 .wf-writing[hidden]{display:none}
+.wf-state{margin:0;font-size:14px;line-height:1.55;color:var(--muted,#8a96a6)}
+.wf-state.is-live{color:var(--text,#edf2f8)}
+.wf-state.is-live::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;
+  background:var(--voice-human);box-shadow:0 0 10px var(--voice-human);vertical-align:1px}
 
 @media (max-width:1100px){
   .sh-grid{grid-template-columns:200px minmax(0,1fr)}
@@ -2851,6 +2862,9 @@ html.has-ai .lang-ai{display:inline-block}
 /* Changes not yet published, on a tab or a page: the same amber as the bar. */
 .ws-dot{display:inline-block;width:7px;height:7px;margin-left:8px;border-radius:50%;background:var(--warn,#F5B845);vertical-align:middle}
 .ws-dot[hidden]{display:none}
+.ws-revert{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 12px;font-size:13px}
+.ws-revert[hidden]{display:none}
+.ws-revert .ws-dot{margin:0}
 .ws-tab{display:flex;align-items:center}
 .ws-favicon{width:32px;height:32px;object-fit:cover;border-radius:6px}
 .ws-infoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
@@ -3235,6 +3249,30 @@ html.pe-open{overflow:hidden}
 .ws-seg-icons .ws-segbtn{padding:7px 12px;line-height:0}
 .ws-seg-icons svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
 .ws-pick{min-width:0;max-width:100%;padding:8px 12px;font-size:13px}
+.ws-font-tag{font-size:10px;letter-spacing:.02em;color:var(--warn,#F5B845);margin-left:auto;flex:none}
+.ws-font-change{align-self:center;font-size:12px;cursor:pointer;white-space:nowrap}
+/* A LIST THAT SHOWS WHAT IT DOES (staff-site.js ddPick): a font named in
+   its own face, an entrance played in the preview as it is pointed at. */
+.ws-dd{max-width:360px}
+.ws-dd .ws-pp-btn,.ws-dd .ws-pp-opt{padding:9px 14px;gap:10px}
+.ws-dd-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
+.ws-dd .ws-pp-list{max-height:min(420px,60vh)}
+.ws-row .ws-ctl:has(> .ws-dd){display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ws-lctl:has(> .ws-dd){display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ws-play{flex:none}
+/* the speed: a slider between its two ends, the seconds beside it */
+.ws-speed{display:flex;align-items:center;gap:10px;width:100%;max-width:440px}
+.ws-speed input[type=range]{flex:1;min-width:120px;accent-color:var(--voice-tech)}
+.ws-speed-end{font-size:12px;color:var(--dim);flex:none}
+.ws-speed-val{flex:none;min-width:4.2em;text-align:right;font:600 13px var(--font-mono,monospace);color:var(--text)}
+/* a page of your own (2026-10-27): added under the list; its address */
+.ws-addpage{margin-top:12px}
+.ws-addr{display:flex;align-items:center;gap:4px;max-width:420px}
+.ws-addr input{flex:1;min-width:0;font-family:var(--font-mono,monospace)}
+.ws-addr-base{color:var(--dim);font:13px var(--font-mono,monospace)}
+/* what each link shows, over the links (2026-10-27) */
+.ws-linkshow{display:flex;flex-direction:column;gap:12px;margin:0 0 18px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius)}
+.ws-linkshow .ws-flags{display:flex;flex-wrap:wrap;gap:8px 16px}
 @media (max-width:560px){.ws-lrow{grid-template-columns:1fr;gap:8px}}
 
 /* A CHOICE WITH PICTURES (staff-site.js picPick): a wide box showing the one

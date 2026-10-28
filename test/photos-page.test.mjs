@@ -47,7 +47,7 @@ async function boot() {
         if (o.method && o.method !== "GET") sent.push({ method: o.method, url: u, body });
         const ok = (j) => ({ ok: true, status: 200, json: async () => j });
         if (u.includes("/api/admin/publish")) return ok({ configured: true, waiting: 0 });
-        if (u.includes("file=en")) return ok({ configured: true, data: { home: { who_cue: "The need" } }, sha: "e1" });
+        if (u.includes("file=en")) { sent.push({ method: "GET", url: u }); return ok({ configured: true, data: {}, sha: "e1" }); }
         if (u.includes("/api/admin/content")) {
           if (o.method === "PUT") return ok({ ok: true, sha: "s2", changed: Object.keys(body.changes) });
           return ok({ configured: true, data: { images: JSON.parse(JSON.stringify(IMAGES)) }, sha: "s1" });
@@ -55,6 +55,8 @@ async function boot() {
         return ok({});
       };
       w.scrollTo = () => {};
+      /* Pages names a photo for its section (admin-content.js) */
+      w.ThaumaPhotoName = (id) => (id === "home_who" ? "Home · The Need" : null);
     },
   });
   const w = dom.window, d = w.document;
@@ -102,9 +104,12 @@ await check("inside the band a photo renders exactly as before; outside, the zoo
 });
 
 await check("every photo slot in the file is offered, named by its page and section", async () => {
-  const { d } = await boot();
+  /* named as Pages names the section it is in; one Pages does not know is
+     named from its slot — and English is not read a second time for it */
+  const { d, sent } = await boot();
   const names = [...d.querySelectorAll("#phThumbs [data-photo] span")].map((s) => s.textContent);
-  assert(names.join(" | ") === "Home · The need | Give · Impact", names.join(" | "));
+  assert(names.join(" | ") === "Home · The Need | Give · Impact", names.join(" | "));
+  assert(!sent.some((s) => s.url.includes("file=en")), "Photos read the English words again");
 });
 
 await check("the window is the part the frame shows: 57% of a 3:2 photo's height at zoom 100", async () => {

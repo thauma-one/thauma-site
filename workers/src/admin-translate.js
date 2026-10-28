@@ -3,7 +3,8 @@
  *
  *   GET                            the site's languages
  *   GET  ?summary                  every language's progress: total lines,
- *                                  missing, outdated
+ *                                  missing, outdated, and which lines
+ *                                  (`needs`)
  *   GET  ?lang=hr                  every translatable line for Croatian, with
  *                                  its status: missing, outdated or done
  *   POST { action: "file", lang, ids? }
@@ -46,9 +47,15 @@
 import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
-import { getFile, getFileAt, putFile, compareBranches, githubConfig } from "./lib/github.js";
+import { getFile, getFileAt, putFile, compareBranches, githubConfig, lastSuccessfulRun } from "./lib/github.js";
+import { PROD_WORKFLOW } from "./admin-publish.js";
 import { EDITORS } from "./admin-content.js";
 import { loadNotes, briefFor } from "./lib/translation-notes.js";
+import { withWords } from "./lib/mail-i18n.js";
+import { siteOrigin } from "./lib/origin.js";
+import { listConfirmEmail, contactReceiptEmail } from "./lib/mail.js";
+import { confirmedHtml } from "./confirm.js";
+import { doneHtml, backHtml } from "./unsubscribe.js";
 import {
   SOURCES, linesFor, leafMap, withStatus, buildFile, readFile, checkLine, cleanValue, setLine, hashText,
 } from "./lib/translation-file.js";
@@ -188,15 +195,62 @@ async function load(env, db, lang, { english = false, shared = null } = {}) {
    cannot collide with them in the merge.
 
    Quiet on failure: the editor works as before without it. */
-export async function waitingOnDev(env, wanted, fetchImpl = fetch) {
+/** One language's lines as the live site has them: { "site:key": text,
+    "emails:key": text }, from the last successful production build. Null
+    when nothing was ever published. */
+export async function liveWords(env, code, fetchImpl = fetch) {
+  const run = await lastSuccessfulRun(env, PROD_WORKFLOW, fetchImpl);
+  if (run.error || run.never) return null;
+  const [s, e] = await Promise.all([getFileAt(env, langPath(code), run.sha, fetchImpl), getFileAt(env, EMAILS, run.sha, fetchImpl)]);
+  const lines = {};
+  const add = (source, f, pick) => {
+    if (f.error) return;
+    try {
+      for (const [k, v] of Object.entries(leafMap(pick(JSON.parse(f.text)) || {}))) if (typeof v === "string") lines[`${source}:${k}`] = v;
+    } catch { /* not readable: none from it */ }
+  };
+  add("site", s, (d) => d);
+  add("emails", e, (d) => d[code]);
+  return lines;
+}
+
+/* THE COMPARISON IS THE SLOW PART (Chase, 2026-10-21: Pages "still loads
+   slowly"): GitHub takes most of a second to compare two branches, and the
+   page asks for two languages at once — the one written and the one beside
+   it — each of which asked again. So it is asked once and kept for twenty
+   seconds, and it is started as the request arrives, alongside reading the
+   words, rather than after. A file at the merge base is a file at a commit,
+   which never changes, so it is kept too. */
+const cmpKept = new WeakMap();
+export function devComparison(env, fetchImpl = fetch) {
+  const cfg = githubConfig(env), dev = env.STAGING_BRANCH;
+  if (cfg.error || !dev || dev === cfg.branch) return Promise.resolve(null);
+  const kept = cmpKept.get(fetchImpl);
+  if (kept && kept.key === `${cfg.repo}:${cfg.branch}...${dev}` && Date.now() - kept.at < 20000) return kept.promise;
+  const promise = compareBranches(env, cfg.branch, dev, fetchImpl).then((c) => (c.error || !c.merge_base ? null : c));
+  cmpKept.set(fetchImpl, { key: `${cfg.repo}:${cfg.branch}...${dev}`, at: Date.now(), promise });
+  return promise;
+}
+const atCommits = new WeakMap();
+function fileAtCommit(env, path, sha, fetchImpl) {
+  if (!atCommits.has(fetchImpl)) atCommits.set(fetchImpl, new Map());
+  const atCommit = atCommits.get(fetchImpl), k = `${sha}:${path}`;
+  if (!atCommit.has(k)) {
+    if (atCommit.size > 40) atCommit.delete(atCommit.keys().next().value);
+    atCommit.set(k, getFileAt(env, path, sha, fetchImpl).then((r) => { if (r.error) atCommit.delete(k); return r; }));
+  }
+  return atCommit.get(k);
+}
+
+export async function waitingOnDev(env, wanted, fetchImpl = fetch, comparing = null) {
   const cfg = githubConfig(env);
   const dev = env.STAGING_BRANCH;
   if (cfg.error || !dev || dev === cfg.branch) return {};
-  const cmp = await compareBranches(env, cfg.branch, dev, fetchImpl);
-  if (cmp.error || !cmp.merge_base) return {};
+  const cmp = await (comparing || devComparison(env, fetchImpl));
+  if (!cmp) return {};
   const out = {};
   await Promise.all(wanted.filter((w) => cmp.files.includes(w.path)).map(async (w) => {
-    const [d, b] = await Promise.all([getFileAt(env, w.path, dev, fetchImpl), getFileAt(env, w.path, cmp.merge_base, fetchImpl)]);
+    const [d, b] = await Promise.all([getFileAt(env, w.path, dev, fetchImpl), fileAtCommit(env, w.path, cmp.merge_base, fetchImpl)]);
     if (d.error) return;
     const dp = parse(d), bp = b.error ? { doc: {} } : parse(b);
     if (dp.error || bp.error) return;
@@ -242,23 +296,57 @@ export default {
           const code = codes[i], r = results[i];
           if (r.error) { out.push({ code, error: r.error }); continue; }
           const count = (st) => r.lines.filter((l) => l.status === st).length;
+          /* `needs`: which lines, so Pages can mark the pages each language
+             is behind on without reading every language's words itself */
           out.push({ code, name: r.name, total: r.lines.length,
                      missing: code === "en" ? 0 : count("missing"),
-                     outdated: code === "en" ? 0 : count("outdated") });
+                     outdated: code === "en" ? 0 : count("outdated"),
+                     needs: code === "en" ? [] : r.lines.filter((l) => l.status === "missing" || l.status === "outdated").map((l) => l.id) });
         }
         return json({ languages: out });
+      }
+      /* ONE LANGUAGE'S WORDS AS VISITORS SEE THEM NOW (Chase, 2026-10-19: "we
+         need the ability to discard changes of certain section"): the last
+         successful production build's copy, so Pages can put one page's
+         lines back. Null when nothing was ever published. */
+      const liveOf = new URL(request.url).searchParams.get("live");
+      if (liveOf) {
+        const code = String(liveOf).toLowerCase();
+        if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(code)) return json({ error: "Not a language code." }, 400);
+        return json({ lines: await liveWords(env, code) });
+      }
+      /* WHAT DEV CHANGED, on its own (?waiting=hr): the words come first
+         (?lang=hr&quick) and these fill in behind them — the comparison of
+         two branches is the slowest thing GitHub is asked, and it marks a
+         handful of lines. */
+      const waitOf = new URL(request.url).searchParams.get("waiting");
+      if (waitOf) {
+        const code = String(waitOf).toLowerCase();
+        if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(code)) return json({ error: "Not a language code." }, 400);
+        const comparing = devComparison(env);
+        const [mine, en] = await Promise.all([getFile(env, langPath(code)), code === "en" ? null : getFile(env, langPath("en"))]);
+        if (mine.error) return fail({ error: mine.error, status: mine.status || 502 });
+        const pm = parse(mine), pe = en && !en.error ? parse(en) : null;
+        if (pm.error) return fail({ error: `${langPath(code)} is not valid JSON`, status: 502 });
+        const w = await waitingOnDev(env, [
+          { path: langPath(code), doc: pm.doc },
+          ...(pe && !pe.error ? [{ path: langPath("en"), doc: pe.doc }] : []),
+        ], fetch, comparing);
+        return json({ lang: code, mine: w[langPath(code)] || {}, english: code === "en" ? {} : (w[langPath("en")] || {}) });
       }
       const lang = new URL(request.url).searchParams.get("lang");
       if (!lang) {
         const r = await siteLanguages(env);
         return r.error ? fail(r) : json({ languages: r.languages });
       }
+      const quick = new URL(request.url).searchParams.has("quick");
+      const comparing = quick ? null : devComparison(env);
       const r = await load(env, db, String(lang).toLowerCase(), { english: true });
       if (r.error) return fail(r);
-      const waiting = await waitingOnDev(env, [
+      const waiting = quick ? {} : await waitingOnDev(env, [
         { path: langPath(r.lang), doc: r.files.site.doc },
         ...(r.lang === "en" ? [] : [{ path: langPath("en"), doc: r.englishSite }]),
-      ]);
+      ], fetch, comparing);
       const mine = waiting[langPath(r.lang)] || {}, eng = waiting[langPath("en")] || {};
       return json({
         lang: r.lang, name: r.name, languages: r.languages, unavailable: r.unavailable,
@@ -274,6 +362,13 @@ export default {
     if (request.method !== "POST") return json({ error: `${request.method} is not supported here.` }, 405);
     const body = await readJson(request);
     if (!body) return json({ error: "The request body was not valid JSON." }, 400);
+
+    /* ---- a page or an email, as the words being written draw it ---- */
+    if (body.action === "preview") {
+      const out = previewOf(String(body.page || ""), String(body.lang || "en").toLowerCase(),
+        body.words && typeof body.words === "object" ? body.words : {}, siteOrigin(env, request));
+      return out ? json(out) : json({ error: "There is no preview of that page.", code: "no-preview" }, 404);
+    }
 
     /* ---- the file ---- */
     if (body.action === "file") {
@@ -445,3 +540,32 @@ export default {
     return json({ error: "Unknown action." }, 400);
   },
 };
+
+/* THE PAGES AND EMAILS A VISITOR ONLY MEETS AFTER SOMETHING HAPPENS (Chase,
+   2026-10-20: "including showing the pages that I don't see normally like
+   the subscribed confirmation page"), drawn by the very functions that
+   send them, with made-up details where a real one would be, and with the
+   words as they are being written on Pages (`words`, "confirmed.heading" →
+   text) in place of the saved ones. Page ids as Pages has them. */
+export const PREVIEWS = ["e:confirmed", "e:unsub", "e:back", "e:confirm", "e:brand", "e:receipt"];
+export function previewOf(page, lang, words, origin) {
+  const draw = (fn) => withWords(lang, words, fn);
+  const sample = { name: "Ana", list: "Thauma Updates", ministry: "Thauma" };
+  switch (page) {
+    case "e:confirmed": return { html: draw(() => confirmedHtml(lang, [sample.list])) };
+    case "e:unsub": return { html: draw(() => doneHtml("", "", lang)) };
+    case "e:back": return { html: draw(() => backHtml("", "", lang)) };
+    case "e:confirm":
+    case "e:brand": {
+      const m = draw(() => listConfirmEmail({ name: sample.name, listName: sample.list, confirmUrl: origin + "/",
+        fromName: sample.ministry, origin, lang }));
+      return { html: m.html, subject: m.subject };
+    }
+    case "e:receipt": {
+      const m = draw(() => contactReceiptEmail({ name: sample.name, ministry: sample.ministry, topic: "", subject: "",
+        message: "…", origin, lang }));
+      return { html: m.html, subject: m.subject };
+    }
+    default: return null;
+  }
+}

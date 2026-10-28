@@ -98,7 +98,7 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   assert(own > 0, "Give has its own sections");
   click(d.querySelector("[data-tabs-add]"));
   const chips = () => [...d.querySelectorAll(".ws-tabchip")].map((c) => c.textContent);
-  eq(chips(), ["The page", "Tab 1", "Tab 2", "+"], "the strip");
+  eq(chips(), ["The Page", "Tab 1", "Tab 2", "+"], "the strip");
   eq(d.querySelector(".ws-tabchip.is-on").textContent, "Tab 1", "the first tab is open");
   eq(d.querySelectorAll(".ws-acc").length, 0, "a new tab has no sections of its own");
   assert(!d.querySelector(".ws-tabstyle"), "the bar's look is out of the way");
@@ -111,7 +111,7 @@ await check("a page's tabs: + Add tabs opens two, each with its own sections; th
   click(d.querySelector('[data-tab-view=""]'));
   eq(d.querySelectorAll(".ws-acc:not(.ws-tabsrow)").length, own, "the page: its own sections");
   click(d.querySelector("[data-tab-add]"));
-  eq(chips(), ["The page", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
+  eq(chips(), ["The Page", "Give", "Tab 2", "Tab 3", "+"], "+ adds another, and opens it");
 });
 
 await check("the tabs are a row among the page's sections: a section can go below them, and the row drags", async () => {
@@ -185,7 +185,7 @@ await check("a row unfolds where it is, one at a time; a new section goes where 
   click(d.querySelector('[data-edit-sec="0"]'));
   eq(d.querySelectorAll(".ws-acc.is-open").length, 0, "pressed again, it folds");
   click(d.querySelector('[data-insert-at="1"]'));
-  eq(d.querySelectorAll("[data-add-type]").length, 16, "every kind offered");
+  eq(d.querySelectorAll("[data-add-type]").length, 18, "every kind offered");
   click(d.querySelector('[data-add-type="quote"]'));
   eq([...d.querySelectorAll(".ws-stile-words b")].map((n) => n.textContent), ["Hero", "A verse or a quote", "Photo and words"], "between the two");
   assert(d.querySelector('.ws-acc[data-si="1"]').classList.contains("is-open"), "and open");
@@ -319,13 +319,13 @@ await check("words can take a size and a color, a quick pick or any color; a wor
   assert(box.querySelector('[data-c="#ff00aa"]').style.color, "a picked color shows in the box");
 });
 
-await check("every section lines up left, centered or right, and Indented is a switch on any of them; a Words section has no second layout control", async () => {
+await check("every section lines up left, centered, right or justified, and Indented is a switch on any of them; a Words section has no second layout control", async () => {
   const { d, sent, click, pages } = await boot();
   pages();
   click(d.querySelector('[data-open-page="mission"]'));
   click(d.querySelector('[data-edit-sec="0"]'));            // the Mission page's Words section
   click(d.querySelector('[data-sectab="look"]'));
-  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right"], "choices");
+  eq([...d.querySelectorAll('[data-chip="align:0"]')].map((b) => b.dataset.value), ["left", "center", "right", "justify"], "choices");
   assert(d.querySelector('[data-sec-flag="0:indent"][role="switch"]'), "Indented is a switch");
   eq(d.querySelector('[data-chip="align:0"][aria-pressed="true"]').dataset.value, "left", "as it was");
   assert(!d.querySelector('[data-chip="variant:0"]'), "the old Left/Centered layout chips are gone for Words");
@@ -355,8 +355,91 @@ await check("a header can be added; its Look has background, top line and title 
   click(d.querySelector('[data-edit-sec="1"]'));            // the Words section, now second
   click(d.querySelector('[data-sectab="look"]'));
   /* the Look tab in its four groups; a verse's look waits for a verse */
-  eq([...d.querySelectorAll(".ws-grp legend")].map((l) => l.textContent), ["Layout", "Alignment", "Title", "Background"].filter((x) => x !== "Layout" || d.querySelector(".ws-grp:first-of-type [data-chip^=variant]")), "the groups");
+  eq([...d.querySelectorAll(".ws-grp legend")].map((l) => l.textContent), ["Layout", "Alignment", "Title", "Motion", "Background"].filter((x) => x !== "Layout" || d.querySelector(".ws-grp:first-of-type [data-chip^=variant]")), "the groups");
   assert(!d.querySelector('[data-chip="verse:1"]'), "a verse's look offered with no verse");
+});
+
+await check("a page of your own: added under the list, off, named and addressed as it is named, and the only kind that can be deleted", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  w.StaffConfirm = async () => true;
+  pages();
+  assert(!d.querySelector("[data-page-remove]"), "a built-in page cannot be deleted");
+  click(d.querySelector("[data-page-add]"));
+  const name = d.querySelector("[data-page-label]");
+  assert(name && d.querySelector("[data-page-slug]"), "opened, with its name and address");
+  name.value = "Our Story";
+  name.dispatchEvent(new w.Event("input", { bubbles: true }));
+  eq(d.querySelector("[data-page-slug]").value, "our-story", "the address follows the name");
+  await settle(900);
+  const doc = sent.filter((x) => x.action === "save").pop().draft;
+  const mine = doc.pages[doc.pages.length - 1];
+  eq([mine.custom, mine.on, mine.slug, mine.label.en, mine.sections.map((x) => x.type)], [true, false, "our-story", "Our Story", ["header", "text"]], "saved at the end, off, with something on it");
+  click(d.querySelector("[data-all-pages]"));
+  const rm = d.querySelector("[data-page-remove]");
+  assert(rm, "a page of your own can be deleted");
+  click(rm);
+  await settle(900);
+  assert(!sent.filter((x) => x.action === "save").pop().draft.pages.some((p) => p.custom), "deleted");
+});
+
+await check("thauma.one's word-and-meaning and labeled rows can be added; rows are edited with a label each", async () => {
+  const { w, d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-insert-at="0"]'));
+  assert(d.querySelector('[data-add-type="define"]') && d.querySelector('[data-add-type="rows"]'), "offered");
+  click(d.querySelector('[data-add-type="rows"]'));
+  assert(d.querySelector('[data-sectab="cards"]').textContent === "Rows", "its items are rows");
+  click(d.querySelector('[data-item-open="0"]'));
+  const label = d.querySelector('[data-item="0:0:label"]');
+  assert(label, "a label for each row");
+  label.value = "Serve"; label.dispatchEvent(new w.Event("input", { bubbles: true }));
+  click(d.querySelector('[data-insert-at="0"]'));
+  click(d.querySelector('[data-add-type="define"]'));
+  await settle(900);
+  const secs = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections;
+  eq([secs[0].type, secs[1].type, secs[1].items[0].words.en.label], ["define", "rows", "Serve"], "saved");
+  assert(secs[0].words.en.word && secs[0].words.en.text, "stand-in words to replace");
+});
+
+await check("fonts are a list showing each in its own face, Default first; the speed is a slider in seconds", async () => {
+  const { w, d, sent, click } = await boot();
+  const hd = [...d.querySelectorAll('[data-chip="font:heading"]')];
+  assert(d.querySelector('[data-pp-toggle="font:heading"]'), "the headings' font is a list to open");
+  eq(hd[0].dataset.value, "look", "Default first");
+  assert(/^Default/.test(hd[0].textContent), "named Default, not the look's own: " + hd[0].textContent);
+  const pf = hd.find((b) => b.dataset.value === "playfair");
+  assert(/Playfair Display/.test(pf.querySelector(".ws-dd-name").getAttribute("style")), "written in its own face");
+  assert(pf.dataset.peek === "font:heading", "shown in the preview when pointed at");
+  assert([...d.querySelectorAll('[data-chip="font:body"]')].some((b) => b.dataset.value === "same"), "text can wear the headings' font");
+  click(pf);
+  const r = d.querySelector("[data-speed]");
+  r.value = "1000";
+  r.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await settle(900);
+  const doc = sent.filter((x) => x.action === "save").pop().draft;
+  eq([doc.design.fonts.heading, doc.design.motion.speed], ["playfair", 4], "saved: the font, and the slowest speed in seconds");
+});
+
+await check("a section can arrive its own way, justified; Default is the site's", async () => {
+  const { d, sent, click, pages } = await boot();
+  pages();
+  click(d.querySelector('[data-open-page="mission"]'));
+  click(d.querySelector('[data-edit-sec="0"]'));
+  click(d.querySelector('[data-sectab="look"]'));
+  const opts = [...d.querySelectorAll('[data-chip="enter:0"]')].map((b) => b.dataset.value);
+  eq(opts[0], "site", "the site's way first");
+  assert(opts.includes("drop") && opts.includes("sweep") && opts.includes("none"), "every way: " + opts);
+  click(d.querySelector('[data-chip="enter:0"][data-value="sweep"]'));
+  click(d.querySelector('[data-chip="align:0"][data-value="justify"]'));
+  await settle(900);
+  const saved = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0];
+  eq([saved.enter, saved.align], ["sweep", "justify"], "saved");
+  click(d.querySelector('[data-sectab="look"]'));
+  click(d.querySelector('[data-chip="enter:0"][data-value="site"]'));
+  await settle(900);
+  const back = sent.filter((x) => x.action === "save").pop().draft.pages.filter((p) => p.id === "mission")[0].sections[0];
+  assert(!("enter" in back), "the site's way again");
 });
 
 await check("the opening's Look has this page's scroll indicator switch; off saves on the page", async () => {

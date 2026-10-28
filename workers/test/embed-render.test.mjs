@@ -941,5 +941,44 @@ await check("the rail shows even when the channel has posted nothing yet", async
   assert(root.byClass("msg").length, "and it should still say there are no videos");
 });
 
+/* ---- Thauma's own: Events and Resources (Chase, 2026-10-27) ---- */
+
+const THAUMA = {
+  partner: { slug: "thauma", name: "Thauma", display_name: "Thauma", url: "https://thauma.one" },
+  languages: [{ code: "en" }, { code: "hr" }], shared: ["events", "resources"],
+  theme: { accent: "#2FD8FF", accent2: "#5CF2C4", mode: "dark" },
+  events: [
+    { slug: "b", status: "upcoming", date: "2027-03-14", title: { en: "Second" }, summary: {}, location: "Zagreb", url: { en: "https://thauma.one/en/events/" } },
+    { slug: "a", status: "upcoming", date: "2026-11-04", title: { en: "First", hr: "Prvi" }, summary: { en: "Come along." }, url: { en: "https://thauma.one/en/events/" } },
+    { slug: "c", status: "past", date: "2026-05-29", title: { en: "Before" }, summary: {}, url: { en: "javascript:alert(1)" } },
+  ],
+  resources: [{ slug: "r", format: "guide", title: { en: "Ten Cues" }, summary: { en: "How to call a show." }, url: { en: "https://thauma.one/en/resources/r/" } }],
+  site_words: { en: { upcoming: "You are invited", past: "What Has Already Happened", where: "Where", none: "No Events Scheduled Yet.", open: "Learn More", formats: { guide: "Guide" } } },
+};
+
+await check("Thauma's events: soonest first under its own words, what already happened after, each opening thauma.one", async () => {
+  const { root } = await run(THAUMA, { "data-thauma": "thauma", "data-widget": "events" });
+  const text = shown(root);
+  assert(text.indexOf("You are invited") < text.indexOf("First") && text.indexOf("First") < text.indexOf("Second")
+    && text.indexOf("Second") < text.indexOf("What Has Already Happened") && text.indexOf("What Has Already Happened") < text.indexOf("Before"), text);
+  assert(/Where: Zagreb/.test(text) && /Come along\./.test(text), "where and what");
+  const evs = root.byClass("ev");
+  eq(evs.length, 3, "three rows");
+  eq(evs[0].href, "https://thauma.one/en/events/", "opens its page");
+  assert(!evs[2].href, "never a script address");
+  assert(/Thauma/.test(text) && root.byClass("foot")[0].children[0].href === "https://thauma.one", "credited to thauma.one");
+  const hr = await run(THAUMA, { "data-thauma": "thauma", "data-widget": "events", "data-lang": "hr" });
+  assert(/Prvi/.test(shown(hr.root)), "in the page's language");
+});
+
+await check("Thauma's resources: a card each, its format and a way in", async () => {
+  const { root } = await run(THAUMA, { "data-thauma": "thauma", "data-widget": "resources" });
+  const text = shown(root);
+  assert(/Guide/.test(text) && /Ten Cues/.test(text) && /How to call a show\./.test(text) && /Learn More →/.test(text), text);
+  eq(root.byClass("rcard")[0].href, "https://thauma.one/en/resources/r/", "opens it");
+  const none = await run({ ...THAUMA, events: [] }, { "data-thauma": "thauma", "data-widget": "events" });
+  assert(/No Events Scheduled Yet\./.test(shown(none.root)), "says when there are none");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

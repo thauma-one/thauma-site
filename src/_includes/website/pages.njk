@@ -1,85 +1,65 @@
 {#- WEBSITE › PAGES (mockup board "Site words by page", with Chase's notes:
-   labels first, the live preview later; every language control with the
-   words; everything a visitor reads translatable).
+   labels first; every language control with the words; everything a
+   visitor reads translatable). LAID OUT AS THE STAFF SITE CREATOR'S PAGES
+   TAB (Chase, 2026-10-20: "have an independent Pages tab with dropdown
+   menus to select the page, have the page follow where you click"): the
+   pages as a list first — every page there is, the ones a visitor only
+   meets after pressing a link in an email too — then one page, with
+   "← All Pages" and a menu of the pages at the top. The preview beside it
+   shows that page, and a link pressed in the preview opens that page.
 
-   ONE LANGUAGE AT A TIME, "Writing X beside Y": the line being written, with
-   the same line in another language above it — English unless you choose
-   otherwise. Not a column per language, which stops working somewhere around
-   four; the site's languages are meant to grow to thirty.
+   THE SITE'S OWN PAGES ARE THEIR SECTIONS (Chase, 2026-10-21: "should we
+   just have the site creator operate almost exactly the same?"): each
+   opened to its words, photo, buttons and look, with a place between any
+   two to add one, a grip to move one and ✕ to take one away — the staff
+   Site Creator's pieces, drawn by admin-content.js. The rest are their
+   lines.
 
-   EACH LINE IS NAMED FOR WHAT IT IS ("Small line above the headline"), with
-   its key kept small beside it. A heading stored as two strings for its bold
-   half is ONE line here, edited as it reads, with B to mark where the bold
-   begins.
+   ONE LANGUAGE AT A TIME, "Writing X beside Y" (website/writing.njk,
+   above the tabs it serves): the line being written, with the same line
+   in another language above it. Not a column per language, which stops
+   working somewhere around four; the site's languages are meant to grow
+   to thirty.
+
+   EACH LINE IS NAMED FOR WHAT IT IS ("Small Line Above the Headline"),
+   with its key kept small beside it. A heading stored as two strings for
+   its bold half is ONE line here, edited as it reads, with B to mark where
+   the bold begins. How a page shows in a search and when shared is on
+   Advanced.
 
    WHAT YOU SEE IS WHAT YOU DOWNLOAD. The file for a translator holds the
-   lines on screen — a page, a search, Needs work, All — and More says how
-   many. The languages themselves — on or off, donation page, how each is
-   written, adding and removing — are one button away, in a table. -#}
+   lines on screen — a page, a search, Needs Work, All — and More says how
+   many. -#}
 
-<div class="c-tools">
-  {#- Two rows on purpose: the languages being written, then finding and
-     looking. One row wrapped wherever the window happened to cut it. -#}
-  <div class="c-tools-row">
-    <label class="c-pick">
-      <span data-i18n="con.editing">Editing</span>
-      <select id="cLang" disabled data-lang-edit></select>
-    </label>
-    <span class="lang-ref" id="cBesideWrap" hidden>
-      <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
-      <label class="c-pick">
-        <span data-i18n="con.reference">Reference</span>
-        <select id="cBeside" data-lang-ref></select>
-      </label>
-      <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
-    </span>
-    <button type="button" class="ghost-btn c-tools-end" id="cLangs" disabled data-i18n="con.languages">Languages</button>
-  </div>
-  <div class="c-tools-row">
-    <input type="search" id="cFind" autocomplete="off"
-           placeholder="Find a word" aria-label="Find a word"
-           data-i18n-attr="placeholder:con.find,aria-label:con.find">
-    <button type="button" class="ghost-btn" id="cPrevBtn" aria-pressed="false" data-i18n="con.preview">Preview</button>
-    <div class="c-more">
-      <button type="button" class="ghost-btn" id="cMoreBtn" aria-expanded="false" aria-controls="cMore">
-        <span data-i18n="con.more">More</span><span class="console-caret" aria-hidden="true"></span>
-      </button>
-      <div class="c-more-menu" id="cMore">
-        <button type="button" id="cDown"></button>
-        <button type="button" id="cUp" data-i18n="tl.upload">Upload translation</button>
-        {#- "Nothing has changed" is a claim about the copy this page loaded; the
-           remedy for doubting it is to read again. -#}
-        <button type="button" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
-      </div>
-    </div>
-  </div>
-  <input type="file" id="cFile" accept=".csv,text/csv" hidden
-         aria-label="Upload translation" data-i18n-attr="aria-label:tl.upload">
+{#- FINDING A WORD, quietly (2026-10-27): the languages, the translator's
+   file and reading again moved to the Languages tab, so Pages looks like the
+   staff Site Creator's; only this small search stays over the list. -#}
+<div class="c-find-row">
+  <label class="c-find"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+  <input type="search" id="cFind" autocomplete="off"
+         placeholder="Find a word" aria-label="Find a word"
+         data-i18n-attr="placeholder:con.find,aria-label:con.find"></label>
 </div>
 
 {#- Shown instead of the editor when GITHUB_TOKEN is absent. -#}
 <p class="rolegate" id="cNotConfigured" hidden></p>
 
 <div class="adm-content" id="cRoot" hidden>
-  <nav class="c-sections" id="cSections" aria-label="Pages"></nav>
-  <div class="c-panel">
-    <span class="c-count" id="cCount" role="status"></span>
-    <div class="c-rows" id="cRows"></div>
+  {#- "← All Pages" and the menu of pages, over one page's lines; drawn by
+      admin-content.js -#}
+  <div class="ws-crumb c-crumb" id="cCrumb" hidden></div>
+  <span class="c-count" id="cCount" role="status"></span>
+  <div class="c-rows" id="cRows"></div>
+</div>
+
+{#- Adding a section: every kind there is, each drawn as a small sketch, as
+   on the staff Site Creator. -#}
+<div class="dlg-back" id="cAddBack" hidden>
+  <div class="dlg ws-add" role="dialog" aria-modal="true" aria-labelledby="cAddTitle">
+    <div class="ws-add-head"><h3 id="cAddTitle"></h3>
+      <button type="button" class="sw-close" id="cAddClose" data-i18n-attr="aria-label:common.close" aria-label="Close">&times;</button></div>
+    <div class="ws-tiles" id="cTiles"></div>
   </div>
-  {#- THE LIVE PREVIEW (2026-10-07): the page these words are on, with what
-      is typed drawn into it before it is saved (admin-content.js). -#}
-  <aside class="c-preview" id="cPreview" data-device="wide" hidden>
-    <div class="c-prev-bar">
-      <span class="c-prev-url" id="cPrevUrl"></span>
-      <span class="ws-dev" role="group" data-i18n-attr="aria-label:con.previewSize" aria-label="Preview size">
-        <button type="button" data-prev-dev="wide" aria-pressed="true" data-i18n="emb.desktop">Desktop</button>
-        <button type="button" data-prev-dev="phone" aria-pressed="false" data-i18n="emb.mobile">Mobile</button>
-      </span>
-      <a class="c-prev-open" id="cPrevOpen" href="/" target="_blank" rel="noopener" data-i18n-attr="title:con.previewOpen,aria-label:con.previewOpen" title="Open in a new tab">&#8599;</a>
-    </div>
-    <p class="hint c-prev-gone" id="cPrevGone" hidden data-i18n="con.previewGone">This page is not built on this site yet — it is showing “coming soon”. Its preview is on dev.thauma.one.</p>
-    <div class="c-prev-frame"><iframe id="cPrevFrame" title="Preview" data-i18n-attr="title:con.preview"></iframe></div>
-  </aside>
 </div>
 
 {#- A returned translation, line by line, in place of the editor until it is
@@ -91,26 +71,4 @@
     <button type="button" class="solid-btn" id="tlApprove"></button>
   </div>
   <div class="tl-items" id="tlItems"></div>
-</div>
-
-<div class="ms-savebar" id="cSaveBar" role="status" aria-live="polite" hidden>
-  <span class="ms-dirty-dot" aria-hidden="true"></span>
-  <span id="cDirtyCount">0 unsaved changes</span>
-  <button type="button" class="ghost-btn" id="cDiscard" data-i18n="ms.discard">Discard</button>
-  <button type="button" class="solid-btn" id="cSave" data-i18n="con.save">Save</button>
-</div>
-
-{#- EVERY LANGUAGE, IN ONE PLACE (mockup board "Every language, in one
-   place"): one row per language — how much is translated, on for the preview
-   site, on for everyone, its donation page, how it is written, removing it —
-   then adding one and the default. The console's dialog shell, so it looks
-   and closes like every other dialog. Each control saves as it changes. -#}
-<div class="dlg-back c-set" id="cSet" hidden>
-  <div class="dlg c-set-dlg" role="dialog" aria-modal="true" aria-labelledby="cSetTitle">
-    <div class="c-set-head">
-      <h3 id="cSetTitle" data-i18n="con.languages">Languages</h3>
-      <button type="button" class="ln-x" id="cSetClose" aria-label="Close" data-i18n-attr="aria-label:con.close">&times;</button>
-    </div>
-    <div class="c-set-body" id="cSetBody"></div>
-  </div>
 </div>

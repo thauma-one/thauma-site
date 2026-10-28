@@ -358,7 +358,7 @@ await check("order is taken from the rows, not from what was typed in them", asy
 });
 
 await check("links absent from the request leave the stored rail alone", async () => {
-  /* Only "Check now" and older clients omit it. Treating a missing field as
+  /* Only "Check Now" and older clients omit it. Treating a missing field as
      "delete everything" would wipe the rail on every check. */
   eq(cleanLinks(undefined).value, null, "undefined means: not sent");
   eq(cleanLinks(null).value, null, "null means: not sent");

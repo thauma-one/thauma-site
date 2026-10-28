@@ -76,7 +76,7 @@ export function othersFor(list, roles) {
   const mine = new Set(roles || []);
   return (list || []).filter((e) => !(ROLES_OF.get(e.page) || []).some((r) => mine.has(r))).length;
 }
-const seesWebsite = (roles) => (ROLES_OF.get("admin:website") || []).some((r) => (roles || []).includes(r));
+export const seesWebsite = (roles) => (ROLES_OF.get("admin:website") || []).some((r) => (roles || []).includes(r));
 
 /** Whether a release has anything of this person's own: an entry on a page
     they have, or the public site's content for whoever looks after it. */
@@ -93,7 +93,7 @@ export async function cutRelease(db, { by, content = [] }) {
     const id = "r_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
     await db.query("release_add", { id, now: new Date().toISOString(), by_name: by || null,
       entries: JSON.stringify(fresh), content: JSON.stringify(content || []) });
-    return { id, entries: fresh, content: content || [] };
+    return { id, by_name: by || null, entries: fresh, content: content || [] };
   } catch (err) {
     console.error("release:", err.message);
     return null;

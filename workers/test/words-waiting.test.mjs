@@ -10,7 +10,7 @@
  * branches last agreed — so a word saved a minute ago on main, and not yet
  * carried to dev, is NOT mistaken for a change waiting on dev.
  */
-import { waitingOnDev } from "../src/admin-translate.js";
+import { waitingOnDev, liveWords } from "../src/admin-translate.js";
 import { changes } from "../src/admin-publish.js";
 
 let pass = 0, fail = 0;
@@ -101,9 +101,62 @@ await check("a changed word marks Pages and its line; a changed event marks Even
   eq(out.lines, ["site:mission.h2_thin"], "lines");
 });
 
+await check("a changed search title or share picture marks Advanced, not Pages", async () => {
+  /* 2026-10-20: a page's search and sharing are on the Advanced tab */
+  const live = { about: { seo_title: "About" } }, dev = { about: { seo_title: "About Thauma" } };
+  const siteLive = { share: { about: "" } }, siteDev = { share: { about: "/media/a.jpg" } };
+  const gh = async (url) => {
+    const u = new URL(url);
+    if (/\/actions\/workflows\//.test(u.pathname)) return Response.json({ workflow_runs: [{ head_sha: "livesha" }] });
+    if (/\/compare\//.test(u.pathname)) return Response.json({ files: ["src/_data/i18n/en.json", "src/_data/site.json"].map((filename) => ({ filename })), merge_base_commit: { sha: "livesha" } });
+    const ref = u.searchParams.get("ref"), path = decodeURIComponent(u.pathname.replace(/.*contents\//, ""));
+    const doc = path.endsWith("en.json") ? (ref === "livesha" ? live : dev) : (ref === "livesha" ? siteLive : siteDev);
+    return Response.json({ type: "file", content: b64(doc), sha: ref });
+  };
+  const out = await changes(env, gh);
+  eq(out.tabs, ["advanced"], "tabs");
+  eq(out.lines, ["site:about.seo_title"], "lines");
+});
+
+await check("the menu's order and names mark Navigation, the footer's words Footer, a page's sections Pages and that page", async () => {
+  /* 2026-10-21: the header and footer editors, and pages made of sections */
+  const live = { nav: { about: "About" }, footer: { tagline: "All of me" } };
+  const dev = { nav: { about: "About Us" }, footer: { tagline: "All of me, all of Him" } };
+  const secLive = { nav: ["about", "team"], pages: { home: [{ id: "a" }, { id: "b" }], about: [{ id: "c" }] } };
+  const secDev = { nav: ["team", "about"], pages: { home: [{ id: "b" }, { id: "a" }], about: [{ id: "c" }] } };
+  const gh = async (url) => {
+    const u = new URL(url);
+    if (/\/actions\/workflows\//.test(u.pathname)) return Response.json({ workflow_runs: [{ head_sha: "livesha" }] });
+    if (/\/compare\//.test(u.pathname)) return Response.json({ files: ["src/_data/i18n/en.json", "src/_data/pageSections.json"].map((filename) => ({ filename })), merge_base_commit: { sha: "livesha" } });
+    const ref = u.searchParams.get("ref"), path = decodeURIComponent(u.pathname.replace(/.*contents\//, ""));
+    const doc = path.endsWith("en.json") ? (ref === "livesha" ? live : dev) : (ref === "livesha" ? secLive : secDev);
+    return Response.json({ type: "file", content: b64(doc), sha: ref });
+  };
+  const out = await changes(env, gh);
+  eq(out.tabs.sort(), ["footer", "navigation", "pages"], "tabs");
+  eq(out.pages, ["home"], "pages");
+});
+
 await check("never published, or GitHub failing: no dots, no error", async () => {
-  eq(await changes(env, async () => Response.json({ workflow_runs: [] })), { tabs: [], lines: [] }, "never");
-  eq(await changes(env, async () => new Response("x", { status: 500 })), { tabs: [], lines: [] }, "failing");
+  eq(await changes(env, async () => Response.json({ workflow_runs: [] })), { tabs: [], lines: [], pages: [] }, "never");
+  eq(await changes(env, async () => new Response("x", { status: 500 })), { tabs: [], lines: [], pages: [] }, "failing");
+});
+
+/* Pages › one page back to what visitors see (Chase, 2026-10-19) */
+await check("a page goes back to the LIVE build's words: site and emails, in that language", async () => {
+  const live = { "src/_data/i18n/hr.json": { home: { title: "Uživo" } },
+                 "src/_data/emailsAndForms.json": { en: { a: { s: "Live" } }, hr: { a: { s: "Uživo mail" } } } };
+  const seen = [];
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    if (/\/runs/.test(u.pathname)) return Response.json({ workflow_runs: [{ head_sha: "live1" }] });
+    seen.push(u.searchParams.get("ref"));
+    const doc = live[decodeURIComponent(u.pathname.split("/contents/")[1])];
+    return doc ? Response.json({ type: "file", content: b64(doc), sha: "x" }) : new Response("{}", { status: 404 });
+  };
+  eq(await liveWords(env, "hr", fetchImpl), { "site:home.title": "Uživo", "emails:a.s": "Uživo mail" }, "lines");
+  eq([...new Set(seen)], ["live1"], "read at the live build, never a branch");
+  eq(await liveWords(env, "hr", async () => Response.json({ workflow_runs: [] })), null, "never published");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

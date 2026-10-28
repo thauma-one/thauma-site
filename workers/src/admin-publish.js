@@ -43,12 +43,12 @@ import { summarize } from "./lib/build-progress.js";
 import { carry, carryConfig } from "./lib/carry.js";
 import { leafMap } from "./lib/translation-file.js";
 import { notify } from "./lib/notify.js";
-import { cutRelease, tells } from "./changes.js";
-import { siteOrigin } from "./lib/origin.js";
+import { cutRelease } from "./changes.js";
+import { tellRelease, LIVE } from "./lib/release-notice.js";
 
 const CONFIRM_WORD = "PUBLISH";
 
-const PROD_WORKFLOW = "deploy.yml";
+export const PROD_WORKFLOW = "deploy.yml";
 const STAGING_WORKFLOW = "deploy-staging.yml";
 
 /** Resolve the caller and refuse anyone who is not an administrator. */
@@ -149,15 +149,19 @@ const TAB_OF_FILE = [
   [/^src\/content\/gatherings\//, "events"],
   [/^src\/content\/resources\//, "resources"],
 ];
-const SITE_KEY_TAB = { socials: "links", links: "links", images: "photos", share: "pages" };
+const SITE_KEY_TAB = { socials: "links", links: "links", images: "photos", share: "advanced" };
+/* a page's search title and description are on Advanced, the menu's names on
+   Navigation, the footer's words on Footer; every other word on Pages */
+export const tabOfWord = (k) => (/\.seo_(title|desc)$/.test(k) ? "advanced"
+  : /^nav\./.test(k) ? "navigation" : /^footer\./.test(k) ? "footer" : "pages");
 export async function changes(env, fetchImpl = fetch) {
   const live = await lastSuccessfulRun(env, PROD_WORKFLOW, fetchImpl);
-  if (live.error || live.never) return { tabs: [], lines: [] };
+  if (live.error || live.never) return { tabs: [], lines: [], pages: [] };
   const heads = [...new Set([stagingBranch(env), liveBranch(env)])];
   const cmps = await Promise.all(heads.map((h) => compareBranches(env, live.sha, h, fetchImpl)));
   const files = new Set();
   for (const c of cmps) if (!c.error) c.files.forEach((f) => files.add(f));
-  const tabs = new Set(), lines = new Set();
+  const tabs = new Set(), lines = new Set(), pages = new Set();
   for (const f of files) for (const [re, tab] of TAB_OF_FILE) if (re.test(f)) tabs.add(tab);
   /* keys whose text differs from live's on either head */
   const differ = async (path) => {
@@ -175,16 +179,24 @@ export async function changes(env, fetchImpl = fetch) {
   const jobs = [];
   for (const f of files) {
     if (/^src\/_data\/i18n\/[a-z-]+\.json$/.test(f)) {
-      jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("site:" + k)); }));
+      jobs.push(differ(f).then((ks) => ks.forEach((k) => { tabs.add(tabOfWord(k)); lines.add("site:" + k); })));
     } else if (f === "src/_data/emailsAndForms.json") {
       /* { en: {...}, hr: {...} } — the line is the key under the language */
       jobs.push(differ(f).then((ks) => { if (ks.size) tabs.add("pages"); ks.forEach((k) => lines.add("emails:" + k.split(".").slice(1).join("."))); }));
     } else if (f === "src/_data/site.json") {
       jobs.push(differ(f).then((ks) => ks.forEach((k) => tabs.add(SITE_KEY_TAB[k.split(".")[0]] || "settings"))));
+    } else if (f === "src/_data/pageSections.json") {
+      /* the pages' sections (admin-sections.js): the menu's order on
+         Navigation, a page's arrangement on Pages, and which pages */
+      jobs.push(differ(f).then((ks) => ks.forEach((k) => {
+        const [part, page] = k.split(".");
+        if (part === "nav") tabs.add("navigation");
+        else if (part === "pages") { tabs.add("pages"); pages.add(page); }
+      })));
     }
   }
   await Promise.all(jobs);
-  return { tabs: [...tabs], lines: [...lines] };
+  return { tabs: [...tabs], lines: [...lines], pages: [...pages] };
 }
 
 /* ------------------------------- progress -------------------------------
@@ -419,13 +431,38 @@ async function act(request, env, db, user, me) {
     try {
       const by = (me && me.user_name) || user.email;
       const release = await cutRelease(db, { by, content });
-      /* only somebody with something of their own in it (changes.js tells);
-         without a release (before 0062) everyone, as before */
-      await notify(env, db, "site_published", { by },
-        { origin: siteOrigin(env, request), link: "/staff/changes/" + (release ? "#" + release.id : ""),
-          only: release ? (who) => tells(release, String(who.roles || "").split(",")) : null });
+      /* TOLD ONCE IT IS LIVE (0064, lib/release-notice.js): the release
+         waits for the production deploy this press started, and the
+         scheduled job sends it. Before 0064 (or 0062) it goes now, as it
+         did. */
+      let waits = false;
+      if (release) {
+        try { await db.query("release_wait", { id: release.id, now: new Date().toISOString() }); waits = true; } catch { /* not applied */ }
+      }
+      if (!waits) {
+        if (release) await tellRelease(env, db, release);
+        else await notify(env, db, "site_published", { by, _v: "both", areas: "" }, { origin: LIVE, link: "/staff/changes/" });
+      }
     } catch (err) {
       console.error("publish notice:", err.message);
+    }
+  }
+
+  /* THE PREVIEW GOES WITH IT (Chase, 2026-10-20: "Maybe the publish button
+     should also push to preview that way things stay in sync over time?").
+     next.thauma.one had fallen a week behind because nobody pressed Preview.
+     After the merge above dev holds what live is getting, so the preview is
+     built from dev too, exactly as its own button does (its data carried
+     first). Never in the way of the publish: if it cannot start, the page
+     says so and Preview still works by hand. */
+  let preview = null;
+  if (action === "publish") {
+    try {
+      const c = await carry(env, { target: "staging", branch: stagingBranch(env), who: (me && me.user_name) || user.email });
+      const r = c.error ? c : await dispatchWorkflow(env, STAGING_WORKFLOW, stagingBranch(env));
+      preview = r.error ? { error: r.error } : { started: true };
+    } catch (err) {
+      preview = { error: err.message };
     }
   }
 
@@ -439,5 +476,6 @@ async function act(request, env, db, user, me) {
     where: action === "publish" ? "thauma.one" : "next.thauma.one",
     merged,
     carried: carried.skipped ? null : { rows: carried.rows, migrations: carried.migrations.length },
+    preview,
   });
 }

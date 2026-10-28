@@ -1,0 +1,20 @@
+{#- HOME'S OPENING (sectionKinds.js homeHero): the line above, the logo, the
+    headline and the line under it. Fixed to Home and to the top: the logo is
+    the arcade's five-tap door (.wordmark) and fail.js takes it apart piece by
+    piece, so it is never anywhere else. -#}
+{%- set wd = sec.words %}
+<header class="hero hero-center"><div class="wrap">
+  <div class="cue rise">{{ t | w(wd.cue) | rich(wd.cue) }}</div>
+  {#- THE LOGO, CENTERED (Chase, 2026-10-15, canvas round 6 "Home · logo
+      centered": "We decided on Logo centered … Animate it in. And make sure
+      the letters and lines are all separate so that the page degradation
+      for the arcade entrance still works"). Every letter and line is its
+      own shape (brand/logo-split.njk); it assembles as the page opens; the
+      arcade's five-tap door is still .wordmark, and fail.js takes the logo
+      apart piece by piece. -#}
+  <div class="wordmark hero-logo">{% set logoId = "hero" %}{% include "brand/logo-split.njk" %}{% include "brand/logo-sheen.njk" %}</div>
+  <h1 class="hero-line rise-3">{{ t | w(wd.heading ~ "_thin") | rich(wd.heading ~ "_thin") }} <b>{{ t | w(wd.heading ~ "_bold") | rich(wd.heading ~ "_bold") }}</b></h1>
+  <p class="hero-sub rise-3">{{ t | w(wd.text) | rich(wd.text) }}</p>
+</div>
+<div class="meter"><i></i></div>
+</header>

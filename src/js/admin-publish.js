@@ -705,6 +705,9 @@
     toast(c
       ? fill(payload.action === 'publish' ? 'pub.publishCarried' : 'pub.previewCarried', { n: c.rows, m: c.migrations })
       : payload.action === 'publish' ? tr('pub.publishStarted') : tr('pub.previewStarted'), 'ok');
+    /* Publish builds the preview too (admin-publish.js); only a failure to
+       start it is worth a word — Preview still works by hand. */
+    if (body && body.preview && body.preview.error) toast(tr('pub.previewNotStarted') + ' ' + body.preview.error, 'err');
 
     /* The review has done its job: it closes, and the bar follows the build
        to its end (startFollowing) — then stops; never a loop left running. */

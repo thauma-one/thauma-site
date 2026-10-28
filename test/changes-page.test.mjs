@@ -52,7 +52,7 @@ await check("each Publish by page, under the header's own names, with the public
   const w = await boot();
   const rel = w.document.getElementById("r_new");
   eq([...rel.querySelectorAll(".chg-sec h3")].map((h) => h.textContent),
-     ["Everywhere in the console", "Mail", "People", "Website content"], "sections");
+     ["Everywhere in the console", "Mail", "People", "Website Content"], "sections");
   eq(rel.querySelector(".chg-sec li").innerHTML, "The bell &lt;b&gt;tells&lt;/b&gt; you", "a line is text, not markup");
   eq(rel.querySelector(".chg-sec:last-child li").textContent, "Updated: Events, Resources", "what changed on the public site");
   eq([rel.open, w.document.getElementById("r_old").open], [true, false], "the newest open, the rest folded");
@@ -68,7 +68,7 @@ await check("what changed on pages you do not have is one line, counted, not des
   const w = await boot();
   const old = w.document.getElementById("r_old");
   eq([old.querySelector(".chg-others h3").textContent, old.querySelector(".chg-others p").textContent],
-     ["Other site changes", "3 other changes, in parts of the console you don't use."], "counted");
+     ["Other Site Changes", "3 other changes, in parts of the console you don't use."], "counted");
   eq(w.document.querySelector("#r_elsewhere .chg-others p").textContent, "One other change, in a part of the console you don't use.", "one");
   assert(!w.document.querySelector("#r_new .chg-others"), "a line of others where there are none");
 });

@@ -20,6 +20,7 @@ import { createDb } from "./lib/db.js";
 import { requireAccess } from "./lib/access.js";
 import { json, readJson } from "./lib/store.js";
 import { requestedTarget, setCookie, clearCookie } from "./lib/actas.js";
+import { notifyPerson } from "./lib/notify.js";
 
 async function requireAdmin(request, env) {
   const { user, denied } = await requireAccess(request, env);
@@ -122,6 +123,11 @@ export default {
       const id = requestedTarget(request);
       if (id) {
         await audit(db, { actorEmail: user.email, action: "actas.stop", targetId: id, detail: null });
+        /* THEY ARE TOLD, always (lib/notify.js console_shared): who was in
+           their console, and their Activity page for what happened. Never in
+           the way of stopping. */
+        await notifyPerson(env, db, "console_shared", id, { by: (me && me.user_name) || user.email },
+          { link: "/staff/activity/" }).catch(() => {});
       }
       // Cleared whatever the cookie said, including nothing. Stopping must
       // never fail — it is the way out.

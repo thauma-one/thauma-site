@@ -25,8 +25,9 @@ import { serveApp } from "./app.js";
 import { splitLogo, sheenLogo } from "./logo.js";
 import { assertNoPersonalData } from "../lib/nopii.js";
 import { siteOrigin } from "../lib/origin.js";
-import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget } from "./model.js";
+import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget, pagePath, pageAt } from "./model.js";
 import { renderPage, simplePage } from "./render.js";
+import { withSharingDraft, withDraftLooks, cleanFormDraft, draftFormScripts } from "../lib/form-preview.js";
 
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -72,10 +73,19 @@ async function closedLines(env) {
     return Array.isArray(list) ? list.filter((x) => x && typeof x.line === "string" && x.line.trim() && /^[a-z]{2,3}$/.test(x.lang)) : [];
   } catch { return []; }
 }
+/* ONE CLOCK FOR THE SHIMMER AND THE LINE (src/js/logo-conductor.js, the
+   landing page's own file), inlined: a page on a ministry's address. */
+async function closedConductor(env) {
+  if (!env || !env.ASSETS) return "";
+  try {
+    const r = await env.ASSETS.fetch(new Request("https://thauma.one/js/logo-conductor.js"));
+    return r.ok ? await r.text() : "";
+  } catch { return ""; }
+}
 export async function closedSite(request, env) {
   const lang = pickLang(request.headers.get("Accept-Language"), builtInLangs(), "en");
   const home = `https://${(env && env.SITE_DOMAIN) || "thauma.one"}`;
-  const [door, lines] = await Promise.all([arcadeIsOut(env), closedLines(env)]);
+  const [door, lines, conductor] = await Promise.all([arcadeIsOut(env), closedLines(env), closedConductor(env)]);
   /* the visitor's own language first, then the rest in the site's order */
   const first = Math.max(0, lines.findIndex((x) => x.lang === lang));
   const order = lines.slice(first).concat(lines.slice(0, first));
@@ -112,12 +122,13 @@ main{position:relative;display:flex;flex-direction:column;align-items:center}
 .arc-breaking .brand-logo-sheen{display:none}
 @keyframes ch-in{from{opacity:0;transform:translateY(18%)}to{opacity:1;transform:none}}
 @keyframes line-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes lg-lead{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 /* THE LINE: white, thin, one language after another — each change
    cascading DOWN a character at a time, slowly (Chase, 2026-10-15) */
-.line{display:grid;margin-top:40px;height:34px;overflow:hidden;font:100 22px/34px 'Sora',sans-serif;letter-spacing:.06em;color:var(--text)}
-.line>span{grid-area:1/1;display:flex;justify-content:center}
-.ch{display:inline-block;white-space:pre;font-kerning:none;animation-duration:1.1s;animation-timing-function:cubic-bezier(.55,.05,.45,.95);animation-fill-mode:both}
-.in .ch{animation-name:c-in}.out .ch{animation-name:c-out}
+.cs-line{display:grid;margin-top:40px;height:34px;overflow:hidden;font:100 22px/34px 'Sora',sans-serif;letter-spacing:.06em;color:var(--text)}
+.cs-line>span{grid-area:1/1;display:flex;justify-content:center}
+.cs-ch{display:inline-block;white-space:pre;font-kerning:none;animation-duration:1.1s;animation-timing-function:cubic-bezier(.55,.05,.45,.95);animation-fill-mode:both}
+.cs-in .cs-ch{animation-name:c-in}.cs-out .cs-ch{animation-name:c-out}
 @keyframes c-in{from{transform:translateY(-105%);opacity:0}to{transform:none;opacity:1}}
 @keyframes c-out{from{transform:none;opacity:1}to{transform:translateY(105%);opacity:0}}
 p{margin:48px 0 0}
@@ -128,31 +139,16 @@ p{margin:48px 0 0}
 .btn:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 @media (prefers-reduced-motion:no-preference){
   .lg-ch{animation:ch-in .75s cubic-bezier(.55,.05,.45,.95) both;animation-delay:calc(var(--i) * 90ms + 250ms)}
-  .lg-arrive{animation:line-in 1.1s cubic-bezier(.16,1,.3,1) 1.05s both}.lg-bar{animation:line-in .5s cubic-bezier(.55,.05,.45,.95) 1.75s both}
-  .lg-close1{animation:line-in .7s cubic-bezier(.16,1,.3,1) 2.15s both}.lg-close2{animation:line-in .7s cubic-bezier(.16,1,.3,1) 2.3s both}
+  /* the arriving line and the H's bar: ONE stroke, with the letters (2026-10-19) */
+  .lg-lead{animation:lg-lead .95s cubic-bezier(.25,.7,.35,1) .1s both}
+  .lg-close1{animation:line-in .7s cubic-bezier(.16,1,.3,1) 1.35s both}.lg-close2{animation:line-in .7s cubic-bezier(.16,1,.3,1) 1.5s both}
 }
-@media (prefers-reduced-motion:reduce){.glow::before,.glow::after{animation:none}.btn{transition:none}.brand-logo-sheen{display:none}.ch{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.glow::before,.glow::after{animation:none}.btn{transition:none}.brand-logo-sheen{display:none}.cs-ch{animation:none!important}}
 </style></head>
 <body><div class="glow"></div><main><div class="wordmark">${splitLogo("cl")}${sheenLogo("cl")}</div>
-${order.length ? `<div class="line" aria-label="${escHtml(order[0].line)}"><span class="out" aria-hidden="true"></span><span class="in" aria-hidden="true"></span></div>
-<script>
-(function () {
-  var L = ${JSON.stringify(order.map((x) => x.line)).replace(/</g, "\\u003c")}, i = 0;
-  var box = document.querySelector('.line'), out = box.querySelector('.out'), inn = box.querySelector('.in');
-  var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function chars(el, s) {
-    el.textContent = '';
-    var a = Array.from(s), step = Math.min(90, 1600 / a.length);
-    a.forEach(function (c, k) { var x = document.createElement('span'); x.className = 'ch'; x.textContent = c; x.style.animationDelay = Math.round(k * step) + 'ms'; el.appendChild(x); });
-  }
-  function show(k) {
-    chars(out, i === k ? '' : L[i]); chars(inn, L[k]); i = k; box.setAttribute('aria-label', L[k]);
-  }
-  show(0);
-  if (still || L.length < 2) return;
-  setInterval(function () { show((i + 1) % L.length); }, 7500);
-})();
-</script>` : ""}
+${order.length ? `<div class="cs-line" data-cascade aria-label="${escHtml(order[0].line)}"><span class="cs-out" aria-hidden="true"></span><span class="cs-in" aria-hidden="true"></span></div>
+<script>window.THAUMA_LINES = { start: 2300, lines: ${JSON.stringify(order.map((x) => x.line)).replace(/</g, "\\u003c")} };</script>` : ""}
+${conductor ? `<script>${conductor.replace(/<\/script/gi, "<\\/script")}</script>` : ""}
 <p><a class="btn" href="${home}/">${escHtml(word(lang, "closedLink"))}</a></p></main>${door ? `
 <script>
 (function () {
@@ -282,7 +278,7 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
     if (rest === "/robots.txt") {
       return new Response(`User-agent: *\nAllow: /\nSitemap: ${pub}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
     }
-    const at = (id, l) => `${pub}/${l}/${id === "home" ? "" : id + "/"}`;
+    const at = (id, l) => `${pub}/${l}/${id === "home" ? "" : pagePath(doc.pages.find((p) => p.id === id)) + "/"}`;
     const x = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
     const urls = doc.pages.filter((p) => p.on).flatMap((p) => doc.languages.map((l) =>
       `<url><loc>${x(at(p.id, l))}</loc>${doc.languages.map((o2) => `<xhtml:link rel="alternate" hreflang="${x(o2)}" href="${x(at(p.id, o2))}"/>`).join("")}</url>`));
@@ -296,24 +292,33 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
   }
   /* A clean link — /YouTube, /hr/Darivanje — before anything is "not found". */
   const clean = (parts.length === 1 && !doc.languages.includes(parts[0])) ||
-    (parts.length === 2 && doc.languages.includes(parts[0]) && !doc.pages.some((p) => p.id === parts[1]))
+    (parts.length === 2 && doc.languages.includes(parts[0]) && !pageAt(doc, parts[1]))
     ? cleanLinkTarget(doc, parts, { base, q, giving: doc.give || row.giving_url || "" }) : null;
   if (clean) return new Response(null, { status: 302, headers: { Location: clean, "Cache-Control": "no-store" } });
   const lang = parts[0];
   if (!doc.languages.includes(lang)) {
     /* An address in a language the site does not publish: the same page in
        the fallback language, rather than nothing. */
-    const page = parts[1] && PAGES.includes(parts[1]) ? parts[1] + "/" : "";
+    const page = parts[1] && pageAt(doc, parts[1]) ? parts[1] + "/" : "";
     return new Response(null, { status: 302, headers: { Location: `${base}/${doc.fallback}/${page}${q}` } });
   }
-  const pageId = parts[1] || "home";
-  const page = doc.pages.find((p) => p.id === pageId);
+  /* the page this address names: a built-in one by its id, one of the
+     owner's own by its address */
+  const page = parts[1] ? pageAt(doc, parts[1]) : doc.pages.find((p) => p.id === "home");
+  const pageId = page ? page.id : parts[1];
   if (parts.length > 2 || !page || (!page.on && !draft)) {
     return simplePage("Not found", "There is no page at this address.", 404);
   }
 
-  const partner = await db.queryOne("partner_for_site", { partner_id: row.partner_id });
-  const payload = await embedPayload(db, partner, { onlyShared: false });
+  /* SHARING'S WORKING COPY (Chase, 2026-10-28: the Sharing previews should
+     "match what actually show up on that web page" and show changes "even if
+     they aren't saved yet"). Sharing posts what is on its screen — the
+     ministry's colors, the timeline's period, the forms' lists, reasons and
+     words — and gets this page drawn with it. A preview's only, for the team
+     the ?draft gate above let in; nothing is stored. */
+  const unsaved = draft && request.method === "POST" ? await request.json().catch(() => null) : null;
+  const partner = withSharingDraft(await db.queryOne("partner_for_site", { partner_id: row.partner_id }), unsaved);
+  const payload = withDraftLooks(await embedPayload(db, partner, { onlyShared: false }), partner, unsaved);
   try { assertNoPersonalData(payload, { where: "partner site" }); }
   catch (err) {
     console.error("partner site withheld:", err.message);
@@ -323,11 +328,14 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
   /* ?part=footer, for the console's Footer tab (Chase, 2026-09-29: "Can the
      footer preview show ONLY the footer?"). Previews only. */
   const only = draft && url.searchParams.get("part") === "footer" ? "footer" : null;
+  const origin = siteOrigin(env, request) || url.origin;
+  const scripts = unsaved ? await draftFormScripts(db, { partnerId: row.partner_id, slug: row.slug, origin,
+    look: partner, forms: cleanFormDraft(unsaved.forms) }) : {};
   const html = renderPage({
-    doc, payload, lang, pageId, base, draft, only, langNames,
+    doc, payload, lang, pageId, base, draft, only, langNames, scripts,
     theme: payload.theme,
     site: { slug: row.slug, display_name: row.display_name, giving_url: row.giving_url, subdomain: row.subdomain },
-    origin: siteOrigin(env, request) || url.origin,
+    origin,
   });
   return new Response(html, {
     headers: {

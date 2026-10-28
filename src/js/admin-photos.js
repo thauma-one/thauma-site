@@ -92,7 +92,11 @@
      `home_who` is the photo in the Home page's "The need" section: the page
      by its console name, the section by its own heading line in English,
      read from en.json, so the name follows the site's words. */
+  /* A photo is named for the section it is in, as Pages names it — the page
+     and what the section says (admin-content.js, once it has the pages). */
   function nameOf(id) {
+    var named = window.ThaumaPhotoName && window.ThaumaPhotoName(id);
+    if (named) return named;
     var i = id.indexOf('_');
     var page = i === -1 ? id : id.slice(0, i), block = i === -1 ? '' : id.slice(i + 1);
     var pageName = has('lbl.s.' + page) ? tr('lbl.s.' + page) : page.charAt(0).toUpperCase() + page.slice(1);
@@ -122,10 +126,10 @@
   }
 
   async function boot() {
-    /* Both at once: the photos, and English for their sections' names. */
-    var both = await Promise.all([get(API + '?file=site'), get(API + '?file=en')]);
-    var site = both[0];
-    if (both[1] && both[1].data) state.english = both[1].data;
+    /* The photos. Their names come from Pages (nameOf), which reads the
+       words anyway — English was read a second time here only to name four
+       frames. */
+    var site = await get(API + '?file=site');
     if (!site) return;
     if (site.configured === false) {
       var el = $('phNotConfigured');
@@ -367,6 +371,9 @@
   document.addEventListener('thauma:site-saved', function (e) {
     var d = e.detail || {};
     if (d.from === 'photos' || !state.sha) return;
+    /* A section's own photo saved with the pages (admin-content.js): a
+       frame this tab has not seen, read again unless mid-change. */
+    if (d.from === 'sections') { if (!Object.keys(changes()).length) boot(); else state.sha = d.sha || state.sha; return; }
     if (d.sha) state.sha = d.sha;
     Object.keys(d.changes || {}).forEach(function (p) {
       var m = p.match(/^images\.([^.]+)\.([^.]+)$/);
@@ -380,6 +387,16 @@
 
   window.addEventListener('beforeunload', function (e) {
     if (Object.keys(changes()).length) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* the names, once Pages knows its sections */
+  document.addEventListener('sections:ready', function () { if (state.ids.length) renderThumbs(); });
+
+  /* "Frame It in Photos" on a section (admin-content.js): this photo. */
+  document.addEventListener('photos:show', function (e) {
+    if (!state.draft[e.detail]) return;
+    state.on = e.detail;
+    render();
   });
 
   boot();

@@ -290,7 +290,9 @@ enabled = true
 head_sampling_rate = 1
 
 [triggers]
-crons = ["*/15 * * * *"]
+# Every five minutes: a release's "the site was updated" follows its deploy
+# closely (0064). The older jobs keep their quarter hour (worker.js).
+crons = ["*/5 * * * *"]
 
 
 # ---------------------------------------------------------------------------

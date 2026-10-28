@@ -188,7 +188,7 @@ for (const [mine, label] of [[true, "save mine"], [false, "keep theirs"]]) {
     click(row("msList", "m1").querySelector("[data-pub]"));
     await settle();
     await publish();
-    assert(asked && /Someone else saved this/.test(asked.title), "asked, in words: " + JSON.stringify(asked));
+    assert(asked && /Someone Else Saved This/.test(asked.title), "asked, in words: " + JSON.stringify(asked));
     const posts = sent.filter((s) => s.method === "POST" && s.url.includes("staff-milestones"));
     eq(posts.map((p) => !!p.body.overwrite), mine ? [false, true] : [false], "what was sent");
     void d;
@@ -212,7 +212,7 @@ await check("the whole row opens its editor; Done keeps the edit, Cancel undoes 
 
   click(row("prList", "p1"));
   await settle();
-  form.querySelector('[data-ptx="title"][data-col="a"]').value = "Something else";
+  form.querySelector('[data-ptx="title"][data-col="a"]').value = "Something Else";
   click(d.getElementById("prCancel"));
   await settle();
   assert(/Visas for the team/.test(row("prList", "p1").textContent), "Cancel should put back what was there");

@@ -48,6 +48,15 @@ const TYPES = {
   "image/png": { ext: "png", magic: (b) =>
     b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 },
 };
+/* A MINISTRY'S OWN HEADING FONT (Chase, 2026-10-19: "font selection/
+   upload"), on its own website only (`partnersite`). Fonts are not
+   scripts; they are checked by their leading bytes like the pictures. */
+const FONT_TYPES = {
+  "font/woff2": { ext: "woff2", magic: (b) => b[0] === 0x77 && b[1] === 0x4f && b[2] === 0x46 && b[3] === 0x32 },
+  "font/woff": { ext: "woff", magic: (b) => b[0] === 0x77 && b[1] === 0x4f && b[2] === 0x46 && b[3] === 0x46 },
+  "font/ttf": { ext: "ttf", magic: (b) => b[0] === 0x00 && b[1] === 0x01 && b[2] === 0x00 && b[3] === 0x00 },
+  "font/otf": { ext: "otf", magic: (b) => b[0] === 0x4f && b[1] === 0x54 && b[2] === 0x54 && b[3] === 0x4f },
+};
 
 /* `newsletter` is not a staff photo and does not behave like one: it belongs
    to a PARTNER rather than to a person, and the people who write newsletters
@@ -167,7 +176,7 @@ export default {
     }
 
     const declared = (request.headers.get("Content-Type") || "").split(";")[0].trim();
-    const spec = TYPES[declared];
+    const spec = TYPES[declared] || (kind === "partnersite" ? FONT_TYPES[declared] : null);
     if (!spec) {
       return json({
         error: `${declared || "That"} is not an image this accepts. Send WebP, JPEG or PNG.`,

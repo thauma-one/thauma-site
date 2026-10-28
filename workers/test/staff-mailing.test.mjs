@@ -736,7 +736,7 @@ await check("one of Thauma's own lists attaches into the organization's folder",
 });
 
 await check("Send fills each person's name; someone without one just gets \"Hi!\"", async () => {
-  const body = '<p>Hi <span data-var="first_name">First name</span>!</p>';
+  const body = '<p>Hi <span data-var="first_name">First Name</span>!</p>';
   const { res, out } = await sendsThrough("mailing-send", { bodyHtml: body, people: [
     { id: "sb_1", email: "ana@x.one", name: "Ana <b>Marić" },
     { id: "sb_2", email: "nn@x.one", name: null },
@@ -751,7 +751,7 @@ await check("Send fills each person's name; someone without one just gets \"Hi!\
 });
 
 await check("Send me a test fills in the tester's own name", async () => {
-  const body = '<p>Hi <span data-var="first_name">First name</span>!</p>';
+  const body = '<p>Hi <span data-var="first_name">First Name</span>!</p>';
   const { res, out } = await sendsThrough("mailing-test", { bodyHtml: body });
   eq(res.status, 200, "status");
   assert(out[0].html.includes("Hi Chase!"), "tester's name missing");

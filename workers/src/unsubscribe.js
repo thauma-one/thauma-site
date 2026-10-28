@@ -58,21 +58,23 @@ const HEADERS = {
    only once the link has been verified and the person found — before that,
    every answer is Thauma's plain page, so an invented link learns nothing
    about whose list it names. */
-const shown = (title, body, lang, brand) => new Response(page(title, body, undefined, lang, brand), { headers: HEADERS });
 
-const DONE = (id = "", token = "", lang = null, brand = null) => shown(t(lang, "unsub.title"),
+/* The two pages as HTML, for these and for the console's preview of them. */
+export const doneHtml = (id = "", token = "", lang = null, brand = null) => page(t(lang, "unsub.title"),
   `<h1>${t(lang, "unsub.heading")}</h1>` +
   `<p>${t(lang, "unsub.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, lang, brand);
-
-/* After an undo. It offers the way out again, because somebody who has just
-   pressed two buttons in a row may well have meant the first one. */
-const BACK = (id = "", token = "", lang = null, brand = null) => shown(t(lang, "back.title"),
+  `&t=${encodeURIComponent(token)}&undo=1">${t(lang, "unsub.undo")}</a></p>`, undefined, lang, brand);
+export const backHtml = (id = "", token = "", lang = null, brand = null) => page(t(lang, "back.title"),
   `<h1>${t(lang, "back.heading")}</h1>` +
   `<p>${t(lang, "back.body")}</p>` +
   `<p><a class="undo" href="/unsubscribe?s=${encodeURIComponent(id)}` +
-  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, lang, brand);
+  `&t=${encodeURIComponent(token)}">${t(lang, "back.undo")}</a></p>`, undefined, lang, brand);
+const DONE = (id, token, lang, brand) => new Response(doneHtml(id, token, lang, brand), { headers: HEADERS });
+
+/* After an undo. It offers the way out again, because somebody who has just
+   pressed two buttons in a row may well have meant the first one. */
+const BACK = (id, token, lang, brand) => new Response(backHtml(id, token, lang, brand), { headers: HEADERS });
 
 export default {
   async fetch(request, env) {

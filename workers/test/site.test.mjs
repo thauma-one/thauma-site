@@ -5,6 +5,7 @@
  */
 import { subdomainFrom, validSubdomain, cleanDoc, starter, safeUrl, safePhoto, PAGES, SECTIONS, plainOf, cleanLinkTarget } from "../src/site/model.js";
 import { renderPage, esc } from "../src/site/render.js";
+import * as RENDER from "../src/site/render.js";
 import { pickLang } from "../src/site/serve.js";
 import { appData, serveApp, renderApp } from "../src/site/app.js";
 import { newsFor } from "../src/staff-push.js";
@@ -12,6 +13,10 @@ import * as LOGO from "../src/site/logo.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
 import * as MODEL from "../src/site/model.js";
+import { sized, sizedInline, SIZE_JS, SITE_UNIT } from "../src/site/size.js";
+import { cleanFormDraft, draftFormScripts, withSharingDraft, withDraftLooks } from "../src/lib/form-preview.js";
+/* the page as written, before its lengths became site units (site/size.js) */
+const unsized = (h) => String(h).replace(/calc\(var\(--su,1px\)\*(-?[\d.]+)\)/g, "$1px");
 import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
@@ -236,7 +241,7 @@ check("the language menu is always a dropdown, by each language's own name, on a
 
 check("the opening fills the screen, with an arrow that bounces until the visitor scrolls", () => {
   const html = page(starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" }));
-  assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
+  assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(unsized(html)), "the whole first screen");
   assert(/<section class="hero hero-behind[^"]*"[^>]*>[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
   assert(/\.scrollcue,\.cue-mouse em\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
@@ -249,7 +254,7 @@ check("the opening fills the screen, with an arrow that bounces until the visito
   assert(/<html[^>]* data-cue="line"/.test(page(d2)), "an unknown one is the line");
   /* chaseroush.com's: a short accent line over the word, bobbing together. */
   assert(/class="scrollcue"[^>]*><i><\/i>[\s\S]*?<span>Scroll<\/span><\/button>/.test(html), "a line over the word");
-  assert(/\.scrollcue i\{[^}]*width:2px;height:32px;background:var\(--acc\)/.test(html), "the line in the accent");
+  assert(/\.scrollcue i\{[^}]*width:2px;height:32px;background:var\(--acc\)/.test(unsized(html)), "the line in the accent");
 });
 
 check("the ministry's widgets sit centered unless put left; the newest newsletter as a card, the rest behind a link", () => {
@@ -547,7 +552,7 @@ check("a button can jump to a section of the same page, which a visitor's page c
   const html = page(d);
   assert(html.includes(`href="#s-${second.id}"`), "the button does not point at the section");
   assert(new RegExp(`<section[^>]*id="s-${second.id}"`).test(html), "a VISITOR's page has no anchor to land on");
-  assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(html), "it would land under the sticky header");
+  assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(unsized(html)), "it would land under the sticky header");
   /* an eased glide (2026-10-07, Chase: "a smooth scroll to the section … With
      both ease in and ease out"), a jump for those who ask for less motion */
   assert(/function glide\(y\)\{[^]*?if\(still\)\{scrollTo\(0,y\);return\}/.test(html), "a jump when motion is reduced");
@@ -673,7 +678,7 @@ check("a header: small print above and below, the page's h1, a watermark that de
   const sec = html.match(/<section[^>]*class="phead[^"]*"[^>]*>[\s\S]*?<\/section>/);
   assert(sec, "no header section");
   assert(/class="phead phead-watermark ph-plain ph-top al-left"/.test(sec[0]), "default looks: " + sec[0].slice(0, 120));
-  assert(/<span class="ph-mark" aria-hidden="true">Home<\/span>/.test(sec[0]), "the watermark falls back to the page's name");
+  assert(/<span class="ph-mark" aria-hidden="true"><span class="m">Home<\/span><\/span>/.test(sec[0]), "the watermark falls back to the page's name");
   assert(/<p class="ph-label m">About<\/p><h1 class="h m">About <b>Chase<\/b><\/h1><span class="rule m"/.test(sec[0]), "label, h1, line");
   assert(/<p class="ph-sub m">Serving churches<\/p>/.test(sec[0]), "the small line below");
 
@@ -715,7 +720,7 @@ check("photo and words: words can flow around the photo, and a photo is never cr
   assert(/\.pt-wrapRight \.ptw \.pic\{float:right/.test(html), "floats right");
   assert(/\.pt \.pic:has\(img\),\.ptw \.pic:has\(img\)\{aspect-ratio:auto;background:none/.test(html),
     "a chosen photo keeps its own shape and no panel behind it");
-  assert(/\.pt \.pic img,\.ptw \.pic img\{display:block;width:auto;max-width:100%;height:auto;max-height:640px;object-fit:contain\}/.test(html),
+  assert(/\.pt \.pic img,\.ptw \.pic img\{display:block;width:auto;max-width:100%;height:auto;max-height:640px;object-fit:contain\}/.test(unsized(html)),
     "the whole photo shows");
 });
 
@@ -1092,7 +1097,7 @@ check("any text size like Word: 4–200px kept and drawn; the first version's mu
     text: '<span data-sz="1.35">big</span> <span data-sz="9">huge</span> <span data-sz="lg" data-c="#ff00aa">both</span> <span data-sz="5px">tiny</span> <span data-sz="2px">gone</span>' } } }];
   const html = page(d);
   assert(html.includes('<span style="font-size:1.35em">big</span>'), "a multiple, still");
-  assert(html.includes('<span style="font-size:5px">tiny</span>'), "a size in px");
+  assert(unsized(html).includes('<span style="font-size:5px">tiny</span>'), "a size in px");
   assert(!/font-size:2px|data-sz="2px"/.test(html), "below 4px survived");
   assert(!/font-size:9em|data-sz="9"/.test(html), "an out-of-range size survived");
   assert(html.includes('<span class="ts-lg" style="color:#ff00aa">both</span>'), "a preset with a picked color");
@@ -1193,13 +1198,16 @@ check("a page's own description is a title as its language writes one: Title Cas
 
 /* ------------------------------------------------- the ministry's app -- */
 
-check("every site has an app: the page offers it to a phone and links it in the footer; a preview does not offer it", () => {
+check("every site has an app, offered only to a phone: in the phone's menu and asked once; never in the footer, never on a computer", () => {
   const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
   const html = page(d);
   assert(html.includes('<link rel="manifest" href="/site/chaseroush/app/manifest.webmanifest">'), "the manifest");
-  assert(/<footer[\s\S]*<a href="\/site\/chaseroush\/app">Get the app<\/a>[\s\S]*<\/footer>/.test(html), "the footer link");
-  assert(!page(d, "home", "en", { draft: true }).includes('rel="manifest"'), "not in a preview");
-  assert(/<a href="\/site\/chaseroush\/app">Preuzmite aplikaciju<\/a>/.test(page(d, "home", "hr")), "in the page's language");
+  assert(!/<footer[\s\S]*Get the App[\s\S]*<\/footer>/.test(html), "not in the footer");
+  assert(/<nav class="nav" id="sitenav">[\s\S]*<a class="navapp" href="\/site\/chaseroush\/app">[\s\S]*Get the App<\/a>/.test(html), "in the menu");
+  assert(/\.navapp\{display:none\}\s*@media \(hover:none\) and \(pointer:coarse\)\{html\.menu-open \.nav \.navapp\{display:inline-flex/.test(html), "shown only in a phone's open menu");
+  assert(/<div class="appask" id="appask" hidden[^>]*>[\s\S]*Add Chase Roush to your phone[\s\S]*<\/div>/.test(html) && html.includes("(hover: none) and (pointer: coarse)") && html.includes("if(n<2)return"), "asked once, on a phone, after a second visit");
+  assert(!page(d, "home", "en", { draft: true }).includes('rel="manifest"') && !page(d, "home", "en", { draft: true }).includes('id="appask"'), "not in a preview");
+  assert(/Preuzmite aplikaciju<\/a>/.test(page(d, "home", "hr")), "in the page's language");
 });
 
 check("the app shows what the site publishes: open prayer, the road so far newest first, letters, goals, the giving link", () => {
@@ -1308,8 +1316,196 @@ check("the closed page's logo is the site's own, in pieces, with its shimmer par
   const body = (f) => readFileSync(new URL("../../src/_includes/brand/" + f, import.meta.url), "utf8").replace(/\{#-[\s\S]*?-#\}\s*/g, "").trim();
   eq(LOGO.LOGO_SPLIT, body("logo-split.njk"), "logo-split.njk and site/logo.js agree");
   eq(LOGO.LOGO_SHEEN, body("logo-sheen.njk"), "logo-sheen.njk and site/logo.js agree");
-  assert(LOGO.sheenLogo("cl").includes('gradientTransform="translate(-3600 0)"'), "the light waits off to the left");
+  assert(LOGO.sheenLogo("cl").includes('gradientTransform="translate(-9000 0)"'), "the light waits well clear of the logo");
   assert(!LOGO.splitLogo("cl").includes("{{"), "ids filled in");
+});
+
+check("Title Case: a word starting a sentence is capitalized, never \". the\"", () => {
+  eq(MODEL.titleCase("simple to state. the need is real: a church needs help", "en"), "Simple to State. The Need Is Real: A Church Needs Help", "after . and :");
+  eq(MODEL.titleCase("news, prayer and the road ahead", "en"), "News, Prayer and the Road Ahead", "small words inside stay small");
+});
+
+check("fonts: the chosen one, then the fallback, then the look's; Google is asked for exactly those; only our own font files", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "sr"], fallback: "en" });
+  d.design.fonts = { heading: "bebas", body: "inter", fallback: "montserrat" };
+  const c = cleanDoc(d, ["en", "sr"]);
+  eq(c.design.fonts.heading, "bebas", "heading kept");
+  const html = page(c);
+  assert(html.includes("family=Bebas+Neue&") && html.includes("family=Inter:wght@100..900") && html.includes("family=Montserrat:wght@100..900"), "Google asked");
+  assert(/--display:'Bebas Neue', 'Montserrat', 'Sora'/.test(html), "heading stack");
+  assert(/--body:'Inter', 'Montserrat', 'Inter'/.test(html), "text stack");
+  /* the fallback must write Cyrillic; a font without it is not one */
+  d.design.fonts = { fallback: "bebas", heading: "nope" };
+  eq([cleanDoc(d, ["en"]).design.fonts.fallback, cleanDoc(d, ["en"]).design.fonts.heading], ["look", "look"], "refused");
+  /* an uploaded font: only ours, only a font file */
+  d.design.fonts = { heading: "own", own: "/media/partnersite/c/display-ab12.woff2", ownName: "Display" };
+  const own = cleanDoc(d, ["en"]);
+  assert(page(own).includes("@font-face{font-family:'SiteOwn';src:url(/media/partnersite/c/display-ab12.woff2) format('woff2')"), "face");
+  for (const bad of ["https://evil.example/f.woff2", "/media/partnersite/c/x.svg", "/media/partnersite/../x.woff2"]) {
+    d.design.fonts = { heading: "own", own: bad };
+    eq(cleanDoc(d, ["en"]).design.fonts.heading, "look", bad);
+  }
+  const ids = Object.keys(MODEL.FONT_CHOICES);
+  const src = readFileSync(new URL("../../src/js/staff-site.js", import.meta.url), "utf8");
+  for (const id of [...MODEL.HEADING_FONTS, ...MODEL.BODY_FONTS]) assert(src.includes("'" + id + "'"), "the console offers " + id);
+  assert(ids.every((id) => src.includes("'" + MODEL.FONT_CHOICES[id].family + "'")), "the console knows every family");
+});
+
+check("the speed is seconds on a slider; the three old words read as theirs; a section may arrive its own way; Justified", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  for (const [v, want] of [["slow", 1.7], ["medium", 1.25], ["fast", 0.8], [0.05, 0.2], [9, 4], [2.345, 2.35], ["x", 1.25]]) {
+    d.design.motion.speed = v;
+    eq(cleanDoc(d, ["en"]).design.motion.speed, want, "speed " + v);
+  }
+  d.design.motion.speed = 2;
+  const sec = d.pages.find((p) => p.id === "mission").sections[0];
+  sec.enter = "sweep"; sec.align = "justify";
+  const c = cleanDoc(d, ["en"]);
+  eq([c.pages.find((p) => p.id === "mission").sections[0].enter, c.pages.find((p) => p.id === "mission").sections[0].align], ["sweep", "justify"], "kept");
+  sec.enter = "explode";
+  assert(!("enter" in cleanDoc(d, ["en"]).pages.find((p) => p.id === "mission").sections[0]), "only a known way");
+  sec.enter = "sweep";
+  const html = page(cleanDoc(d, ["en"]), "mission");
+  assert(/<html [^>]*style="--mt:2s;--mstep:176ms;--cstep:67ms"/.test(html), "the seconds on the page");
+  assert(/<section class="[^"]*al-justify[^"]*" id="s-[^"]+" data-enter="sweep">/.test(html), "the section's own way, justified");
+  assert(unsized(html).includes(':is(html[data-entrance="sweep"] main section:not([data-enter]),main section[data-enter="sweep"]) .m:not(.in){opacity:0;transform:translateX(40px)}'), "its own way over the site's");
+  assert(/\.al-justify :is\([^)]*\.prose p[^)]*\)\{text-align:justify/.test(html), "the words run edge to edge");
+  /* arriving from another page: after the cross-fade, as on a refresh */
+  assert(html.includes("e.viewTransition.finished.then(go,go)") && html.includes("window.__siteReplay="), "held through the fade; playable from the Site Creator");
+});
+
+check("Links: a real List, a Shelf, Buttons in a row or stacked, and how the pictures show", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const r = d.pages.find((p) => p.id === "resources"); r.on = true;
+  const L = r.sections[0];
+  L.items[0].photo = "/media/partnersite/c/a.webp"; L.items[0].words.en.note = "Mine";
+  L.variant = "list";
+  let html = page(cleanDoc(d, ["en"]), "resources");
+  assert(/<ul class="llist m"><li><a href="[^"]+"><span class="ll-pic"><img src="\/media\/partnersite\/c\/a.webp"/.test(html), "a row with its picture");
+  assert(html.includes('<span class="ll-note">Mine</span>'), "the note too, when wanted");
+  L.showNote = false; L.pics = "none";
+  html = page(cleanDoc(d, ["en"]), "resources");
+  assert(!html.includes('<span class="ll-note">') && !html.includes('<span class="ll-pic">'), "switched off");
+  L.variant = "shelf"; L.pics = "round"; L.showNote = true;
+  html = page(cleanDoc(d, ["en"]), "resources");
+  assert(/links-shelf pics-round/.test(html) && /<ul class="sh-row"><li><a class="sh-card"/.test(html) && html.includes('class="sh-next" aria-label="Next"'), "the shelf, round pictures, arrows");
+  L.variant = "buttons"; L.stack = true; L.pics = "fill";
+  html = page(cleanDoc(d, ["en"]), "resources");
+  assert(/<div class="lstack m"><a class="btn solid lb-accent" href="[^"]+"><span class="ls-pic"><img/.test(html), "stacked, each with its picture");
+  L.stack = false;
+  assert(/<div class="btns linkbtns m"><a class="btn solid lb-accent" href="[^"]+">A Resource/.test(page(cleanDoc(d, ["en"]), "resources")), "a row of buttons, no pictures");
+  L.pics = "sparkly";
+  eq(cleanDoc(d, ["en"]).pages.find((p) => p.id === "resources").sections[0].pics, "whole", "a known way only");
+  /* a description starts at 12px, and a size chosen for a whole box is the box's own, so its lines are spaced for it */
+  assert(/\.rc-desc\{color:var\(--dim\);font-size:12px;line-height:1\.7/.test(unsized(html)), "12px");
+});
+
+check("a page of the owner's own: its own address, kept apart from every other; no more than twelve; linked to and in the menu", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en", "hr"], fallback: "en" });
+  const mine = (id, label, slug) => ({ id, custom: true, slug, on: true, label: { en: label }, sections: [{ id: "s" + id, type: "text", words: { en: { heading: "Hello", text: "Words here, plenty of them." } } }] });
+  d.pages.push(mine("pabc1", "Our Story", "our-story"), mine("pabc2", "Our Story", "our-story"), mine("pabc3", "About", ""), { id: "zzz", custom: true, label: { en: "x" } });
+  const c = cleanDoc(d, ["en", "hr"]);
+  const own = c.pages.filter((p) => p.custom);
+  eq(own.map((p) => [p.id, p.slug]), [["pabc1", "our-story"], ["pabc2", "our-story-2"], ["pabc3", "about-2"]], "each address once, never a built-in page's");
+  assert(!c.pages.some((p) => p.id === "zzz"), "only a page id of the right shape");
+  for (let i = 0; i < 15; i++) d.pages.push(mine("pmore" + i, "More " + i, ""));
+  eq(cleanDoc(d, ["en", "hr"]).pages.filter((p) => p.custom).length, 12, "twelve at most");
+  c.pages.find((p) => p.id === "about").sections[0].link = "page:pabc1";
+  c.pages.find((p) => p.id === "about").sections[0].words.en.button = "Read it";
+  const html = page(c, "about");
+  assert(html.includes('<a href="/site/chaseroush/en/our-story/">Our Story</a>'), "in the menu, by its address");
+  assert(html.includes('href="/site/chaseroush/en/our-story/">Read it'), "a button goes to it");
+  eq(cleanLinkTarget(c, ["Our-Story"], { base: "/site/chaseroush" }), "/site/chaseroush/en/our-story/", "its clean link");
+  eq(page(c, "pabc2").match(/<title>([^<]*)<\/title>/)[1], "Our Story · Chase Roush", "its own page, named");
+});
+
+check("from thauma.one: a word and its meanings, labeled rows, and Custom Cards numbered I, II, III", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const m = d.pages.find((p) => p.id === "mission");
+  m.sections = [
+    { id: "sdef1", type: "define", words: { en: { word: "Thauma", say: "θαῦμα · wonder", text: "A wonder.\n\nWhat makes people <i>stop</i>." } } },
+    { id: "srow1", type: "rows", words: { en: { heading: "What <b>We Do</b>", text: "" } }, items: [{ words: { en: { label: "Serve", title: "On Site", text: "Behind the scenes." } } }, { words: { en: { label: "", title: "", text: "" } } }] },
+    { id: "scrd1", type: "cards", numStyle: "roman", items: [{ words: { en: { title: "One", text: "a" } } }, { words: { en: { title: "Two", text: "b" } } }] },
+  ];
+  const c = cleanDoc(d, ["en"]);
+  eq(c.pages.find((p) => p.id === "mission").sections.map((x) => x.type), ["define", "rows", "cards"], "kept");
+  const html = page(c, "mission");
+  assert(/<p class="df-word m">Thauma<\/p><p class="df-say m">θαῦμα · wonder<\/p><ol class="df-means m"><li>A wonder\.<\/li><li>What makes people <i>stop<\/i>\.<\/li><\/ol>/.test(html), "the word, how it is said, its meanings");
+  assert(/<div class="lrows m"><div class="lrow"><div class="lr-label">Serve<\/div><div><h3>On Site<\/h3><p>Behind the scenes\.<\/p><\/div><\/div><\/div>/.test(html), "one row; an empty one is not drawn");
+  assert(html.includes('<span class="cnum roman" aria-hidden="true">II</span>'), "I, II, III");
+});
+
+check("a size chosen for a whole box is the box's: its lines are spaced for it", () => {
+  const { hoistSizes } = RENDER;
+  eq(hoistSizes('<p class="lede m"><span style="font-size:13px">a <b>b</b> <span style="color:#fff">c</span></span></p>'),
+    '<p class="lede m" style="font-size:13px">a <b>b</b> <span style="color:#fff">c</span></p>', "lifted");
+  eq(hoistSizes('<p><span style="font-size:9px">a</span> b</p>'), '<p><span style="font-size:9px">a</span> b</p>', "a part of a box stays a part");
+  eq(hoistSizes('<span class="rc-desc"><span class="ts-lg">x</span></span>'), '<span class="rc-desc" style="font-size:1.25em">x</span>', "a named size");
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].words.en.text = '<span data-sz="13px">one\n\ntwo</span>';
+  assert(/<div class="prose m" style="font-size:13px"><p>one<\/p><p>two<\/p><\/div>/.test(unsized(page(cleanDoc(d, ["en"])))), "paragraphs and all");
+});
+
+check("a photo's size is kept with the site, so the page holds its place; the opened timeline card wears the card color", () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  d.pages[0].sections[1].photo = "/media/partnersite/c/b.webp";
+  d.dims = { "/media/partnersite/c/b.webp": [1600, 1200], "https://evil.example/x.png": [1, 1], "/media/partnersite/c/z.webp": [0, 5], "/media/partnersite/c/q.webp": "big" };
+  const c = cleanDoc(d, ["en"]);
+  eq(c.dims, { "/media/partnersite/c/b.webp": [1600, 1200], "https://evil.example/x.png": [1, 1] }, "only sizes of photos");
+  assert(/<img src="\/media\/partnersite\/c\/b.webp" alt="[^"]*" loading="eager" fetchpriority="high" decoding="async" width="1600" height="1200">/.test(page(c)), "width and height on the photo");
+  const W = readFileSync(new URL("../src/embed-widget.js", import.meta.url), "utf8");
+  assert(W.includes("'.detail{background:var(--bg)}.ddesc{background:var(--panel)}'"), "the opened card, a card");
+});
+
+check("smaller on a computer: every length in site units, 80% on a wide screen as the browser would draw it; the screen's sizes and hairlines left alone", () => {
+  eq(sized("@media (max-width:760px){.a{padding:clamp(36px,5vw,72px) 0;border:1px solid;margin:-5px;max-width:30rem}}"),
+    "@media (max-width:760px){.a{padding:clamp(calc(var(--su,1px)*36),5vw,calc(var(--su,1px)*72)) 0;border:1px solid;margin:calc(var(--su,1px)*-5);max-width:calc(var(--su,1px)*480)}}", "lengths, not the screen's");
+  eq(sizedInline('<p style="color:#fff;font-size:13px">a</p>'), '<p style="color:#fff;font-size:calc(var(--su,1px)*13)">a</p>', "a size picked in the words");
+  eval(SIZE_JS + "; globalThis.__sz = sized");
+  eq(globalThis.__sz("@media(max-width:600px){.x{top:-7px}}"), sized("@media(max-width:600px){.x{top:-7px}}"), "the widgets' copy is the same");
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const html = page(cleanDoc(d, ["en"]));
+  assert(html.includes(SITE_UNIT) && /\.btn\{[^}]*font:600 calc\(var\(--su,1px\)\*15\)\/1\.25/.test(html), "the page in site units");
+  assert(!/style="[^"]*font-size:\d+px/.test(html), "no size left in px");
+  const W = readFileSync(new URL("../src/embed-widget.js", import.meta.url), "utf8");
+  assert(/getAttribute\('data-look'\) \? sized\(css\) : css/.test(W), "the widgets on a ministry's site only");
+  for (const f of ["signup", "contact"]) assert(readFileSync(new URL(`../src/${f}.js`, import.meta.url), "utf8").includes("(node.getAttribute('data-look') ? sized : String)("), `the ${f} form too`);
+});
+
+/* SHARING'S PREVIEW IS THE SITE (Chase, 2026-10-28: the previews should
+   "match what actually show up on that web page … even if they aren't saved
+   yet"): a ?draft page drawn with Sharing's working copy. */
+await checkAsync("Sharing draws the site's page with what is on its screen, saved or not", async () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  for (const id of ["stay", "contact"]) d.pages.find((p) => p.id === id).on = true;
+  /* Saved: the form's script from the server, as a visitor gets it. */
+  assert(page(d, "stay").includes('src="https://thauma.one/embed/v1/chase-roush/form.js" defer'), "saved: the form's own script");
+  /* Unsaved: the script built from the screen, inline; a closed form none. */
+  const own = page(d, "stay", "en", { scripts: { signup: "var x='</script><!--';" } });
+  assert(!own.includes("/form.js") && own.includes("<script>var x='<\\/script><\\!--';</script>"), "the working copy's script, inline and unbreakable");
+  assert(!page(d, "contact", "en", { scripts: { contact: "" } }).includes("contact.js"), "a contact form switched off draws nothing");
+
+  /* The lists switched on there, the reasons and words as typed. */
+  const db = { async query(name, p) {
+    assert(name === "mailing_lists_for_partner" && p.partner_id === 7, "the ministry's own lists");
+    return [{ id: "a", slug: "news", name: "News", texts: "{}" }, { id: "b", slug: "prayer", name: "Prayer", texts: "{}" }];
+  } };
+  const forms = cleanFormDraft({ lists: ["b"], signupOpen: true, signupWords: { en: { button: "Join Now" }, "x y": {} },
+    topics: [{ label: "Hello", labels: { hr: "Bok" } }, { label: " " }], contactOpen: true });
+  assert(forms.topics.length === 1 && Object.keys(forms.signupWords).join() === "en", "only real languages and named reasons");
+  const out = await draftFormScripts(db, { partnerId: 7, slug: "chase-roush", origin: "https://thauma.one", look: null, forms });
+  assert(out.signup.includes('value=\\"prayer') && !out.signup.includes('value=\\"news'), "the lists switched on");
+  assert(out.signup.includes("Join Now") && out.contact.includes("Hello") && out.contact.includes("Bok"), "the words and reasons as typed");
+  const shut = await draftFormScripts(db, { partnerId: 7, slug: "c", origin: "o", forms: cleanFormDraft({ lists: ["a"], signupOpen: false, topics: [], contactOpen: false }) });
+  assert(shut.signup === "" && shut.contact === "", "closed forms: nothing");
+  assert(Object.keys(await draftFormScripts(db, { partnerId: 7, slug: "c", origin: "o", forms: cleanFormDraft({}) })).length === 0, "nothing said: as saved");
+
+  /* The ministry's colors, period and each widget's own colors. */
+  const p = withSharingDraft({ id: 7, embed_accent: "#1AE4FF", timeline_start: "2026-01-01" },
+    { accent: "#FF5A36", turn: 40, period: { start: "2027-02-03", end: "nope" } });
+  assert(p.embed_accent === "#FF5A36" && p.embed_turn === 40 && p.timeline_start === "2027-02-03" && p.timeline_end === null, "colors and period laid over");
+  const pay = withDraftLooks({ looks: { roadmap: { accent: "#1AE4FF" }, goal: { accent: "#1AE4FF" } } }, p, { looks: { roadmap: { accent: "#00FF00" }, goal: { accent: null } } });
+  assert(pay.looks.roadmap.accent === "#00FF00" && pay.looks.goal.accent === "#FF5A36", "a widget's own colors, or the ministry's");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

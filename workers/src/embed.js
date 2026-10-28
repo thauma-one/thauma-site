@@ -89,9 +89,25 @@ export default {
     const m = path.match(/^([^/]+)\.json$/);
     if (!m) return json({ error: "Not found" }, 404, CORS);
 
+    /* THAUMA'S OWN: its Events and Resources, written out with the site
+       (src/_data/thaumaEmbed.js), since they live in files rather than the
+       database. "thauma" is never a ministry's address (model.js RESERVED). */
+    if (m[1] === "thauma") return thaumaJson(env, url);
+
     return partnerJson(decodeURIComponent(m[1]), env);
   },
 };
+
+/** Thauma's Events and Resources, as the site built them. */
+async function thaumaJson(env, url) {
+  if (!env.ASSETS) return json({ error: "Not found" }, 404, CORS);
+  const res = await env.ASSETS.fetch(new Request(new URL("/embed-data/thauma.json", url.origin)));
+  if (!res.ok) return json({ error: "Not found" }, 404, CORS);
+  const body = await res.json().catch(() => null);
+  if (!body || !Array.isArray(body.shared) || !body.shared.length) return json({ error: "Not found" }, 404, CORS);
+  body.words = widgetWords(body.languages);
+  return json(body, 200, { ...CORS, "Cache-Control": "public, max-age=300" });
+}
 
 function widgetScript(hostname) {
   /* NOT CACHED ON THE PREVIEW HOSTS.

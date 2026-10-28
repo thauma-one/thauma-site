@@ -7,7 +7,7 @@
  *
  * ONE CONSTRAINT WHILE EDITING: no backticks and no dollar-brace anywhere in
  * the widget source, because it lives inside a template literal — except the
- * one that inlines COLOUR_JS, which is the point of it.
+ * ones that inline COLOUR_JS and SIZE_JS, which is the point of them.
  *
  * PORTED FROM chaseroush.com's TIMELINE — THE WHOLE THING, NOT THE SKIN
  * ---------------------------------------------------------------------------
@@ -45,6 +45,7 @@
  */
 
 import { COLOUR_JS } from "./embed-colour.js";
+import { SIZE_JS } from "./site/size.js";
 
 export const WIDGET_JS = String.raw`
 /* Thauma embed widget. https://thauma.one
@@ -174,6 +175,7 @@ export const WIDGET_JS = String.raw`
      lightness instead. The same maths as the Worker's: embed-colour.js. */
 
 ${COLOUR_JS}
+${SIZE_JS}
   var rgba = alpha;
 
   /* ---------- parsing: parents, children, aggregate ---------- */
@@ -248,7 +250,13 @@ ${COLOUR_JS}
     /* The names on cards in the page's display face, not this widget's serif. */
     var display = typeof o.display === 'string' && FONT.test(o.display)
       ? '.gname,.dtitle,.ptitle{font-family:' + o.display + '}' : '';
-    return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + display;
+    /* A MILESTONE OPENED is a card too (Chase, 2026-10-27: the timeline's
+       cards "are still showing the wrong color when they are dropped down").
+       Here --panel is the GROUND the widget sits on, so a details panel in
+       it vanished into a raised or tinted section; it wears the card color
+       instead, and the words inside it the ground's, as on a card. */
+    var opened = '.detail{background:var(--bg)}.ddesc{background:var(--panel)}';
+    return light + (dark ? '@media(prefers-color-scheme:dark){' + dark + '}' : '') + display + opened;
   }
 
   /* ---------- styles ---------- */
@@ -506,6 +514,41 @@ ${COLOUR_JS}
         'transition:width 1.2s cubic-bezier(.4,0,.2,1)}' +
       '.kpct em{display:block;margin-top:4px;font-size:11.5px;color:var(--dim);' +
         'font-style:normal;font-variant-numeric:tabular-nums}' +
+
+      /* ============ THAUMA'S EVENTS AND RESOURCES ============
+         (Chase, 2026-10-27: "Events and Resources don't have the Sharing
+         visualizers anywhere"). thauma.one's own two collections, for
+         somebody else's page: each event a row with its date as a block,
+         each resource a card that opens it on thauma.one. */
+      '.evs{display:flex;flex-direction:column;gap:12px}' +
+      '.evlbl{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:10px 0 2px}' +
+      '.evlbl:first-child{margin-top:0}' +
+      '.ev{display:flex;align-items:center;gap:20px;padding:16px 20px;background:var(--bg);border:1.5px solid var(--line);' +
+        'border-radius:10px;color:inherit;text-decoration:none;transition:border-color .3s ease,transform .3s ease}' +
+      '.ev:hover,.ev:focus-visible{border-color:var(--prog);transform:translateY(-3px);outline:0}' +
+      '.evd{flex:0 0 64px;text-align:center;line-height:1;color:var(--prog-t)}' +
+      '.evd b{display:block;font-size:30px;font-weight:300;letter-spacing:-.02em}' +
+      '.evd em{display:block;margin-top:5px;font-style:normal;font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}' +
+      '.evd small{display:block;margin-top:3px;font-size:11px;color:var(--dim)}' +
+      '.evd.word b{font-size:13px;font-weight:600;line-height:1.3;letter-spacing:0}' +
+      '.evb{flex:1;min-width:0}' +
+      '.evt{display:block;font-size:17px;font-weight:700;line-height:1.3}' +
+      '.evs2{display:block;margin-top:4px;color:var(--dim);font-size:14px;line-height:1.55}' +
+      '.evw{display:block;margin-top:6px;color:var(--dim);font-size:12.5px}' +
+      '.evgo{flex:none;color:var(--prog-t);font-size:18px;transition:transform .3s ease}' +
+      '.ev:hover .evgo{transform:translateX(4px)}' +
+      '.ev.past{opacity:.62}.ev.past .evd{color:var(--dim)}' +
+      '.rgrid{display:grid;grid-template-columns:1fr;gap:16px}' +
+      '.is-wide .rgrid{grid-template-columns:repeat(2,1fr)}' +
+      '.rcard{display:flex;flex-direction:column;gap:8px;padding:22px 24px;background:var(--bg);border:1.5px solid var(--line);' +
+        'border-radius:10px;color:inherit;text-decoration:none;transition:border-color .3s ease,transform .3s ease,box-shadow .3s ease}' +
+      '.rcard:hover,.rcard:focus-visible{border-color:var(--done);transform:translateY(-4px);box-shadow:0 4px 16px rgba(0,0,0,.18);outline:0}' +
+      '.rfmt{align-self:flex-start;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.08em;' +
+        'text-transform:uppercase;color:var(--done-t);border:1px solid var(--done);background:var(--faint-d)}' +
+      '.rtitle{font-size:19px;font-weight:700;line-height:1.3}' +
+      '.rsum{color:var(--dim);font-size:14px;line-height:1.6;flex:1}' +
+      '.rgo{margin-top:4px;font-size:13px;font-weight:700;color:var(--done-t)}' +
+      '@media(max-width:560px){.ev{gap:14px;padding:14px 16px}.evd{flex-basis:52px}.evd b{font-size:24px}.evgo{display:none}}' +
 
       /* ============ PRAYER ============ */
       '.prayers{display:flex;flex-direction:column;gap:22px}' +
@@ -1295,6 +1338,79 @@ ${COLOUR_JS}
     return wrap;
   }
 
+  /* THAUMA'S OWN (the "thauma" payload, embed.js): its words for these come
+     with it as site_words, the same words its own pages use. */
+  function siteWord(data, lang, key) {
+    var t = data.site_words || {};
+    return (t[lang] || {})[key] || (t.en || {})[key] || '';
+  }
+  function safeHref(u) { return typeof u === 'string' && /^https:\/\//.test(u) ? u : null; }
+  function dayParts(iso, lang) {
+    var d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!d) return null;
+    var t = new Date(Date.UTC(+d[1], +d[2] - 1, +d[3]));
+    try {
+      return { day: String(+d[3]), month: new Intl.DateTimeFormat(lang || 'en', { month: 'short', timeZone: 'UTC' }).format(t).replace('.', ''), year: d[1] };
+    } catch (e) { return { day: String(+d[3]), month: d[2], year: d[1] }; }
+  }
+
+  /* Upcoming first, soonest first; then what has already happened, newest first. */
+  function eventList(rows, lang, data) {
+    var usable = (rows || []).filter(function (e) { return e && pick(e.title, lang); });
+    if (!usable.length) return null;
+    var soon = usable.filter(function (e) { return e.status !== 'past'; }).sort(function (a, b) {
+      var x = toTime(a.date), y = toTime(b.date);
+      return (isNaN(x) ? Infinity : x) - (isNaN(y) ? Infinity : y);
+    });
+    var gone = usable.filter(function (e) { return e.status === 'past'; }).sort(function (a, b) { return (toTime(b.date) || 0) - (toTime(a.date) || 0); });
+    var wrap = el('div', 'evs');
+    function row(e, past) {
+      var href = safeHref(pick(e.url, lang));
+      var a = el(href ? 'a' : 'div', 'ev' + (past ? ' past' : ''));
+      if (href) { a.href = href; a.target = '_blank'; a.rel = 'noopener'; }
+      var p = dayParts(e.date, lang), d = el('span', 'evd' + (p ? '' : ' word'));
+      if (p) { d.appendChild(el('b', null, p.day)); d.appendChild(el('em', null, p.month)); d.appendChild(el('small', null, p.year)); }
+      else d.appendChild(el('b', null, e.date_label || '—'));
+      a.appendChild(d);
+      var b = el('span', 'evb');
+      b.appendChild(el('span', 'evt', pick(e.title, lang)));
+      var sum = pick(e.summary, lang);
+      if (sum) b.appendChild(el('span', 'evs2', sum));
+      if (e.location) b.appendChild(el('span', 'evw', (siteWord(data, lang, 'where') ? siteWord(data, lang, 'where') + ': ' : '') + e.location));
+      a.appendChild(b);
+      if (href) a.appendChild(el('span', 'evgo', '→'));
+      wrap.appendChild(a);
+    }
+    if (soon.length) {
+      if (siteWord(data, lang, 'upcoming')) wrap.appendChild(el('div', 'evlbl', siteWord(data, lang, 'upcoming')));
+      soon.forEach(function (e) { row(e, false); });
+    }
+    if (gone.length) {
+      if (siteWord(data, lang, 'past')) wrap.appendChild(el('div', 'evlbl', siteWord(data, lang, 'past')));
+      gone.forEach(function (e) { row(e, true); });
+    }
+    return wrap;
+  }
+
+  function resourceCards(rows, lang, data) {
+    var usable = (rows || []).filter(function (r) { return r && pick(r.title, lang); });
+    if (!usable.length) return null;
+    var formats = (data.site_words && ((data.site_words[lang] || {}).formats || (data.site_words.en || {}).formats)) || {};
+    var wrap = el('div', 'rgrid');
+    usable.forEach(function (r) {
+      var href = safeHref(pick(r.url, lang));
+      var a = el(href ? 'a' : 'div', 'rcard');
+      if (href) { a.href = href; a.target = '_blank'; a.rel = 'noopener'; }
+      if (formats[r.format]) a.appendChild(el('span', 'rfmt', formats[r.format]));
+      a.appendChild(el('span', 'rtitle', pick(r.title, lang)));
+      var sum = pick(r.summary, lang);
+      if (sum) a.appendChild(el('span', 'rsum', sum));
+      if (href && siteWord(data, lang, 'open')) a.appendChild(el('span', 'rgo', siteWord(data, lang, 'open') + ' →'));
+      wrap.appendChild(a);
+    });
+    return wrap;
+  }
+
   /* A SHOWCASE, NOT A LIST (Chase, 2026-09-28: "it looks more like a list of
      information than a presented file"). The newest video is the stage —
      full width, its title over the picture, a play button in the ministry's
@@ -1508,7 +1624,9 @@ ${COLOUR_JS}
     root.textContent = '';
 
     var style = document.createElement('style');
-    style.textContent = styles(accent, second, mode) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'widget');
+    /* on a ministry's site, in its units (site/size.js) */
+    var css = styles(accent, second, mode) + siteLook(node, accent, second) + hostLook(node, mode, accent, second, 'widget');
+    style.textContent = node.getAttribute('data-look') ? sized(css) : css;
     root.appendChild(style);
 
     var host = el('div', 'host');
@@ -1517,6 +1635,11 @@ ${COLOUR_JS}
     if (kind === 'roadmap') {
       body = roadmap(data.milestones || [], lang, data.timeline,
                      node.getAttribute('data-style') === 'condensed');
+    } else if (kind === 'events') {
+      body = eventList(data.events || [], lang, data);
+      if (!body && siteWord(data, lang, 'none')) { body = el('div'); body.appendChild(el('div', 'msg', siteWord(data, lang, 'none'))); }
+    } else if (kind === 'resources') {
+      body = resourceCards(data.resources || [], lang, data);
     } else if (kind === 'prayer') {
       body = prayerCards(data.prayer || [], lang);
     } else if (kind === 'videos') {
@@ -1554,8 +1677,9 @@ ${COLOUR_JS}
        at the top of the page. */
     if (node.getAttribute('data-foot') !== 'off') {
       var foot = el('div', 'foot');
-      var a = el('a', null, data.partner ? data.partner.display_name : 'Thauma');
-      a.href = ORIGIN + '/partners/' + (data.partner ? data.partner.slug : '');
+      var a = el('a', null, data.partner ? data.partner.display_name || data.partner.name : 'Thauma');
+      /* Thauma's own lead to thauma.one itself */
+      a.href = data.partner && safeHref(data.partner.url) || ORIGIN + '/partners/' + (data.partner ? data.partner.slug : '');
       a.rel = 'noopener';
       a.target = '_blank';
       foot.appendChild(a);

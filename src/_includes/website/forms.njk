@@ -1,68 +1,127 @@
-{#- THAUMA'S OWN FORMS (Chase, 2026-09-27: "staff is only for staff
-   functions and admin is for admin"). They were Sharing's "Thauma" side.
+{#- WEBSITE › SHARING — what of Thauma's appears on other websites, laid out
+   as the staff Sharing page is (Chase, 2026-10-27: "Admin Updates and
+   Sharing operate differently from staff … Events and Resources don't have
+   the Sharing visualizers anywhere"). Its four on the left, the real thing
+   in the middle at a desktop's or a phone's width in any language, and on
+   the right what decides whether it is out, what it says and the code to
+   paste.
 
-   WHAT HAPPENS TO WHAT A VISITOR SENDS, AND NOTHING ELSE. thauma.one's forms
-   are part of its pages, hand-built on the API rather than the embed, so
-   every word on them is a site word, edited in Pages like the rest of the
-   page and published with it. What lives here is what no page says: where a
-   message goes, who it is sent as, the reasons a visitor picks from, and
-   which lists the sign-up form offers. Each form links to where its words
-   are. These save and apply at once; they are not part of the site's files,
-   so they do not wait for Publish (whose bar steps aside while this one
-   shows). -#}
-<div class="wf" id="wfRoot">
-  <div class="ml-whose-opts wf-pick" role="tablist" aria-label="Forms">
-    <button type="button" class="ml-whose-opt is-on" role="tab" aria-selected="true" data-wf="contact"
-            data-i18n="sh.item.contact">Contact form</button>
-    <button type="button" class="ml-whose-opt" role="tab" aria-selected="false" data-wf="signup"
-            data-i18n="sh.item.signup">Sign-up form</button>
-  </div>
+   EVENTS AND RESOURCES are shared while their page is on thauma.one (the
+   site writes them out with its pages, _data/thaumaEmbed.js); there is no
+   switch of their own, so this says which it is and where the page's is.
 
+   THE TWO FORMS are thauma.one's own (hand-built into its pages, their words
+   site words in Site Creator) and the same forms pasted anywhere else (their
+   words below). What a message does — where it goes, who it is sent as, the
+   reasons, which lists — is the same for both. The working copy waits for
+   Save, like the rest of the console. -#}
+<div class="wf sh-page" id="wfRoot">
   <p class="rolegate" id="wfProblem" hidden></p>
 
-  <section class="sh-card wf-panel" data-wf-panel="contact">
-    <button type="button" class="switch" id="wfCtOpen" role="switch" aria-checked="false">
-      <span class="switch-track"><span class="switch-state" data-i18n="switch.off">Off</span><span class="switch-knob"></span></span>
-      <span class="switch-label"><span data-i18n="sh.live">Live</span></span>
-    </button>
-    <div class="wf-grid">
-      <label class="fld"><span data-i18n="ml.ctTo">Send messages to</span>
-        <input type="email" id="wfCtTo" maxlength="200" placeholder="you@example.org"></label>
-      <label class="fld"><span data-i18n="ml.ctFrom">Sent from</span>
-        <select id="wfCtFrom"></select></label>
-    </div>
-    <div class="ct-topics">
-      <span class="sh-lbl" data-i18n="ml.ctTopics">What is this about</span>
-      {#- The reasons in every language the site publishes (0041), one
-         language at a time with another beside it, like Pages. -#}
-      <div class="ms-writing wf-writing" id="wfWritingRow" hidden>
-        <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
-          <select id="wfWriting" class="lang-pick" data-lang-edit></select></label>
-        <span class="lang-ref" id="wfBesideWrap">
-          <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
-          <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
-            <select id="wfBeside" class="lang-pick" data-lang-ref></select></label>
-          <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+  <div class="sh-grid">
+    <nav class="sh-list" id="wfList" aria-label="What is shared"></nav>
+
+    <div class="sh-mid">
+      <div class="emb-stagebar">
+        <div class="emb-devices" role="tablist" aria-label="Width">
+          <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+                  data-wf-width="wide" data-i18n="emb.desktop">Desktop</button>
+          <button type="button" class="emb-device" role="tab" aria-selected="false"
+                  data-wf-width="narrow" data-i18n="emb.mobile">Mobile</button>
+        </div>
+        <span class="emb-scale-note" id="wfScaleNote"></span>
+        <span class="c-gap"></span>
+        <span class="sh-picks">
+          {#- Its place on thauma.one, or Other Websites (admin-forms.js). -#}
+          <label class="sh-pick"><span data-i18n="sh.shownOn">Shown On</span>
+            <select id="wfWhere"></select></label>
+          <label class="sh-pick"><span data-i18n="emb.lang">Language</span>
+            <select id="wfLang"></select></label>
         </span>
       </div>
-      <div id="wfTopics"></div>
-      <button type="button" class="ghost-btn" id="wfAddTopic" data-i18n="ml.ctAddTopic">Add a reason</button>
-    </div>
-    <a class="up-share-link" href="/admin/website/" data-web-go="pages" data-pages-section="contact"
-       data-i18n="wf.wordsContact">Its words → Pages › Contact</a>
-  </section>
+      <div class="emb-stage" id="wfStage">
+        <div class="emb-scale" id="wfScale">
+          <iframe id="wfFrame" title="Preview" sandbox="allow-scripts"></iframe>
+        </div>
+      </div>
 
-  <section class="sh-card wf-panel" data-wf-panel="signup" hidden>
-    <span class="sh-lbl" data-i18n="sh.lists">Lists on this form</span>
-    <div class="sh-switches" id="wfLists"></div>
-    <a class="up-share-link" href="/admin/website/mail/" data-web-go="mail"
-       data-i18n="wf.toMail">Thauma's lists → Mail</a>
-  </section>
+      {#- The words a pasted form carries, in every language. thauma.one's own
+         form speaks its page's words; this is for everywhere else. -#}
+      <div class="sh-card sh-words" id="wfWords" hidden>
+        <span class="sh-lbl" data-i18n="wf.wordsElsewhere">Its Words on Other Websites</span>
+        <div class="ms-writing wf-writing" id="wfWritingRow">
+          <label class="ms-pick"><span data-i18n="con.editing">Editing</span>
+            <select id="wfWriting" class="lang-pick" data-lang-edit></select></label>
+          <span class="lang-ref" id="wfBesideWrap">
+            <button type="button" class="lang-swap" data-lang-swap data-i18n-attr="aria-label:con.swap,title:con.swap" aria-label="Swap" title="Swap">&#8644;</button>
+            <label class="ms-pick"><span data-i18n="con.reference">Reference</span>
+              <select id="wfBeside" class="lang-pick" data-lang-ref></select></label>
+            <button type="button" class="ghost-btn sm lang-ai" data-lang-translate data-i18n="ai.translate">Translate</button>
+          </span>
+        </div>
+        <div class="sh-word-fields" id="wfWordFields"></div>
+      </div>
+    </div>
+
+    <aside class="sh-side">
+      {#- EVENTS / RESOURCES: out while its page is on -#}
+      <div class="sh-card wf-panel" data-wf-panel="events resources" hidden>
+        <p class="wf-state" id="wfPageState"></p>
+        <a class="up-share-link" id="wfPageLink" href="/admin/website/" data-i18n="wf.toPage">Its page → Site Creator › Pages</a>
+      </div>
+
+      {#- THE CONTACT FORM: open or not, where it goes, the reasons -#}
+      <div class="sh-card wf-panel" data-wf-panel="contact" hidden>
+        <button type="button" class="switch" id="wfCtOpen" role="switch" aria-checked="false">
+          <span class="switch-track"><span class="switch-state" data-i18n="switch.off">Off</span><span class="switch-knob"></span></span>
+          <span class="switch-label"><span data-i18n="sh.live">Live</span></span>
+        </button>
+      </div>
+      <div class="sh-card wf-panel" data-wf-panel="contact" hidden>
+        <label class="fld"><span data-i18n="ml.ctTo">Send Messages To</span>
+          <input type="email" id="wfCtTo" maxlength="200" placeholder="you@example.org"></label>
+        <label class="fld"><span data-i18n="ml.ctFrom">Sent From</span>
+          <select id="wfCtFrom"></select></label>
+        <div class="ct-topics">
+          <span class="sh-lbl" data-i18n="ml.ctTopics">What Is This About</span>
+          <div id="wfTopics"></div>
+          <button type="button" class="ghost-btn" id="wfAddTopic" data-i18n="ml.ctAddTopic">Add a Reason</button>
+        </div>
+        <a class="up-share-link" href="/admin/website/?page=contact"
+           data-i18n="wf.wordsContact">Its words → Pages › Contact</a>
+      </div>
+
+      {#- THE SIGN-UP FORM: out while one of Thauma's lists is on it -#}
+      <div class="sh-card wf-panel" data-wf-panel="signup" hidden>
+        <span class="sh-lbl" data-i18n="sh.lists">Lists on This Form</span>
+        <div class="sh-switches" id="wfLists"></div>
+        <a class="up-share-link" href="/admin/website/mail/"
+           data-i18n="wf.toMail">Thauma's lists → Mail</a>
+      </div>
+
+      {#- How it looks where it is pasted: not saved, part of the code -#}
+      <div class="sh-card">
+        <label class="sh-pick"><span data-i18n="emb.theme">Background</span>
+          <select id="wfTheme">
+            <option value="auto" data-i18n="emb.auto">Match Their Page</option>
+            <option value="light" data-i18n="emb.light">Always Light</option>
+            <option value="dark" data-i18n="emb.dark" selected>Always Dark</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="sh-card">
+        <span class="sh-lbl" data-i18n="sh.code">Code to Paste</span>
+        <pre class="emb-code" id="wfCode"></pre>
+        <button type="button" class="ghost-btn" id="wfCopy" data-i18n="common.copy">Copy</button>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <div class="ms-savebar" id="wfBar" role="status" aria-live="polite" hidden>
   <span class="ms-dirty-dot" aria-hidden="true"></span>
   <span id="wfCount"></span>
   <button type="button" class="ghost-btn" id="wfDiscard" data-i18n="ms.discard">Discard</button>
-  <button type="button" class="solid-btn" id="wfSave" data-i18n="sh.save">Save changes</button>
+  <button type="button" class="solid-btn" id="wfSave" data-i18n="sh.save">Save Changes</button>
 </div>

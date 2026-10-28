@@ -43,6 +43,7 @@ import { hit, adminAnalytics } from "./analytics.js";
 import notices from "./notices.js";
 import changesPage from "./changes.js";
 import pushApi from "./push-api.js";
+import { sendWaitingReleases } from "./lib/release-notice.js";
 import { serveSw } from "./sw.js";
 import { RESERVED as SITE_RESERVED } from "./site/model.js";
 import staffSettings from "./staff-settings.js";
@@ -73,6 +74,7 @@ import adminDbSync from "./admin-dbsync.js";
 import adminTranslationNotes from "./admin-translation-notes.js";
 import adminArcade from "./admin-arcade.js";
 import adminTranslate from "./admin-translate.js";
+import adminSections from "./admin-sections.js";
 import confirmAccount from "./confirm-account.js";
 import confirmEmail from "./confirm-email.js";
 import confirmTestInbox from "./confirm-test-inbox.js";
@@ -273,10 +275,21 @@ const AREAS = ["/staff", "/admin"];
  */
 export const MOVED = {
   "/admin/content/": "/admin/website/",
-  "/admin/library/": "/admin/website/resources/",
+  "/admin/library/": "/admin/website/updates/resources/",
   // Library became two pages; its Gatherings tab (#gatherings) is sent on
   // to Events by the Resources page itself — a fragment never reaches here.
-  "/admin/website/library/": "/admin/website/resources/",
+  "/admin/website/library/": "/admin/website/updates/resources/",
+  // Website's work is four areas — Updates, Mail, Sharing, Site Creator —
+  // in a row under Website (2026-10-21). For a day (2026-10-20) they were
+  // four links in the header, at these addresses; and before that Resources,
+  // Events and Forms were tabs of Website.
+  "/admin/updates/": "/admin/website/updates/",
+  "/admin/updates/resources/": "/admin/website/updates/resources/",
+  "/admin/mail/": "/admin/website/mail/",
+  "/admin/sharing/": "/admin/website/sharing/",
+  "/admin/website/resources/": "/admin/website/updates/resources/",
+  "/admin/website/events/": "/admin/website/updates/",
+  "/admin/website/forms/": "/admin/website/sharing/",
   "/admin/site/": "/admin/website/settings/",
   // Ministry became Updates (mockup board 7). Its tabs (#goals…) ride along.
   "/staff/ministry/": "/staff/updates/",
@@ -435,6 +448,7 @@ const ROUTES = {
   // outdated, saving, the file handed to a translator, and approving what
   // comes back. See admin-translate.js.
   "/api/admin/translate": adminTranslate,
+  "/api/admin/sections": adminSections,
 
   // Uploads. GET /media/* is handled by prefix below, not here.
   /* Resend reporting bounces, complaints, opens and clicks (signed). */
@@ -593,6 +607,17 @@ export default {
       return;
     }
     const db = createDb(env.DB);
+    /* "THE SITE WAS UPDATED", once it is (0064): every tick, cheap — one
+       query, and GitHub only while a release is waiting. */
+    try {
+      const told = await sendWaitingReleases(env, db);
+      if (told.sent) console.log(`release notices: ${told.sent} sent`);
+    } catch (err) {
+      console.error("release notices:", err.message);
+    }
+    /* the rest keeps its quarter hour; the tick is every five minutes so a
+       release notice follows its deploy closely */
+    if (new Date(event.scheduledTime).getUTCMinutes() % 15 >= 5) return;
     const results = await syncAll(db);
     const failed = results.filter((r) => !r.ok);
     console.log(

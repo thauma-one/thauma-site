@@ -31,9 +31,9 @@ staffHeading: Site <b>Creator</b>
    "Staff can view the site and request edit access"). -#}
 <div class="ws-ask" id="wsAsk" hidden>
   <div class="ws-ask-words"><b id="wsAskTitle"></b><span id="wsAskText"></span></div>
-  <label class="fld ws-ask-note"><span data-i18n="ws.askNote">A note for them</span>
+  <label class="fld ws-ask-note"><span data-i18n="ws.askNote">A Note for Them</span>
     <input type="text" id="wsAskNote" maxlength="300"></label>
-  <button type="button" class="solid-btn" id="wsAskBtn" data-i18n="ws.ask">Ask to edit</button>
+  <button type="button" class="solid-btn" id="wsAskBtn" data-i18n="ws.ask">Ask to Edit</button>
 </div>
 
 <div class="ws" id="wsRoot" hidden>
@@ -64,6 +64,8 @@ staffHeading: Site <b>Creator</b>
       </span>
     </div>
 
+    {#- one part back to what visitors see (staff-site.js drawRevert) -#}
+    <div class="ws-revert" id="wsRevert" hidden><i class="ws-dot"></i><button type="button" class="link-btn" id="wsRevertBtn"></button></div>
     <section class="ws-panel" data-ws-panel="design" id="wsDesign"></section>
     <section class="ws-panel" data-ws-panel="pages" id="wsPages" hidden></section>
     <section class="ws-panel" data-ws-panel="links" id="wsLinks" hidden></section>

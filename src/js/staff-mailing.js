@@ -28,8 +28,8 @@
   var API = '/api/staff-mailing';
   var $ = function (id) { return document.getElementById(id); };
 
-  /* WHOSE MAILING. The staff page is the ministry's; Website › Mail in the
-     admin console is Thauma's (data-ml-fixed, mail-body.njk). Chase,
+  /* WHOSE MAILING. The staff page is the ministry's; Mail in the admin
+     console is Thauma's (data-ml-fixed, mail-body.njk). Chase,
      2026-09-27: staff pages for staff work, admin for admin — so there is no
      switch between them on either page any more. */
   var FIXED = $('mlHome').getAttribute('data-ml-fixed') || null;
@@ -37,13 +37,13 @@
 
   /* OLD LINKS STILL LAND. The part after # never reaches the server, so the
      Worker cannot forward these; this page does. The forms went to Sharing
-     (board 9) and Thauma's to Website › Forms; Thauma's lists to Website ›
-     Mail, with the list or view they named. */
+     (board 9) and Thauma's to the administrators' Sharing; Thauma's lists
+     to their Mail, with the list or view they named. */
   if (!FIXED) {
     var hash = (location.hash || '').slice(1);
     var form = { embed: 'signup', contact: 'contact' }[hash];
     if (form) {
-      location.replace(orgAsked ? '/admin/website/forms/' : '/staff/sharing/#' + form);
+      location.replace(orgAsked ? '/admin/website/sharing/' : '/staff/sharing/#' + form);
       return;
     }
     if (orgAsked) {
@@ -1027,7 +1027,7 @@
         '<label><span data-i18n="ml.editName">Name</span>' +
           '<input type="text" data-edit="name" maxlength="120" value="' +
             esc(sub.name || '') + '"></label>' +
-        '<label><span data-i18n="ml.editEmail">Email address</span>' +
+        '<label><span data-i18n="ml.editEmail">Email Address</span>' +
           '<input type="email" data-edit="email" maxlength="200" required value="' +
             esc(sub.email) + '"></label>' +
         '<button type="submit" class="solid-btn" data-i18n="ml.editSave">Save</button>' +

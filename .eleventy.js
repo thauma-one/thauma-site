@@ -22,6 +22,14 @@ module.exports = function (eleventyConfig) {
   });
   eleventyConfig.addFilter("plain", (s) => richPlain(s));
 
+  /* THE PAGES AS SECTIONS (src/_data/pageSections.json, sections/*.njk): a
+     section names its words by key, so `t | w("home.cue")` reads one, and a
+     button names where it goes — one of the site's pages or a web address.
+     src/js/site-sections.js gives the console's preview the same two. */
+  const { wordAt, sectionHref } = require("./src/js/site-sections.js");
+  eleventyConfig.addFilter("w", wordAt);
+  eleventyConfig.addFilter("sectionHref", sectionHref);
+
   /* A footer link as an icon (Website › Links, 2026-10-07): the host its
      site's icon is asked for (embed/v1/icon), and the initials shown when
      there is none — as the partner sites do (site/render.js). */
@@ -81,6 +89,23 @@ module.exports = function (eleventyConfig) {
      package, never committed; it loads only when a game that needs it
      starts. */
   eleventyConfig.addPassthroughCopy({ "node_modules/planck/dist/planck.min.js": "js/arcade/vendor/planck.min.js" });
+  /* THE SITE CREATOR'S PREVIEW draws a page's sections in the browser with
+     the very templates that build it (src/_includes/sections, admin-content.js):
+     Nunjucks, the engine Eleventy itself uses (copied from the package, never
+     committed), the templates, and the photo frame's arithmetic. */
+  eleventyConfig.addPassthroughCopy({ "node_modules/nunjucks/browser/nunjucks.min.js": "js/vendor/nunjucks.min.js" });
+  eleventyConfig.addPassthroughCopy({ "src/_includes/sections": "site-sections" });
+  eleventyConfig.addPassthroughCopy({ "lib/frame.js": "js/frame.js" });
+  /* …and one version for all three, so the edge cache never hands the
+     preview an old template (website/preview.njk data-v). */
+  eleventyConfig.addGlobalData("previewV", () => {
+    const { readdirSync } = require("node:fs");
+    const h = createHash("sha1");
+    for (const f of readdirSync("src/_includes/sections").sort()) h.update(readFileSync("src/_includes/sections/" + f));
+    h.update(readFileSync("lib/frame.js"));
+    try { h.update(readFileSync("node_modules/nunjucks/package.json")); } catch { /* the version is enough */ }
+    return h.digest("hex").slice(0, 8);
+  });
   // src/admin was Decap CMS. Git Gateway is a Netlify Identity service, so it
   // stopped working at the cutover and the directory only served to occupy the
   // /admin path that the administration area now uses. Removed 2026-08-15;

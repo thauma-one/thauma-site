@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 /**
- * The Website area as one page — tabs without reloads
+ * An area of the public site's work as one page — tabs without reloads
  *   node test/website-page.test.mjs
  *
  * Chase, 2026-09-27: every tab loads at once and moving between them is
  * instant; a reload opens the tab you were on; after a save the values
- * hold. These drive the shell (admin-website.js) and the one thing the tabs
- * share, site.json, across two tabs' real scripts.
+ * hold. 2026-10-20: Website became four areas in the header — Updates,
+ * Mail, Sharing, Site Creator. These drive the shell (admin-website.js) and
+ * the one thing the tabs share, site.json, across two tabs' real scripts.
  */
 import { JSDOM } from "jsdom";
 import { readFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
 
 const build = ["_site", "_site_next", "_site_prod"].find((d) =>
   existsSync(`${d}/admin/website/photos/index.html`));
@@ -20,6 +22,7 @@ const check = async (name, fn) => {
   catch (e) { console.log(`  FAIL  ${name}\n          ${e.message}`); fail++; }
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
+const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b), `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 const tick = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 
 console.log("the Website page\n");
@@ -31,12 +34,15 @@ const SITE = {
   socials: { youtube: "" },
 };
 
+/* where each tab lives */
+const NAV = createRequire(import.meta.url)("../src/_data/consoleNav.js");
+const AT = Object.fromEntries(NAV.areaTabs.map((t) => [t.tab, t.url]));
 async function boot(tab = "photos", hash = "", scripts = ["admin-website"]) {
   const sent = [];
   let sha = 1;
-  const dom = new JSDOM(readFileSync(`${build}/admin/website/${tab === "pages" ? "" : tab + "/"}index.html`, "utf8"), {
+  const dom = new JSDOM(readFileSync(`${build}${AT[tab]}index.html`, "utf8"), {
     runScripts: "dangerously", pretendToBeVisual: true,
-    url: `https://dev.thauma.one/admin/website/${tab === "pages" ? "" : tab + "/"}${hash}`,
+    url: `https://dev.thauma.one${AT[tab]}${hash}`,
     beforeParse(w) {
       Object.defineProperty(w, "sessionStorage", { value: {
         getItem: () => JSON.stringify({ roles: ["admin"] }), setItem: () => {} } });
@@ -66,24 +72,33 @@ const on = (d) => [...d.querySelectorAll("[data-web-panel]")].filter((p) => !p.h
 const click = (w, d, tab) => d.querySelector(`[data-web-tab="${tab}"]`).dispatchEvent(
   new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
 
-await check("every tab is on the page, and the address decides which is showing", async () => {
-  const TABS = ["pages", "forms", "mail", "resources", "events", "photos", "links", "arcade", "settings"];
-  for (const tab of TABS) {
-    const { d } = await boot(tab);
-    assert(d.querySelectorAll("[data-web-panel]").length === TABS.length, "not every tab is on the page");
-    assert(on(d).join() === tab, `${tab}'s address shows ${on(d)}`);
+await check("every tab of an area is on its page, and the address decides which is showing", async () => {
+  for (const [area, a] of Object.entries(NAV.areas)) {
+    for (const t of a.tabs) {
+      const { d } = await boot(t.tab);
+      assert(d.querySelectorAll("[data-web-panel]").length === a.tabs.length, `${area} does not hold its ${a.tabs.length} tabs`);
+      assert(on(d).join() === t.tab, `${t.tab}'s address shows ${on(d)}`);
+    }
   }
 });
 
-await check("a link on one tab opens another — Forms to the contact page's words and back", async () => {
+await check("an area has only its own tabs, and Site Creator lists its own down the side", async () => {
+  const { d } = await boot("pages");
+  eq(on(d).join(), "pages", "Pages");
+  assert(!d.querySelector('[data-web-panel="events"], [data-web-panel="forms"], [data-web-panel="mail"]'), "another area's tab is here");
+  assert(d.getElementById("webArea").classList.contains("is-side"), "Site Creator's tabs are not down the side");
+  const mail = await boot("mail");
+  assert(!mail.d.querySelector(".web-side"), "an area of one tab shows a tab list");
+  assert(!mail.d.getElementById("pBar"), "Mail has the publish bar, with nothing to publish");
+});
+
+await check("a link to another area's tab is an ordinary link — Sharing to the contact page's words", async () => {
   const { w, d } = await boot("forms");
-  let asked = null;
-  d.addEventListener("content:section", (e) => { asked = e.detail; });
-  d.querySelector('#wfRoot [data-web-go="pages"]').dispatchEvent(
-    new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
-  assert(on(d).join() === "pages", `showing ${on(d)}`);
-  assert(w.location.pathname === "/admin/website/", `address ${w.location.pathname}`);
-  assert(asked === "contact", `Pages was asked for ${asked}`);
+  const a = d.querySelector('#wfRoot a[href="/admin/website/?page=contact"]');
+  assert(a, "no way to the contact page's words");
+  const e = new w.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+  a.dispatchEvent(e);
+  assert(!e.defaultPrevented || on(d).join() === "forms", "the shell kept the link from opening");
 });
 
 await check("a tab opens without leaving the page, and the address follows it", async () => {
@@ -91,14 +106,14 @@ await check("a tab opens without leaving the page, and the address follows it", 
   click(w, d, "settings");
   assert(on(d).join() === "settings", `showing ${on(d)}`);
   assert(w.location.pathname === "/admin/website/settings/", `address ${w.location.pathname}`);
-  assert(d.getElementById("pageHeading").innerHTML === "Site <b>settings</b>", d.getElementById("pageHeading").innerHTML);
+  assert(d.getElementById("pageHeading").innerHTML === "Site <b>Creator</b>", "the area's heading changed with the tab");
   assert(/^Settings ·/.test(d.title), d.title);
   assert(d.querySelector('[data-web-tab="settings"]').getAttribute("aria-current") === "page", "not marked current");
 });
 
 await check("Back goes to the tab before", async () => {
   const { w, d } = await boot("photos");
-  click(w, d, "events");
+  click(w, d, "links");
   w.history.back();
   await tick(80);
   assert(on(d).join() === "photos", `after Back: ${on(d)}`);
@@ -106,7 +121,7 @@ await check("Back goes to the tab before", async () => {
 
 await check("an old link to the Library's Gatherings opens Events", async () => {
   const { w, d } = await boot("resources", "#gatherings");
-  assert(on(d).join() === "events" && w.location.pathname === "/admin/website/events/", `${on(d)} at ${w.location.pathname}`);
+  assert(on(d).join() === "events" && w.location.pathname === "/admin/website/updates/", `${on(d)} at ${w.location.pathname}`);
 });
 
 await check("a tab with unsaved changes is marked while you look at another", async () => {

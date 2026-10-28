@@ -1,0 +1,7 @@
+{#- A PAGE MADE OF ITS SECTIONS (src/_data/pageSections.json, Website › Site
+    Creator › Pages): each one drawn by its kind's own template in this
+    folder, in the order the page lists them. The same templates draw the
+    console's live preview (admin-sections.js), so the two cannot differ. -#}
+{%- for sec in pageSections.pages[pageTitle] %}
+{% include "sections/" ~ sec.kind ~ ".njk" %}
+{%- endfor %}

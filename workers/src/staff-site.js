@@ -33,7 +33,7 @@ import { createDb } from "./lib/db.js";
 import { json, readJson } from "./lib/store.js";
 import { partnerFor } from "./staff-milestones.js";
 import { ensureSiteDns, removeSiteDns } from "./lib/site-dns.js";
-import { cleanDoc, starter, subdomainFrom, validSubdomain, PAGES, word, placeholders } from "./site/model.js";
+import { cleanDoc, cleanDims, starter, subdomainFrom, validSubdomain, PAGES, word, placeholders, pagePath } from "./site/model.js";
 import { lookFor, TURNS } from "./embed-colour.js";
 import { changedAnswer } from "./lib/fresh.js";
 
@@ -127,6 +127,28 @@ export default {
       const have = await db.queryOne("partner_site_get", { partner_id: partner.id });
       return json(have ? { enabled: !!have.enabled, published: !!have.published, address: addressOf(env, have.subdomain) }
                        : { enabled: false });
+    }
+
+    /* WHERE EACH SECTION SITS, for Sharing's "Shown On" (2026-10-28): the
+       pages that are on and the kind of every section on them, tabs
+       included, so Sharing can draw a widget or form on the page that has
+       it. Reads only — no site is made for a ministry without one. */
+    if (request.method === "GET" && url.searchParams.has("sections")) {
+      const have = await db.queryOne("partner_site_get", { partner_id: partner.id });
+      if (!have) return json({ site: null });
+      const catalog = await catalogOf(db);
+      const doc = cleanDoc(JSON.parse(have.draft), catalog.map((l) => l.code));
+      const kinds = (list) => (list || []).map((s) => ({ id: s.id, type: s.type }));
+      return json({
+        site: { preview: `/site/${have.subdomain}/` },
+        languages: doc.languages, fallback: doc.fallback,
+        pages: doc.pages.filter((p) => p.on).map((p) => ({
+          id: p.id, path: pagePath(p), custom: !!p.custom, label: p.label || {},
+          sections: kinds(p.sections).concat(...((p.tabs && p.tabs.items) || []).map((t) => kinds(t.sections))),
+        })),
+        page_names: Object.fromEntries(catalog.map((l) =>
+          [l.code, Object.fromEntries(PAGES.map((id) => [id, word(l.code, id)]))])),
+      }, 200, { "Cache-Control": "no-store" });
     }
 
     const row = await siteRow(db, partner, now);
@@ -285,6 +307,23 @@ export default {
         partner_id: partner.id, action: "update", entity: "partner.embed", entity_id: partner.id,
         detail: JSON.stringify({ accent, accent2, turn, from: "site" }),
       }).catch(() => {});
+      return answer();
+    }
+    /* EVERY PHOTO'S SIZE (2026-10-27), measured by the editor: kept in the
+       working copy and the published one alike, since it changes nothing but
+       how a page holds a photo's place. Equal copies stay equal, so a site
+       with nothing to publish still has nothing to publish. */
+    if (action === "sizes") {
+      if (!isEditor) return onlyEditors();
+      const add = cleanDims(body.dims);
+      if (!Object.keys(add).length) return answer();
+      const merge = (raw) => {
+        if (!raw) return raw;
+        const d = JSON.parse(raw);
+        d.dims = { ...(d.dims || {}), ...add };
+        return JSON.stringify(d);
+      };
+      await db.query("partner_site_docs_set", { partner_id: partner.id, draft: merge(row.draft), published: merge(row.published) });
       return answer();
     }
     if (action === "discard") {

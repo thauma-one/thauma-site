@@ -55,6 +55,22 @@ export function builtInLangs() { return Object.keys(words()); }
    and Resources wait, off, at the end (Chase, 2026-09-29). */
 export const PAGES = ["home", "about", "mission", "updates", "give", "stay", "contact", "timeline", "resources"];
 export const PAGES_ON = ["home", "about", "mission", "updates", "give", "stay", "contact"];
+/* A PAGE OF THE OWNER'S OWN (Chase, 2026-10-27: "add a custom page at the
+   bottom of the default list that can be deleted … and disabled"): any
+   sections, its own name in each language, and an address of its own
+   (slug, /en/<slug>/) made from its name until it is first published, then
+   kept. Its id is never shown; up to twelve. */
+export const CUSTOM_ID = /^p[a-z0-9]{3,20}$/;
+export const MAX_CUSTOM = 12;
+/** A page's part of the address: a built-in page's id, or its own address. */
+export function pagePath(p) { return p && p.custom ? p.slug : p ? p.id : ""; }
+/** The page an address names, among a document's pages. */
+export function pageAt(doc, seg) { return (doc.pages || []).find((p) => pagePath(p) === seg) || null; }
+/** An address made from a name: plain letters and digits joined by hyphens. */
+export function slugOf(name) {
+  return String(name || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[đĐ]/g, "d")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+}
 
 /* ------------------------------------------------------------- sections -- */
 
@@ -84,6 +100,16 @@ export const SECTIONS = {
   photoText: { variants: ["left", "right", "above", "wrapLeft", "wrapRight"], words: ["heading", "text", "verse", "verseRef", "button"], photo: true, link: "both" },
   photo:     { variants: ["drift", "still", "zoom"], words: ["caption"], photo: true, link: "photo" },
   quote:     { variants: ["large", "quiet"], words: ["quote", "who"] },
+  /* FROM THAUMA.ONE'S OWN PAGES (Chase, 2026-10-27: "the sections that we
+     needed to create for the Thauma site could be populated over to the
+     Staff Site Creator as well … but ONLY if they aren't too similar"):
+     a word and what it means, as About opens with "thauma" — the word, how
+     it is said, its meanings one per paragraph, numbered; and labeled rows,
+     as Mission's three kinds of work — a small label beside a title and its
+     words. Numbered points were close enough to Custom Cards to become
+     their I, II, III numbering instead. */
+  define:    { variants: ["entry"], words: ["word", "say", "text"] },
+  rows:      { variants: ["rows"], words: ["heading", "text"], items: "rows" },
   timeline:  { variants: ["condensed", "full"], words: ["heading", "text"], align: true },
   goals:     { variants: ["cards"], words: ["heading", "text"], align: true },
   prayer:    { variants: ["list"], words: ["heading", "text"], align: true },
@@ -104,7 +130,11 @@ export const SECTIONS = {
   /* Cards a person writes (chaseroush.com's Mission): Attached, joined by a
      line between their numbers, or Detached, side by side. */
   cards:     { variants: ["vertical", "horizontal", "open"], words: ["heading", "text"], items: "cards" },
-  links:     { variants: ["cards", "tiles", "list", "buttons"], words: ["heading", "text"], items: true, align: true },
+  /* SHELF (2026-10-27): the links as a row of picture cards that scrolls
+     sideways. Buttons, redone the same day ("The Buttons option kind
+     sucks"): in a row as before, or stacked one under another, each with its
+     own picture, the way a link page on a phone is. */
+  links:     { variants: ["cards", "tiles", "list", "buttons", "shelf"], words: ["heading", "text"], items: true, align: true },
 };
 /* EVERY SECTION LINES UP (BACKLOG §3, 2026-10-03: "Alignment for every
    section: left, right, center, indent. Buttons must follow their section's
@@ -118,7 +148,10 @@ export const SECTIONS = {
 /* Indented is not a fourth way to line up but a switch on any of the three
    (2026-10-07, Chase: "It should be Left, center, or Right with Indented as
    a on or off style option"); "indent" saved before reads as Left, indented. */
-export const ALIGNS = ["left", "center", "right"];
+/* JUSTIFIED (Chase, 2026-10-27: "In all sections, let's add a Justified
+   option for the text as well"): the words run edge to edge; a heading
+   stays at the left, where a justified title would only open gaps. */
+export const ALIGNS = ["left", "center", "right", "justify"];
 export function defaultAlign(type, variant) {
   const spec = SECTIONS[type] || {};
   if (spec.align) return "center";
@@ -142,6 +175,10 @@ const PH = {
   photoText: { heading: ["missionThin", "missionBold"], text: "missionFill", verse: "quoteFill", verseRef: "quoteWho", button: "more" },
   photo:     { caption: "captionFill" },
   quote:     { quote: "quoteFill", who: "quoteWho" },
+  define:    { word: "defineWord", say: "defineSay", text: "defineFill" },
+  rows:      { heading: ["rowsThin", "rowsBold"], text: "rowsFill" },
+  /* One of the Labeled Rows. */
+  row:       { label: "rowLabel", title: "rowTitle", text: "rowText" },
   timeline:  { heading: ["timelineThin", "timelineBold"], text: "timelineFill" },
   goals:     { heading: ["goalsThin", "goalsBold"], text: "goalsFill" },
   prayer:    { heading: ["prayerThin", "prayerBold"], text: "prayerFill" },
@@ -203,8 +240,53 @@ export const GIVE_TO = ["page", "link"];
 /* Chase, 2026-09-29: "I'd like a few more animation tools available". Each is
    one choice, each respected only where the visitor has not asked their
    device for less motion. */
+/* THE FONTS (Chase, 2026-10-19: "we should add a font selection/upload,
+   with a fallback text in case one of the languages doesn't support the
+   font"). Headings and text each wear the look's own font or one of these;
+   a site may upload its own for headings. Any letter the chosen font cannot
+   write is drawn in the fallback, then in the look's own font: browsers
+   pick per letter, so a Serbian page in a font without Cyrillic still
+   reads. `cyr` is whether the font writes Cyrillic (checked against
+   Google's lists, 2026-10-20); every one writes č ć đ š ž. `q` is the
+   weights asked of Google — exactly what each font has. */
+export const FONT_CHOICES = {
+  playfair:   { family: "Playfair Display",   q: "wght@400..900", cyr: true,  serif: true },
+  fraunces:   { family: "Fraunces",           q: "wght@100..900", cyr: false, serif: true },
+  dmserif:    { family: "DM Serif Display",   q: "",              cyr: false, serif: true },
+  cormorant:  { family: "Cormorant Garamond", q: "wght@300;400;500;600;700", cyr: true, serif: true },
+  lora:       { family: "Lora",               q: "wght@400..700", cyr: true,  serif: true },
+  merriweather: { family: "Merriweather",     q: "wght@300;400;700;900", cyr: true, serif: true },
+  sora:       { family: "Sora",               q: "wght@100..800", cyr: false },
+  montserrat: { family: "Montserrat",         q: "wght@100..900", cyr: true },
+  manrope:    { family: "Manrope",            q: "wght@200..800", cyr: true },
+  unbounded:  { family: "Unbounded",          q: "wght@200..900", cyr: true },
+  spacegrotesk: { family: "Space Grotesk",    q: "wght@300..700", cyr: false },
+  oswald:     { family: "Oswald",             q: "wght@200..700", cyr: true },
+  bebas:      { family: "Bebas Neue",         q: "",              cyr: false },
+  caveat:     { family: "Caveat",             q: "wght@400..700", cyr: true },
+  comfortaa:  { family: "Comfortaa",          q: "wght@300..700", cyr: true },
+  inter:      { family: "Inter",              q: "wght@100..900", cyr: true },
+  sourcesans: { family: "Source Sans 3",      q: "wght@200..900", cyr: true },
+  nunito:     { family: "Nunito",             q: "wght@200..1000", cyr: true },
+  worksans:   { family: "Work Sans",          q: "wght@100..900", cyr: false },
+  dmsans:     { family: "DM Sans",            q: "wght@100..1000", cyr: false },
+};
+export const HEADING_FONTS = ["look", "playfair", "fraunces", "dmserif", "cormorant", "lora", "sora", "montserrat", "manrope", "unbounded", "spacegrotesk", "oswald", "bebas", "caveat", "comfortaa", "own"];
+/* "same": the text in the headings' font (2026-10-27) */
+export const BODY_FONTS = ["look", "same", "inter", "manrope", "sourcesans", "nunito", "worksans", "dmsans", "lora", "merriweather", "montserrat"];
+/* a fallback has to write every alphabet the site may need */
+export const FALLBACK_FONTS = ["look", ...Object.keys(FONT_CHOICES).filter((k) => FONT_CHOICES[k].cyr)];
+/** An uploaded font: our own /media/ only, and a font file. */
+export function safeFont(u) {
+  const s = str(u, 400);
+  return /^\/media\/partnersite\/[A-Za-z0-9._/-]{1,200}\.(woff2|woff|ttf|otf)$/.test(s) && !s.includes("..") ? s : null;
+}
+
 export const MOTION = {
-  entrance: ["rise", "fade", "slide", "zoom", "none"],   // how sections arrive as you scroll
+  /* Drop and Sweep (2026-10-27): from above, and in from the right — with a
+     section's own choice (sec.enter) over the site's, as thauma.one's
+     sections each arrive their own way. */
+  entrance: ["rise", "fade", "slide", "zoom", "blur", "reveal", "layered", "drop", "sweep", "none"],   // how sections arrive as you scroll
   photos:   ["drift", "zoom", "still"],                  // how photos move: parallax, slow zoom, still
   headings: ["letters", "words", "plain"],               // how headings appear
   buttons:  ["lift", "glow", "plain"],                   // what buttons do under the pointer
@@ -215,6 +297,16 @@ export const MOTION = {
      a bouncing arrow, a mouse whose wheel rolls, or nothing. */
   cue:      ["line", "arrow", "mouse", "none"],
 };
+/* HOW LONG ARRIVING TAKES, in seconds (Chase, 2026-10-27: "instead of slow
+   medium fast, maybe we make it a slider and let the user define the speed,
+   with much further extremes on both sides"). The three words saved before
+   read as the seconds they were; Medium, 1.25, stays the default. */
+export const SPEED = { min: 0.2, max: 4, def: 1.25, named: { slow: 1.7, medium: 1.25, fast: 0.8 } };
+export function cleanSpeed(v) {
+  if (typeof v === "string" && SPEED.named[v]) return SPEED.named[v];
+  const n = Number(v);
+  return Number.isFinite(n) && v !== null && v !== "" ? Math.round(Math.max(SPEED.min, Math.min(SPEED.max, n)) * 100) / 100 : SPEED.def;
+}
 export const SOCIALS = ["youtube", "instagram", "facebook", "x", "tiktok", "linkedin", "spotify", "email"];
 
 /* The foot of every page (Chase, 2026-09-29: "Should we add a footer
@@ -406,14 +498,24 @@ export function titleCase(text, lang) {
   }
   if (!en) return text;
   const ws = String(text || "").split(/(\s+)/);
-  const real = ws.map((w, i) => (/\S/.test(w) ? i : -1)).filter((i) => i >= 0);
+  /* the first and last WORDS: an arrow or a dash at the end is not one */
+  const real = ws.map((w, i) => (/\p{L}/u.test(w) ? i : -1)).filter((i) => i >= 0);
   const first = real[0], last = real[real.length - 1];
+  /* a word starting a sentence (after . ! ? or :) is capitalized like the
+     first: "…simple to state. The Need Is…", never ". the need" */
+  const opens = new Set(real.filter((i, k) => k > 0 && /[.!?:]["'”’)\]]*$/.test(ws[real[k - 1]])));
   return ws.map((w, i) => {
     if (!/\S/.test(w)) return w;
     const bare = w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
-    if (i !== first && i !== last && SMALL_EN.has(bare)) return w.toLowerCase();
+    if (i !== first && i !== last && !opens.has(i) && SMALL_EN.has(bare)) return w.toLowerCase();
     /* a word already capitalized inside (iPhone, McDonald) is left alone */
-    return /\p{Lu}/u.test(w.slice(1)) ? w : w.replace(/\p{L}/u, (c) => c.toUpperCase());
+    if (/\p{Lu}/u.test(w.slice(1))) return w;
+    /* each part of a hyphenated word, as its own word: On-Site, One-to-One */
+    const parts = w.split("-");
+    return parts.map((part, k) => {
+      const b = part.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "").toLowerCase();
+      return k > 0 && k < parts.length - 1 && SMALL_EN.has(b) ? part.toLowerCase() : part.replace(/\p{L}/u, (c) => c.toUpperCase());
+    }).join("-");
   }).join("");
 }
 
@@ -466,8 +568,8 @@ export function safeUrl(u) {
  */
 export function safeLink(u) {
   const s = str(u, 500);
-  const m = /^page:([a-z]+)$/.exec(s);
-  if (m) return PAGES.includes(m[1]) ? s : "";
+  const m = /^page:([a-z0-9]+)$/.exec(s);
+  if (m) return PAGES.includes(m[1]) || CUSTOM_ID.test(m[1]) ? s : "";
   /* A section of the same page (Chase, 2026-10-03: "Jump to section" for
      buttons that point at the same page). Its id, as sections store it. */
   if (/^section:[a-z0-9]{2,24}$/i.test(s)) return s;
@@ -483,7 +585,7 @@ export function safePhoto(u) {
   return x.startsWith("https://") ? x : null;
 }
 
-const WORD_MAX = { kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, caption: 200, button: 40,
+const WORD_MAX = { word: 80, say: 120, kicker: 80, heading: 400, text: 6000, quote: 900, who: 120, caption: 200, button: 40,
   tagline: 120, small: 400, label: 80, mark: 40, verse: 900, verseRef: 120, note: 900, by: 80 };
 
 /* ------------------------------------------------------ formatted words -- */
@@ -613,6 +715,10 @@ function cleanSection(raw, langs) {
   /* bars beside the title, and joined to the section above (render.js) */
   s.titleBars = raw.titleBars === true;
   s.join = raw.join === true;
+  /* HOW THIS SECTION ARRIVES as it is scrolled to, over the site's own
+     choice (Chase, 2026-10-27: "each section should have a way to override
+     the way the section loads in"). Absent: the site's. */
+  if (MOTION.entrance.includes(raw.enter)) s.enter = raw.enter;
   if (spec.buttons) {
     s.buttons = (Array.isArray(raw.buttons) ? raw.buttons : []).filter((b) => ["give", "stay", "contact"].includes(b)).slice(0, 2);
   }
@@ -703,8 +809,20 @@ function cleanSection(raw, langs) {
     s.showKind = raw.showKind !== false;
     s.showDesc = raw.showDesc !== false;
     s.showNote = raw.showNote !== false;
+    /* HOW THE PICTURES SHOW (2026-10-27, Chase: "is there a way to change
+       how the photos appear in the sections?"): whole on a quiet panel (as
+       they always were), filling their frame, in a circle, or not at all. */
+    s.pics = ["whole", "fill", "round", "none"].includes(raw.pics) ? raw.pics : "whole";
+    /* Buttons in a row (as before) or stacked, one under another */
+    s.stack = raw.stack === true;
   }
-  if (spec.items === "cards") {
+  if (spec.items === "rows") {
+    s.items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 12).map((it) => ({
+      words: cleanWords(it && it.words, ["label", "title", "text"], langs),
+    }));
+  } else if (spec.items === "cards") {
+    /* I, II, III (thauma.one's points) or 1, 2, 3 */
+    s.numStyle = raw.numStyle === "roman" ? "roman" : "digits";
     /* Written words only. A blank card is kept (it was just added and is
        being typed into); the page simply does not draw it. */
     s.numbers = raw.numbers !== false;
@@ -785,17 +903,33 @@ export function cleanDoc(raw, catalog) {
   const motion = design.motion || {};
   const m = {};
   for (const [k, allowed] of Object.entries(MOTION)) m[k] = pick(motion[k], allowed);
+  m.speed = cleanSpeed(motion.speed);
 
   const byId = {};
-  (Array.isArray(d.pages) ? d.pages : []).forEach((p) => { if (p && PAGES.includes(p.id)) byId[p.id] = p; });
-  const order = [...new Set((Array.isArray(d.pages) ? d.pages : []).map((p) => p && p.id).filter((id) => PAGES.includes(id)))];
+  const own = (p) => p && p.custom === true && CUSTOM_ID.test(String(p.id || ""));
+  (Array.isArray(d.pages) ? d.pages : []).forEach((p) => { if (p && (PAGES.includes(p.id) || own(p)) && !byId[p.id]) byId[p.id] = p; });
+  let order = [...new Set((Array.isArray(d.pages) ? d.pages : []).map((p) => p && p.id).filter((id) => byId[id]))];
+  /* no more than twelve of the owner's own */
+  const ownIds = order.filter((id) => !PAGES.includes(id));
+  order = order.filter((id) => PAGES.includes(id) || ownIds.indexOf(id) < MAX_CUSTOM);
   PAGES.forEach((p) => { if (!order.includes(p)) order.push(p); });
+  /* each address once, and never a built-in page's */
+  const taken = new Set(PAGES);
   const pages = order.map((id) => {
     const p = byId[id] || {};
+    const custom = !PAGES.includes(id);
+    let slug = "";
+    if (custom) {
+      const base = slugOf(p.slug) || slugOf(Object.values(p.label || {}).find(Boolean)) || "page";
+      slug = base;
+      for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+      taken.add(slug);
+    }
     const label = {};
     for (const l of langs) { const v = str(p.label && p.label[l], 40); if (v) label[l] = v; }
     return {
       id,
+      ...(custom ? { custom: true, slug } : {}),
       on: id === "home" ? true : !!p.on,
       /* The opening's scroll indicator, per page (2026-10-03: "A 'Show
          scroll indicator' option per page"). Shown unless switched off, so
@@ -899,13 +1033,43 @@ export function cleanDoc(raw, catalog) {
         accent: HEX_RE.test((design.colors || {}).accent || "") ? design.colors.accent.toUpperCase() : null,
       },
       motion: m,
+      fonts: (() => {
+        const f = design.fonts || {}, own = safeFont(f.own);
+        const heading = pick(f.heading, HEADING_FONTS);
+        return {
+          heading: heading === "own" && !own ? "look" : heading,
+          body: pick(f.body, BODY_FONTS),
+          fallback: pick(f.fallback, FALLBACK_FONTS),
+          own, ownName: own ? str(f.ownName, 60) : "",
+        };
+      })(),
     },
     links,
     footer,
     pages,
+    /* EVERY PHOTO'S SIZE, so a page keeps its place for a photo before the
+       photo arrives (Chase, 2026-10-27: "photos still load a bit jagged").
+       Measured by the Site Creator and kept beside the words; never a
+       change of its own (staff-site.js "sizes"). */
+    dims: cleanDims(d.dims),
+    /* THE LINE AT THE FOOT OF A SHARE PICTURE (Chase, 2026-10-19: "the photo
+       says 'chaseroush.thauma.one', but I might want it to say a phrase like
+       All of Me For All of Him"), per language; empty is the address. */
+    shareLine: Object.fromEntries(langs.map((l) => [l, str(d.shareLine && d.shareLine[l], 60)]).filter(([, v]) => v)),
   };
   /* each outside link's clean name, kept from save to save (linkTable) */
   out.short = linkTable(out, "", d.short).short;
+  return out;
+}
+
+/** A photo's width and height by its address, for our own and https photos only. */
+export function cleanDims(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [u, v] of Object.entries(raw).slice(0, 400)) {
+    const src = safePhoto(u), w = Array.isArray(v) ? Math.round(+v[0]) : 0, h = Array.isArray(v) ? Math.round(+v[1]) : 0;
+    if (src === u && w >= 1 && h >= 1 && w <= 20000 && h <= 20000) out[u] = [w, h];
+  }
   return out;
 }
 
@@ -929,7 +1093,7 @@ export function cleanLinkTarget(doc, segs, { base, q = "", giving = "" }) {
   const want = cleanWord(raw);
   if (!want) return null;
   const langs = lang ? [lang, ...doc.languages.filter((l) => l !== lang)] : [doc.fallback, ...doc.languages.filter((l) => l !== doc.fallback)];
-  const pageUrl = (id, l) => `${base}/${l}/${id === "home" ? "" : id + "/"}${q}`;
+  const pageUrl = (id, l) => `${base}/${l}/${id === "home" ? "" : pagePath(doc.pages.find((p) => p.id === id)) + "/"}${q}`;
   const on = (id) => doc.pages.some((p) => p.id === id && p.on);
 
   for (const k of doc.links.filter((x) => x.kind !== "custom")) {
@@ -939,7 +1103,7 @@ export function cleanLinkTarget(doc, segs, { base, q = "", giving = "" }) {
   for (const l of langs) {
     for (const p of doc.pages) {
       const name = (p.label && p.label[l]) || word(l, p.id);
-      if (cleanWord(name) !== want && cleanWord(p.id) !== want) continue;
+      if (cleanWord(name) !== want && cleanWord(pagePath(p)) !== want) continue;
       if (p.id === "give" && giveTo && !on("give")) return giveTo;
       /* The language in the address wins over the one whose name matched. */
       if (on(p.id)) return pageUrl(p.id, lang || l);
@@ -985,7 +1149,7 @@ export function linkTable(doc, giving = "", kept = doc.short) {
   const taken = new Set();
   const take = (w) => { const c = cleanWord(w); if (c) taken.add(c); };
   for (const p of doc.pages) {
-    take(p.id);
+    take(pagePath(p));
     for (const l of doc.languages) take((p.label && p.label[l]) || word(l, p.id));
   }
   for (const k of doc.links || []) {

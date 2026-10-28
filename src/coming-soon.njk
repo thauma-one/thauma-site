@@ -50,17 +50,28 @@ isComingSoonPage: true
   .cs-in .cs-ch { animation-name: cs-in; } .cs-out .cs-ch { animation-name: cs-out; }
   @keyframes cs-in { from { transform: translateY(-105%); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes cs-out { from { transform: none; opacity: 1; } to { transform: translateY(105%); opacity: 0; } }
-  .lp-block { width: 100%; max-width: 860px; margin-top: clamp(48px, 8vh, 80px); display: flex; flex-direction: column; align-items: center; }
-  .lp-block .cue { margin: 0; justify-content: center; }
-  .lp-block .cue::after { content: "" !important; display: inline-block !important; width: 34px; height: 1px; background: currentColor; margin-left: 14px; vertical-align: middle; }
-  .lp-block .hero-line { margin: 22px 0 0; text-align: center; }
-  .lp-block .hero-sub { margin: 18px auto 0; text-align: center; max-width: 38rem; }
-  .lp-pillars { width: 100%; margin-top: 44px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
-  .lp-pillars div { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .lp-rule { display: block; width: 100%; height: 1px; margin-bottom: 8px; background: linear-gradient(90deg, transparent, var(--foam-dim), transparent); }
+  /* THE WORDS AND THE PILLARS SIDE BY SIDE, the pair centered on the page
+     (Chase, 2026-10-19: "I also want the Serve, Train, Resource things to
+     still be to the right of the In Preparation section"); stacked and
+     centered on a narrow screen */
+  .lp-block { width: 100%; max-width: 1000px; margin-top: clamp(48px, 8vh, 80px); display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 64px; align-items: end; text-align: left; }
+  .lp-block .cue { margin: 0; }
+  .lp-block .hero-line { margin: 22px 0 0; text-align: left; }
+  .lp-block .hero-sub { margin: 18px 0 0; text-align: left; max-width: 34rem; }
+  .lp-pillars { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+  .lp-pillars div { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .lp-rule { display: block; width: 100%; height: 1px; margin-bottom: 8px; background: linear-gradient(90deg, var(--foam-dim), transparent); }
+  @media (max-width: 820px) {
+    .lp-block { grid-template-columns: 1fr; text-align: center; }
+    .lp-block .hero-line, .lp-block .hero-sub { text-align: center; margin-left: auto; margin-right: auto; }
+    .lp-block .cue::after { content: "" !important; display: inline-block !important; width: 34px; height: 1px; background: currentColor; margin-left: 14px; vertical-align: middle; }
+    .lp-pillars div { align-items: center; }
+    .lp-rule { background: linear-gradient(90deg, transparent, var(--foam-dim), transparent); }
+  }
   .lp-pillars b { font: 600 15px/1.3 'Sora', sans-serif; letter-spacing: .06em; color: var(--foam); text-shadow: 0 0 18px rgba(92,242,196,.35); }
   .lp-pillars > div > span:not(.lp-rule) { font-size: 13px; line-height: 1.6; color: var(--dim); }
   @media (max-width: 560px) { .lp-pillars { grid-template-columns: 1fr; gap: 20px; } .cs-line { font-size: 18px; } }
+  @keyframes lg-lead{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
   .arc-breaking .brand-logo-sheen { display: none; }
 
   @keyframes lp-ch { from { opacity: 0; transform: translateY(18%); } to { opacity: 1; transform: none; } }
@@ -69,10 +80,10 @@ isComingSoonPage: true
   @keyframes lp-work { 0%, 12% { transform: scaleX(1); } 50% { transform: scaleX(.3); } 88%, 100% { transform: scaleX(1); } }
   @media (prefers-reduced-motion: no-preference) {
     .lg-ch { animation: lp-ch .75s cubic-bezier(.55,.05,.45,.95) both; animation-delay: calc(var(--i) * 90ms + 250ms); }
-    .lg-arrive { animation: lp-line 1.1s cubic-bezier(.16,1,.3,1) 1.05s both; }
-    .lg-bar { animation: lp-line .5s cubic-bezier(.55,.05,.45,.95) 1.75s both; }
-    .lg-close1 { animation: lp-line .7s cubic-bezier(.16,1,.3,1) 2.15s both; }
-    .lg-close2 { animation: lp-line .7s cubic-bezier(.16,1,.3,1) 2.3s both, lp-work 4.2s cubic-bezier(.55,.05,.45,.95) 3.6s infinite; }
+    /* the arriving line and the H's bar: ONE stroke, with the letters */
+    .lg-lead { animation: lg-lead .95s cubic-bezier(.25,.7,.35,1) .1s both; }
+    .lg-close1 { animation: lp-line .7s cubic-bezier(.16,1,.3,1) 1.35s both; }
+    .lg-close2 { animation: lp-line .7s cubic-bezier(.16,1,.3,1) 1.5s both, lp-work 4.2s cubic-bezier(.55,.05,.45,.95) 3s infinite; }
     .lp-in { animation: lp-rise .9s cubic-bezier(.16,1,.3,1) both; }
     .lp-rule { animation: lp-line .8s cubic-bezier(.16,1,.3,1) both; }
     .lp-1 { animation-delay: 2.7s; } .lp-2 { animation-delay: 2.85s; } .lp-3 { animation-delay: 3s; }
@@ -90,11 +101,13 @@ isComingSoonPage: true
   <div class="lp">
     {#- .wordmark: the arcade's five-tap door (see arcade-doors.njk) -#}
     <div class="wordmark lp-logo">{% set logoId = "land" %}{% include "brand/logo-split.njk" %}{% include "brand/logo-sheen.njk" %}</div>
-    <div class="cs-line" aria-label="{{ t.footer.tagline | plain }}"><span class="cs-out" aria-hidden="true"></span><span class="cs-in" aria-hidden="true"></span></div>
+    <div class="cs-line" data-cascade aria-label="{{ t.footer.tagline | plain }}"><span class="cs-out" aria-hidden="true"></span><span class="cs-in" aria-hidden="true"></span></div>
     <div class="lp-block">
-      <div class="cue lp-in lp-1">{{ t.home.cue | rich("home.cue") }}</div>
-      <p class="hero-line lp-in lp-2">{{ t.coming.line_thin | rich("coming.line_thin") }} <b>{{ t.coming.line_bold | rich("coming.line_bold") }}</b></p>
-      <p class="hero-sub lp-in lp-3">{{ t.coming.text | rich("coming.text") }}</p>
+      <div class="lp-text">
+        <div class="cue lp-in lp-1">{{ t.home.cue | rich("home.cue") }}</div>
+        <p class="hero-line lp-in lp-2">{{ t.coming.line_thin | rich("coming.line_thin") }} <b>{{ t.coming.line_bold | rich("coming.line_bold") }}</b></p>
+        <p class="hero-sub lp-in lp-3">{{ t.coming.text | rich("coming.text") }}</p>
+      </div>
       <div class="lp-pillars">
         {%- for k in ["serve", "train", "resource"] %}
         <div><span class="lp-rule lp-{{ loop.index + 3 }}"></span><b class="lp-in lp-{{ loop.index + 3 }}">{{ t.coming[k] | rich("coming." + k) }}</b><span class="lp-in lp-{{ loop.index + 3 }}">{{ t.coming[k + "_text"] | rich("coming." + k + "_text") }}</span></div>
@@ -104,25 +117,15 @@ isComingSoonPage: true
   </div>
 </main>
 <script>
-/* THE LINE IN EVERY PUBLISHED LANGUAGE (activeLangs), this page's first,
-   each change cascading DOWN a character at a time; 7.5s each. */
-(function () {
+/* the line in every published language (activeLangs), this page's first;
+   js/logo-conductor.js runs it with the shimmer, on one clock */
+window.THAUMA_LINES = { start: 2500, lines: (function () {
   var all = [{% for l in activeLangs %}{{ (i18n[l].footer.tagline or i18n.en.footer.tagline) | plain | dump | safe }}{% if not loop.last %},{% endif %}{% endfor %}];
-  var start = {{ activeLangs | dump | safe }}.indexOf({{ lang | dump | safe }});
-  var L = all.slice(start).concat(all.slice(0, start)), i = 0;
-  var box = document.querySelector('.cs-line'), out = box.querySelector('.cs-out'), inn = box.querySelector('.cs-in');
-  var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function chars(el, s, wait) {
-    el.textContent = '';
-    var a = Array.from(s), step = Math.min(90, 1600 / Math.max(1, a.length));
-    a.forEach(function (c, k) { var x = document.createElement('span'); x.className = 'cs-ch'; x.textContent = c; x.style.animationDelay = (wait + Math.round(k * step)) + 'ms'; el.appendChild(x); });
-  }
-  function show(k, wait) { chars(out, i === k ? '' : L[i], 0); chars(inn, L[k], wait || 0); i = k; box.setAttribute('aria-label', L[k]); }
-  show(0, still ? 0 : 2400);
-  if (still || L.length < 2) return;
-  setTimeout(function () { setInterval(function () { show((i + 1) % L.length); }, 7500); }, 2400);
-})();
+  var at = Math.max(0, {{ activeLangs | dump | safe }}.indexOf({{ lang | dump | safe }}));
+  return all.slice(at).concat(all.slice(0, at));
+})() };
 </script>
+<script src="/js/logo-conductor.js?v={{ "/js/logo-conductor.js" | v }}"></script>
 <script src="/js/main.js?v={{ "/js/main.js" | v }}"></script>
 {% include "arcade-doors.njk" %}
 </body>
