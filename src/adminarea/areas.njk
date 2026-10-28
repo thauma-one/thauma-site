@@ -33,6 +33,29 @@ eleventyComputed:
 </section>
 {%- endfor %}
 
+{%- if tab.area == "updates" %}
+{#- PREVIEW ON A WEBSITE, as staff Updates has it (2026-10-27): the real
+   widget beside the list (admin-library.js); Sharing has the code. -#}
+<aside class="up-preview lib-preview" id="libPreview" hidden>
+  <div class="emb-stagebar">
+    <div class="emb-devices" role="tablist" aria-label="Width">
+      <button type="button" class="emb-device is-on" role="tab" aria-selected="true"
+              data-lib-width="wide" data-i18n="emb.desktop">Desktop</button>
+      <button type="button" class="emb-device" role="tab" aria-selected="false"
+              data-lib-width="narrow" data-i18n="emb.mobile">Mobile</button>
+    </div>
+    <span class="emb-scale-note" id="libScaleNote"></span>
+    <span class="c-gap"></span>
+    <select id="libLang" class="up-lang" aria-label="Language"></select>
+  </div>
+  <div class="emb-stage" id="libStage">
+    <div class="emb-scale" id="libScale">
+      <iframe id="libFrame" title="Preview" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+  <a class="up-share-link" id="libShareLink" href="/admin/website/sharing/" data-i18n="up.shareLink">Share settings and code → Sharing</a>
+</aside>
+{%- endif %}
 {%- if tab.area == "creator" %}
 {#- Unsaved words and sections — on Pages, Navigation, Footer or Advanced:
    one bar for all of them, as the words are one set (admin-content.js).

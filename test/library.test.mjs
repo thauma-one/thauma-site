@@ -228,7 +228,7 @@ await check("the row says what KIND of thing it is, in words", async () => {
      vocabulary is slugs — "glossary-entry" is what the file stores; "Glossary
      entry" is what a person reads. */
   const { d } = await boot({ resources: [GLOSSARY] });
-  const tags = [...d.querySelectorAll(".lib-tags .role-tag")].map((t) => t.textContent);
+  const tags = [...d.querySelectorAll(".ms-meta > span:not(.lib-miss)")].map((t) => t.textContent);
   assert(tags.some((t) => t === "Glossary entry"),
     `the format is missing or unformatted: ${tags.join(" | ")}`);
   assert(!tags.some((t) => /-/.test(t)), `a raw slug reached the screen: ${tags.join(" | ")}`);
@@ -238,7 +238,7 @@ await check("a gathering's row shows the whole span, not just the first day", as
   const { d } = await boot({ gatherings: [{
     slug: "weekend", title: { en: "Weekend" }, summary: {}, type: "gathering",
     status: "upcoming", date: "2027-03-14", end_date: "2027-03-15", sessions: [] }] });
-  const tags = [...d.querySelectorAll(".lib-tags .role-tag")].map((t) => t.textContent);
+  const tags = [...d.querySelectorAll(".ms-meta > span:not(.lib-miss)")].map((t) => t.textContent);
   assert(tags.some((t) => /Mar 14/.test(t) && /15/.test(t) && /2027/.test(t)),
     `the row shows ${tags.join(" | ")} — a weekend reads as a single day`);
   assert(!tags.some((t) => /\d{4}-\d{2}-\d{2}/.test(t)), `a stored date reached the row: ${tags.join(" | ")}`);
@@ -339,9 +339,12 @@ function listing(d) {
   const host = d.querySelector('[data-lib-list="gatherings"]');
   const out = [];
   let group = null;
+  /* each group's rows sit in one list under its heading (as staff Updates' rows) */
   for (const el of host.children) {
     if (el.classList.contains("lib-group")) { group = el.textContent.trim(); continue; }
-    if (el.dataset.libItem) out.push({ group, slug: el.dataset.libItem.split("/")[1] });
+    for (const row of el.classList.contains("lib-list") ? [...el.children] : [el]) {
+      if (row.dataset.libItem) out.push({ group, slug: row.dataset.libItem.split("/")[1] });
+    }
   }
   return out;
 }

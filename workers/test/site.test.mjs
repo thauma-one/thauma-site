@@ -13,6 +13,9 @@ import * as LOGO from "../src/site/logo.js";
 import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
 import * as MODEL from "../src/site/model.js";
+import { sized, sizedInline, SIZE_JS, SITE_UNIT } from "../src/site/size.js";
+/* the page as written, before its lengths became site units (site/size.js) */
+const unsized = (h) => String(h).replace(/calc\(var\(--su,1px\)\*(-?[\d.]+)\)/g, "$1px");
 import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
@@ -237,7 +240,7 @@ check("the language menu is always a dropdown, by each language's own name, on a
 
 check("the opening fills the screen, with an arrow that bounces until the visitor scrolls", () => {
   const html = page(starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" }));
-  assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(html), "the whole first screen");
+  assert(/\.hero\{[^}]*min-height:calc\(100svh - 69px\)/.test(unsized(html)), "the whole first screen");
   assert(/<section class="hero hero-behind[^"]*"[^>]*>[\s\S]*?<button type="button" class="scrollcue"/.test(html), "the arrow");
   assert(/@keyframes cue/.test(html) && /html\.scrolled \.scrollcue\{opacity:0/.test(html), "bouncing, and gone once scrolled");
   assert(/\.scrollcue,\.cue-mouse em\{animation:none\}/.test(html), "still, for anyone who asked for less motion");
@@ -250,7 +253,7 @@ check("the opening fills the screen, with an arrow that bounces until the visito
   assert(/<html[^>]* data-cue="line"/.test(page(d2)), "an unknown one is the line");
   /* chaseroush.com's: a short accent line over the word, bobbing together. */
   assert(/class="scrollcue"[^>]*><i><\/i>[\s\S]*?<span>Scroll<\/span><\/button>/.test(html), "a line over the word");
-  assert(/\.scrollcue i\{[^}]*width:2px;height:32px;background:var\(--acc\)/.test(html), "the line in the accent");
+  assert(/\.scrollcue i\{[^}]*width:2px;height:32px;background:var\(--acc\)/.test(unsized(html)), "the line in the accent");
 });
 
 check("the ministry's widgets sit centered unless put left; the newest newsletter as a card, the rest behind a link", () => {
@@ -548,7 +551,7 @@ check("a button can jump to a section of the same page, which a visitor's page c
   const html = page(d);
   assert(html.includes(`href="#s-${second.id}"`), "the button does not point at the section");
   assert(new RegExp(`<section[^>]*id="s-${second.id}"`).test(html), "a VISITOR's page has no anchor to land on");
-  assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(html), "it would land under the sticky header");
+  assert(/main section\[id\]\{scroll-margin-top:68px\}/.test(unsized(html)), "it would land under the sticky header");
   /* an eased glide (2026-10-07, Chase: "a smooth scroll to the section … With
      both ease in and ease out"), a jump for those who ask for less motion */
   assert(/function glide\(y\)\{[^]*?if\(still\)\{scrollTo\(0,y\);return\}/.test(html), "a jump when motion is reduced");
@@ -674,7 +677,7 @@ check("a header: small print above and below, the page's h1, a watermark that de
   const sec = html.match(/<section[^>]*class="phead[^"]*"[^>]*>[\s\S]*?<\/section>/);
   assert(sec, "no header section");
   assert(/class="phead phead-watermark ph-plain ph-top al-left"/.test(sec[0]), "default looks: " + sec[0].slice(0, 120));
-  assert(/<span class="ph-mark" aria-hidden="true">Home<\/span>/.test(sec[0]), "the watermark falls back to the page's name");
+  assert(/<span class="ph-mark" aria-hidden="true"><span class="m">Home<\/span><\/span>/.test(sec[0]), "the watermark falls back to the page's name");
   assert(/<p class="ph-label m">About<\/p><h1 class="h m">About <b>Chase<\/b><\/h1><span class="rule m"/.test(sec[0]), "label, h1, line");
   assert(/<p class="ph-sub m">Serving churches<\/p>/.test(sec[0]), "the small line below");
 
@@ -716,7 +719,7 @@ check("photo and words: words can flow around the photo, and a photo is never cr
   assert(/\.pt-wrapRight \.ptw \.pic\{float:right/.test(html), "floats right");
   assert(/\.pt \.pic:has\(img\),\.ptw \.pic:has\(img\)\{aspect-ratio:auto;background:none/.test(html),
     "a chosen photo keeps its own shape and no panel behind it");
-  assert(/\.pt \.pic img,\.ptw \.pic img\{display:block;width:auto;max-width:100%;height:auto;max-height:640px;object-fit:contain\}/.test(html),
+  assert(/\.pt \.pic img,\.ptw \.pic img\{display:block;width:auto;max-width:100%;height:auto;max-height:640px;object-fit:contain\}/.test(unsized(html)),
     "the whole photo shows");
 });
 
@@ -1093,7 +1096,7 @@ check("any text size like Word: 4–200px kept and drawn; the first version's mu
     text: '<span data-sz="1.35">big</span> <span data-sz="9">huge</span> <span data-sz="lg" data-c="#ff00aa">both</span> <span data-sz="5px">tiny</span> <span data-sz="2px">gone</span>' } } }];
   const html = page(d);
   assert(html.includes('<span style="font-size:1.35em">big</span>'), "a multiple, still");
-  assert(html.includes('<span style="font-size:5px">tiny</span>'), "a size in px");
+  assert(unsized(html).includes('<span style="font-size:5px">tiny</span>'), "a size in px");
   assert(!/font-size:2px|data-sz="2px"/.test(html), "below 4px survived");
   assert(!/font-size:9em|data-sz="9"/.test(html), "an out-of-range size survived");
   assert(html.includes('<span class="ts-lg" style="color:#ff00aa">both</span>'), "a preset with a picked color");
@@ -1364,7 +1367,7 @@ check("the speed is seconds on a slider; the three old words read as theirs; a s
   const html = page(cleanDoc(d, ["en"]), "mission");
   assert(/<html [^>]*style="--mt:2s;--mstep:176ms;--cstep:67ms"/.test(html), "the seconds on the page");
   assert(/<section class="[^"]*al-justify[^"]*" id="s-[^"]+" data-enter="sweep">/.test(html), "the section's own way, justified");
-  assert(html.includes(':is(html[data-entrance="sweep"] main section:not([data-enter]),main section[data-enter="sweep"]) .m:not(.in){opacity:0;transform:translateX(40px)}'), "its own way over the site's");
+  assert(unsized(html).includes(':is(html[data-entrance="sweep"] main section:not([data-enter]),main section[data-enter="sweep"]) .m:not(.in){opacity:0;transform:translateX(40px)}'), "its own way over the site's");
   assert(/\.al-justify :is\([^)]*\.prose p[^)]*\)\{text-align:justify/.test(html), "the words run edge to edge");
   /* arriving from another page: after the cross-fade, as on a refresh */
   assert(html.includes("e.viewTransition.finished.then(go,go)") && html.includes("window.__siteReplay="), "held through the fade; playable from the Site Creator");
@@ -1393,7 +1396,7 @@ check("Links: a real List, a Shelf, Buttons in a row or stacked, and how the pic
   L.pics = "sparkly";
   eq(cleanDoc(d, ["en"]).pages.find((p) => p.id === "resources").sections[0].pics, "whole", "a known way only");
   /* a description starts at 12px, and a size chosen for a whole box is the box's own, so its lines are spaced for it */
-  assert(/\.rc-desc\{color:var\(--dim\);font-size:12px;line-height:1\.7/.test(html), "12px");
+  assert(/\.rc-desc\{color:var\(--dim\);font-size:12px;line-height:1\.7/.test(unsized(html)), "12px");
 });
 
 check("a page of the owner's own: its own address, kept apart from every other; no more than twelve; linked to and in the menu", () => {
@@ -1439,7 +1442,7 @@ check("a size chosen for a whole box is the box's: its lines are spaced for it",
   eq(hoistSizes('<span class="rc-desc"><span class="ts-lg">x</span></span>'), '<span class="rc-desc" style="font-size:1.25em">x</span>', "a named size");
   const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
   d.pages[0].sections[1].words.en.text = '<span data-sz="13px">one\n\ntwo</span>';
-  assert(/<div class="prose m" style="font-size:13px"><p>one<\/p><p>two<\/p><\/div>/.test(page(cleanDoc(d, ["en"]))), "paragraphs and all");
+  assert(/<div class="prose m" style="font-size:13px"><p>one<\/p><p>two<\/p><\/div>/.test(unsized(page(cleanDoc(d, ["en"])))), "paragraphs and all");
 });
 
 check("a photo's size is kept with the site, so the page holds its place; the opened timeline card wears the card color", () => {
@@ -1451,6 +1454,21 @@ check("a photo's size is kept with the site, so the page holds its place; the op
   assert(/<img src="\/media\/partnersite\/c\/b.webp" alt="[^"]*" loading="eager" fetchpriority="high" decoding="async" width="1600" height="1200">/.test(page(c)), "width and height on the photo");
   const W = readFileSync(new URL("../src/embed-widget.js", import.meta.url), "utf8");
   assert(W.includes("'.detail{background:var(--bg)}.ddesc{background:var(--panel)}'"), "the opened card, a card");
+});
+
+check("smaller on a computer: every length in site units, 80% on a wide screen as the browser would draw it; the screen's sizes and hairlines left alone", () => {
+  eq(sized("@media (max-width:760px){.a{padding:clamp(36px,5vw,72px) 0;border:1px solid;margin:-5px;max-width:30rem}}"),
+    "@media (max-width:760px){.a{padding:clamp(calc(var(--su,1px)*36),5vw,calc(var(--su,1px)*72)) 0;border:1px solid;margin:calc(var(--su,1px)*-5);max-width:calc(var(--su,1px)*480)}}", "lengths, not the screen's");
+  eq(sizedInline('<p style="color:#fff;font-size:13px">a</p>'), '<p style="color:#fff;font-size:calc(var(--su,1px)*13)">a</p>', "a size picked in the words");
+  eval(SIZE_JS + "; globalThis.__sz = sized");
+  eq(globalThis.__sz("@media(max-width:600px){.x{top:-7px}}"), sized("@media(max-width:600px){.x{top:-7px}}"), "the widgets' copy is the same");
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  const html = page(cleanDoc(d, ["en"]));
+  assert(html.includes(SITE_UNIT) && /\.btn\{[^}]*font:600 calc\(var\(--su,1px\)\*15\)\/1\.25/.test(html), "the page in site units");
+  assert(!/style="[^"]*font-size:\d+px/.test(html), "no size left in px");
+  const W = readFileSync(new URL("../src/embed-widget.js", import.meta.url), "utf8");
+  assert(/getAttribute\('data-look'\) \? sized\(css\) : css/.test(W), "the widgets on a ministry's site only");
+  for (const f of ["signup", "contact"]) assert(readFileSync(new URL(`../src/${f}.js`, import.meta.url), "utf8").includes("(node.getAttribute('data-look') ? sized : String)("), `the ${f} form too`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

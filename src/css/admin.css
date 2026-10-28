@@ -987,6 +987,21 @@
   text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .web-side a:hover{color:var(--text)}
 .web-side a[aria-current]{color:var(--text);border-bottom-color:var(--console-admin)}
+/* ACROSS THE TOP, AS STAFF UPDATES' TABS ARE (2026-10-27): small capitals,
+   and Updates' Preview on a Website at the row's end. */
+.web:not(.is-side) .web-side{align-items:flex-end;margin-bottom:22px}
+.web:not(.is-side) .web-side a{font-family:var(--font-display);font-size:11px;letter-spacing:var(--ls-caps);
+  text-transform:uppercase;font-weight:var(--w-bold);padding:12px 18px}
+.web-side .up-preview-btn{margin-left:auto}
+/* the list and the preview side by side, as on staff Updates */
+.web-main.is-previewing{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:start}
+.web-main.is-previewing > .web-panel{grid-column:1;grid-row:1}
+.web-main.is-previewing > .lib-preview{grid-column:2;grid-row:1}
+@media (max-width:1100px){
+  .web-main.is-previewing{grid-template-columns:1fr}
+  .web-main.is-previewing > .lib-preview{grid-column:1;grid-row:1;position:static}
+  .web-main.is-previewing > .web-panel{grid-row:2}
+}
 .web-main{min-width:0;display:flex;flex-direction:column;gap:18px}
 /* a form reads best at a form's width, not the screen's */
 .web-panel[data-web-panel="settings"]{max-width:900px}
@@ -1342,10 +1357,14 @@ body:has(#webArea:is([data-tab="pages"],[data-tab="navigation"],[data-tab="foote
    missing languages and the star sit in the same place on every row
    (Chase, 2026-10-08: "aligned with each other"). Each row is its own grid,
    so only fixed widths line them up. */
-@media (min-width:901px){
-  [data-lib-list] .adm-row{grid-template-columns:auto minmax(0,1fr) 300px 170px 122px}
-  [data-lib-list] .lib-tags{justify-content:flex-start}
-}
+/* AS STAFF UPDATES' ROWS (2026-10-27): one list, a line between rows, what
+   it is and when under the title; the star in the last column. */
+[data-lib-list].adm-people{gap:0}
+.lib-list{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line)}
+.lib-list .adm-person{border:0;border-radius:0}
+.lib-list .adm-row{grid-template-columns:minmax(0,1fr) auto;gap:20px;padding:16px 20px}
+.lib-list .ms-meta .lib-miss{font-size:inherit}
+.lib-pin{color:var(--voice-human)}
 .lib-star-col{justify-self:end;display:flex;justify-content:flex-end;min-width:122px}
 .lib-star-col .lib-star{width:122px;justify-content:center}
 .lib-star{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;

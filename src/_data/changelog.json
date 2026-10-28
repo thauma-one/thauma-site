@@ -2,6 +2,36 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-28-site-smaller",
+      "date": "2026-10-28",
+      "page": "staff:website",
+      "text": {
+        "en": "Your site is drawn smaller on a computer — the way Chrome shows it at 80% — so more of each page fits on the screen. Text, spacing, photos, the timeline and the forms all shrink together, and the widths that follow the window still follow it. A phone is unchanged. The Header's watermark now arrives with the rest of its words.",
+        "hr": "Vaša se stranica na računalu prikazuje manjom — kao što je Chrome prikazuje na 80% — pa na zaslon stane više svake stranice. Tekst, razmaci, fotografije, vremenska crta i obrasci smanjuju se zajedno, a širine koje prate prozor i dalje ga prate. Na mobitelu se ništa ne mijenja. Vodeni žig u Zaglavlju sada stiže zajedno s ostatkom riječi.",
+        "sr": "Ваша се страница на рачунару приказује мањом — као што је Chrome приказује на 80% — па на екран стане више сваке странице. Текст, размаци, фотографије, временска линија и обрасци смањују се заједно, а ширине које прате прозор и даље га прате. На мобилном се ништа не мијења. Водени жиг у Заглављу сада стиже заједно с остатком ријечи."
+      }
+    },
+    {
+      "id": "2026-10-28-admin-sharing",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Sharing is laid out like the staff Sharing page: Events, Resources, the Sign-Up Form and the Contact Form on the left, the real thing in the middle at a computer's or a phone's width in any language, and on the right what decides it and the code to paste on another website. Events and Resources can now be shown on other websites; they are shared while their page is on. The forms' words for other websites are written here too.",
+        "hr": "Web-stranica › Dijeljenje složeno je kao stranica Dijeljenje za osoblje: Događaji, Resursi, Obrazac za prijavu i Obrazac za kontakt lijevo, ono pravo u sredini u širini računala ili mobitela na bilo kojem jeziku, a desno ono što o tome odlučuje i kôd za lijepljenje na drugu web-stranicu. Događaji i Resursi sada se mogu prikazati na drugim web-stranicama; dijele se dok je njihova stranica uključena. Ovdje se pišu i riječi obrazaca za druge web-stranice.",
+        "sr": "Веб-страница › Дијељење сложено је као страница Дијељење за особље: Догађаји, Ресурси, Образац за пријаву и Образац за контакт лијево, оно право у средини у ширини рачунара или мобилног на било којем језику, а десно оно што о томе одлучује и код за лијепљење на другу веб-страницу. Догађаји и Ресурси сада се могу приказати на другим веб-страницама; дијеле се док је њихова страница укључена. Овдје се пишу и ријечи образаца за друге веб-странице."
+      }
+    },
+    {
+      "id": "2026-10-28-admin-updates",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Updates looks like the staff Updates page: Events and Resources as one list with what each is, when, and the languages it still misses under its title, and Preview on a Website to see the list as another website would show it.",
+        "hr": "Web-stranica › Novosti izgleda kao stranica Novosti za osoblje: Događaji i Resursi kao jedan popis s onim što je svaki, kada je i kojim jezicima još nedostaje ispod naslova, te Pregled na web-stranici da vidite popis kako bi ga prikazala druga web-stranica.",
+        "sr": "Веб-страница › Новости изгледа као страница Новости за особље: Догађаји и Ресурси као један попис с оним што је сваки, када је и којим језицима још недостаје испод наслова, те Преглед на веб-страници да видите попис како би га приказала друга веб-страница."
+      }
+    },
+    {
       "id": "2026-10-27-admin-creator-like-staff",
       "date": "2026-10-27",
       "page": "admin:website",

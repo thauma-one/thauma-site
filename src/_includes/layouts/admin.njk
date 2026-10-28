@@ -84,6 +84,11 @@
          {% if t.tab == areaTab %}aria-current="page"{% endif %}
          data-i18n="web.{{ t.tab }}">{{ t.label }}</a>
       {%- endfor %}
+      {%- if areaId == "updates" %}
+      <button type="button" class="ghost-btn up-preview-btn" id="libPreviewBtn" aria-pressed="false">
+        <span data-i18n="up.preview">Preview on a website</span><span class="up-x" aria-hidden="true"> ✕</span>
+      </button>
+      {%- endif %}
     </nav>
     {%- endif %}
     <div class="web-main">

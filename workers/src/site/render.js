@@ -21,6 +21,7 @@ import { word, SECTIONS, plainOf, allSections, titleCase, cleanLinkTarget, linkT
 import { TONES, HEX_COLOR, SIZE_NAMES } from "../lib/tones.js";
 import { readable, onColor, alpha, luminance, companion, hexToHsl, hslToHex } from "../embed-colour.js";
 import { ICON, SOCIAL_NAME } from "../lib/social-icons.js";
+import { SITE_UNIT, sized, sizedInline } from "./size.js";
 
 export function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
@@ -217,7 +218,7 @@ export function speedVars(sec) {
 function css(L, design) {
   return `
 :root{--bg:${L.bg};--panel:${L.panel};--fg:${L.fg};--dim:${L.dim};--line:${L.line};--acc:${L.acc};--acc2:${L.acc2};--ink:${L.ink};--on-acc:${L.onAcc};--on-acc2:${onColor(L.acc2)};--herobg:${L.heroBg};${bands(L)}
---display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};${toneVars(L.scheme)}color-scheme:${L.scheme}}
+--display:${L.display};--body:${L.body};--thin:${L.thin};--boldw:${L.boldW};${toneVars(L.scheme)}color-scheme:${L.scheme};${SITE_UNIT}}
 ${L.alt ? `@media (prefers-color-scheme:dark){:root{--bg:${L.alt.bg};--panel:${L.alt.panel};--fg:${L.alt.fg};--dim:${L.alt.dim};--line:${L.alt.line};` +
   `--acc:${L.alt.acc};--acc2:${L.alt.acc2};--ink:${L.alt.ink};--on-acc:${L.alt.onAcc};--on-acc2:${onColor(L.alt.acc2)};--herobg:${L.alt.heroBg};${bands(L.alt)}${toneVars("dark")}color-scheme:dark}}` : ""}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
@@ -524,6 +525,9 @@ main section.phead{position:relative;overflow:hidden;padding:clamp(36px,5vw,72px
 /* the watermark's left side on the text's (2026-10-06, Chase: "needs to
    align with the text of the header so both left sides are aligned"): the
    column's own edge, less the letters' side bearing */
+/* it arrives as the words do (Chase, 2026-10-28: "the watermark doesn't
+   transition in like the rest of the text"); its own box keeps the place */
+.ph-mark .m{display:inline-block}
 .phead.al-center .ph-mark{left:50%;margin-left:0;transform:translate(-50%,-46%)}.phead.al-right .ph-mark{left:auto;margin-left:0;right:max(24px,calc((100% - 1120px) / 2));margin-right:-.055em}
 
 main section.ph-raised{background:var(--panel)}
@@ -1201,7 +1205,7 @@ function renderSection(sec, ctx) {
          words default to the page's own name. The page's h1. */
       if (!w("heading") && !w("label") && !ctx.draft) return "";
       const mark = sec.variant === "watermark"
-        ? `<span class="ph-mark" aria-hidden="true">${esc(raw("mark") || ctx.label(ctx.pageId) || "")}</span>` : "";
+        ? `<span class="ph-mark" aria-hidden="true"><span class="m">${esc(raw("mark") || ctx.label(ctx.pageId) || "")}</span></span>` : "";
       /* Its ground is the same Plain / Raised / Tint as every section's, plus
          the header's own Accent (bg); a header saved with bg raised or tint
          reads as that (model.js). */
@@ -1343,7 +1347,7 @@ function renderSection(sec, ctx) {
       if (sec.variant === "wide" || sec.variant === "open") {
         return `<section${cls()}><div class="wrap">${heading(w("heading"))}${sub}${reach}<div class="m formbox ${sec.variant === "wide" ? "wideform" : "openform"}"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(sec.variant === "open", !!(sec.raised || sec.tint), sec.variant === "open")}></div></div></div></section>`;
       }
-      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${reach}<div class="m formbox" style="max-width:560px;margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></section>`;
+      return `<section${cls()}><div class="wrap">${heading(w("heading"))}${w("text") ? `<p class="lede m">${inline(w("text"))}</p>` : ""}${reach}<div class="m formbox" style="max-width:calc(var(--su,1px)*560);margin-top:24px"><div data-thauma-contact data-lang="${esc(lang)}"${ctx.formLook(false, !!(sec.raised || sec.tint))}></div></div></div></section>`;
     }
     case "give": {
       if (!ctx.giveUrl) return "";
@@ -1813,7 +1817,7 @@ ${social}
 ${draft ? "" : `<script type="speculationrules">${JSON.stringify({ prerender: [{ where: { and: [{ href_matches: `${base}/*` }, { not: { selector_matches: "[target=_blank]" } }] }, eagerness: "moderate" }] })}</script>`}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${F.query}&display=swap">
-<style>${F.face}${css(L, design)}
+<style>${F.face}${sized(css(L, design))}
 @media (max-width:${fold}px){.menubtn{display:inline-block}.nav{display:none}.top .wrap{flex-direction:row!important;padding:0!important}.top .wrap>.langmenu{display:none}html.menu-open .nav .navlang{display:block;width:100%}}</style>
 </head>
 <body${only ? ' class="only-foot"' : ""}>
@@ -1845,7 +1849,7 @@ ${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/co
     if (firstPic && !/\/embed\/v1\/icon/.test(src)) { firstPic = false; return `<img src=${src} alt=${alt} loading="eager" fetchpriority="high" decoding="async"`; }
     return `<img src=${src} alt=${alt} loading="lazy" decoding="async"`;
   });
-  return newTabs(hoistSizes(withPics), outgoing);
+  return newTabs(sizedInline(hoistSizes(withPics)), outgoing);
 }
 
 /* A BOX WHOSE WORDS ARE ALL ONE SIZE carries the size itself (Chase,

@@ -45,14 +45,15 @@ module.exports = () => {
   }));
 
   return {
-    partner: { slug: "thauma", name: "Thauma" },
+    partner: { slug: "thauma", name: "Thauma", display_name: "Thauma", url: ORIGIN },
     languages: langs.map((code) => ({ code })),
     shared: [...(eventsOn ? ["events"] : []), ...(resourcesOn ? ["resources"] : [])],
     /* Thauma's two voices: the technical blue and the ministry's seafoam */
     theme: { accent: "#2FD8FF", accent2: "#5CF2C4", mode: "dark" },
     events, resources,
-    /* the site's own words for what the widgets say */
-    words: per((l) => {
+    /* the site's own words for what the widgets say; the widget's own
+       (words) are added by the worker, from the same file a ministry's are */
+    site_words: per((l) => {
       const t = T[l], e = t.events || {}, r = t.resources || {};
       return {
         events: plain(e.title), upcoming: plain(e.invited), past: plain(e.past_cue), where: plain(e.where_label),

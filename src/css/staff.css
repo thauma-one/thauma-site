@@ -2426,15 +2426,19 @@ html.console-menu-open{overflow:hidden}
 .sh-dev-body .emb-code{white-space:pre-wrap;word-break:break-all;align-self:stretch}
 .sh-dev[hidden]{display:none}
 
-/* ---- Website › Forms: Thauma's own (admin) ----
-   Two forms, a pill for each; a card of what happens to what is sent. */
-.wf{display:flex;flex-direction:column;gap:18px;max-width:760px}
+/* ---- Website › Sharing: Thauma's own (admin), as staff Sharing is laid
+   out (2026-10-27): the four on the left, the real thing in the middle,
+   what decides it on the right. */
 .wf-panel[hidden]{display:none}
-.wf-panel .switch{margin-bottom:18px}
-.wf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 16px}
-.wf-panel .up-share-link{display:inline-block;margin-top:18px}
+.wf-panel > .switch{margin:0}
+.wf-panel .up-share-link{display:inline-block;margin-top:14px}
+.wf-panel .ct-topics{margin-top:6px}
 .wf-writing{margin:0 0 12px}
 .wf-writing[hidden]{display:none}
+.wf-state{margin:0;font-size:14px;line-height:1.55;color:var(--muted,#8a96a6)}
+.wf-state.is-live{color:var(--text,#edf2f8)}
+.wf-state.is-live::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;
+  background:var(--voice-human);box-shadow:0 0 10px var(--voice-human);vertical-align:1px}
 
 @media (max-width:1100px){
   .sh-grid{grid-template-columns:200px minmax(0,1fr)}

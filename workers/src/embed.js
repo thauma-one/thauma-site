@@ -105,6 +105,7 @@ async function thaumaJson(env, url) {
   if (!res.ok) return json({ error: "Not found" }, 404, CORS);
   const body = await res.json().catch(() => null);
   if (!body || !Array.isArray(body.shared) || !body.shared.length) return json({ error: "Not found" }, 404, CORS);
+  body.words = widgetWords(body.languages);
   return json(body, 200, { ...CORS, "Cache-Control": "public, max-age=300" });
 }
 

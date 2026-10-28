@@ -132,9 +132,10 @@ const areas = {
     scripts: ["staff-mailing", "admin-website"], tabs: [
     { tab: "mail", url: "/admin/website/mail/", label: "Mail" },
   ] },
-  /* What happens to what a visitor sends: where it goes, the reasons, the
-     lists on the sign-up form. */
-  sharing: { label: "Sharing", heading: "Thauma's <b>Forms</b>",
+  /* What of Thauma's appears on other websites, as staff Sharing (2026-10-27):
+     Events, Resources and the two forms — and what happens to what a visitor
+     sends: where it goes, the reasons, the lists on the sign-up form. */
+  sharing: { label: "Sharing", heading: "What Appears on <b>Other Websites</b>",
     scripts: ["admin-forms", "admin-website"], tabs: [
     { tab: "forms", url: "/admin/website/sharing/", label: "Forms" },
   ] },
