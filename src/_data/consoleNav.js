@@ -162,6 +162,10 @@ const areas = {
     { tab: "arcade", url: "/admin/website/arcade/", label: "Arcade" },
     /* How each page shows in a search and when shared (Chase, 2026-10-20:
        "move all meta options to its own advanced tab"). */
+    /* Every language, the translator's file and reading the words again
+       (Chase, 2026-10-27: they made Pages unlike the staff Site Creator's;
+       "repopulating some things in a new side tab"). */
+    { tab: "languages", url: "/admin/website/languages/", label: "Languages" },
     { tab: "advanced", url: "/admin/website/advanced/", label: "Advanced" },
     { tab: "settings", url: "/admin/website/settings/", label: "Settings" },
   ] },

@@ -1,0 +1,19 @@
+{#- A PHOTO, WIDE (from the staff Site Creator, 2026-10-27): the section's own
+    photo in the site's frame — framed in Website › Photos, drifting with the
+    page as every framed photo does (main.js .frame img) — and a line under
+    it if it has one. -#}
+{%- set wd = sec.words %}{% set look = sec.look or {} %}
+{%- set img = site.images[sec.photo] if sec.photo else null %}
+<section class="tphoto{% if look.ground == "raised" %} alt{% endif %}"><div class="wrap">
+  {%- if img and img.src %}
+  <div class="frame">
+    <img src="{{ img.src }}" alt="{{ t | w(wd.alt) | plain }}" loading="lazy" decoding="async"
+      style="{{ img | frameStyle }}">
+  </div>
+  {%- elif not env.isProduction %}
+  <div class="frame-placeholder"><span>{{ (t | w(wd.placeholder) | rich(wd.placeholder)) if wd.placeholder else "" }}</span></div>
+  {%- endif %}
+  {%- if wd.caption %}
+  <p class="legal-note tphoto-cap">{{ t | w(wd.caption) | rich(wd.caption) }}</p>
+  {%- endif %}
+</div></section>

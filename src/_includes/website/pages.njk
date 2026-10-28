@@ -31,25 +31,14 @@
    lines on screen — a page, a search, Needs Work, All — and More says how
    many. -#}
 
-<div class="c-tools-row c-find-row">
+{#- FINDING A WORD, quietly (2026-10-27): the languages, the translator's
+   file and reading again moved to the Languages tab, so Pages looks like the
+   staff Site Creator's; only this small search stays over the list. -#}
+<div class="c-find-row">
+  <label class="c-find"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
   <input type="search" id="cFind" autocomplete="off"
          placeholder="Find a word" aria-label="Find a word"
-         data-i18n-attr="placeholder:con.find,aria-label:con.find">
-  <button type="button" class="ghost-btn" id="cLangs" disabled data-i18n="con.languages">Languages</button>
-  <div class="c-more">
-    <button type="button" class="ghost-btn" id="cMoreBtn" aria-expanded="false" aria-controls="cMore">
-      <span data-i18n="con.more">More</span><span class="console-caret" aria-hidden="true"></span>
-    </button>
-    <div class="c-more-menu" id="cMore">
-      <button type="button" id="cDown"></button>
-      <button type="button" id="cUp" data-i18n="tl.upload">Upload Translation</button>
-      {#- "Nothing has changed" is a claim about the copy this page loaded; the
-         remedy for doubting it is to read again. -#}
-      <button type="button" id="cReload" data-i18n="con.reload">Reload from GitHub</button>
-    </div>
-  </div>
-  <input type="file" id="cFile" accept=".csv,text/csv" hidden
-         aria-label="Upload translation" data-i18n-attr="aria-label:tl.upload">
+         data-i18n-attr="placeholder:con.find,aria-label:con.find"></label>
 </div>
 
 {#- Shown instead of the editor when GITHUB_TOKEN is absent. -#}
@@ -82,19 +71,4 @@
     <button type="button" class="solid-btn" id="tlApprove"></button>
   </div>
   <div class="tl-items" id="tlItems"></div>
-</div>
-
-{#- EVERY LANGUAGE, IN ONE PLACE (mockup board "Every language, in one
-   place"): one row per language — how much is translated, on for the preview
-   site, on for everyone, its donation page, how it is written, removing it —
-   then adding one and the default. The console's dialog shell, so it looks
-   and closes like every other dialog. Each control saves as it changes. -#}
-<div class="dlg-back c-set" id="cSet" hidden>
-  <div class="dlg c-set-dlg" role="dialog" aria-modal="true" aria-labelledby="cSetTitle">
-    <div class="c-set-head">
-      <h3 id="cSetTitle" data-i18n="con.languages">Languages</h3>
-      <button type="button" class="ln-x" id="cSetClose" aria-label="Close" data-i18n-attr="aria-label:con.close">&times;</button>
-    </div>
-    <div class="c-set-body" id="cSetBody"></div>
-  </div>
 </div>

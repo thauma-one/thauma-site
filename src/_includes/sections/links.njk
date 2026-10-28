@@ -1,0 +1,20 @@
+{#- LINKS (from the staff Site Creator, 2026-10-27): the line above, a
+    heading, and a row for each link — its title, a few words, and an arrow
+    that leans toward where it goes, one of the site's pages or anywhere. -#}
+{%- set wd = sec.words %}{% set look = sec.look or {} %}
+<section class="tlinks{% if look.ground == "raised" %} alt{% endif %}"><div class="wrap">
+  {%- if wd.cue %}
+  <div class="cue{% if look.voice == "ministry" %} foam{% endif %}">{{ t | w(wd.cue) | rich(wd.cue) }}</div>
+  {%- endif %}
+  {%- if wd.heading %}
+  <h2>{{ t | w(wd.heading ~ "_thin") | rich(wd.heading ~ "_thin") }} <b>{{ t | w(wd.heading ~ "_bold") | rich(wd.heading ~ "_bold") }}</b></h2>
+  {%- endif %}
+  <div class="tl-list">
+    {%- for it in sec.items %}{% set to = it.to | sectionHref(lang) %}
+    <a class="tl-row" href="{{ to }}"{% if "https://" in to %} target="_blank" rel="noopener"{% endif %}>
+      <span><b>{{ t | w(it.title) | rich(it.title) }}</b><span>{{ t | w(it.text) | rich(it.text) }}</span></span>
+      <i aria-hidden="true">→</i>
+    </a>
+    {%- endfor %}
+  </div>
+</div></section>

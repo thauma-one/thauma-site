@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-27-admin-creator-like-staff",
+      "date": "2026-10-27",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Site Creator works more like the staff one: each menu page has its switch for the live site and a grip to drag the menu's order; the languages, the translator's file and Reload from GitHub have their own Languages tab; the browser tab's name is on Advanced. Four sections from the staff Site Creator can be added in Thauma's own design: A Quote, A Wide Photo, Links and Stay Connected.",
+        "hr": "Web-stranica › Kreator stranice radi više kao onaj za osoblje: svaka stranica izbornika ima prekidač za javnu stranicu i ručku za povlačenje redoslijeda; jezici, datoteka za prevoditelja i ponovno učitavanje s GitHuba imaju vlastitu karticu Jezici; naziv u kartici preglednika nalazi se pod Napredno. Četiri odjeljka iz Kreatora za osoblje mogu se dodati u Thauminu dizajnu: Citat, Široka fotografija, Poveznice i Ostanimo povezani.",
+        "sr": "Веб-страница › Креатор странице ради више као онај за особље: свака страница изборника има прекидач за јавну страницу и ручку за повлачење редослиједа; језици, датотека за преводиоца и поновно учитавање са GitHub-а имају властиту картицу Језици; назив у картици прегледника налази се под Напредно. Четири одјељка из Креатора за особље могу се додати у Тхаумином дизајну: Цитат, Широка фотографија, Везе и Останимо повезани."
+      }
+    },
+    {
       "id": "2026-10-27-ministry-app-visual",
       "date": "2026-10-27",
       "page": "staff:website",

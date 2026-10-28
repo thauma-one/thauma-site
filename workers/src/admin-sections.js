@@ -198,6 +198,12 @@ export function checkSections(next, before) {
             if (!keyAllowed(it && it[f], sec, priorKeys)) return { error: "A part names words it may not." };
             o[f] = it[f];
           }
+          /* a link goes to one of the site's pages or a web address */
+          if (k.itemTo) {
+            const to = String((it && it.to) || "");
+            if (PAGES.indexOf(to) === -1 && !LINK_RE.test(to)) return { error: "A link goes to one of the site's pages, or a web address." };
+            o.to = to;
+          }
           sec.items.push(o);
         }
       }

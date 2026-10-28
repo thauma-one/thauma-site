@@ -48,6 +48,16 @@ const KINDS = {
             buttons: 1, ground: true, voice: true },
   invite: { words: ["cue", "heading", "lede"], optional: ["cue", "heading", "lede"], buttons: 3, voice: true },
   rows: { items: ["label", "title", "text"], itemsMax: 8, ground: true },
+  /* FROM THE STAFF SITE CREATOR (Chase, 2026-10-27: "I actually wanted all
+     Staff site creator sections to be available for Thauma as well"): the
+     ones this site had nothing like — a quote, a wide photo, links (each
+     going to one of the site's pages or a web address: `itemTo`), and a
+     sign-up that opens the site's own Stay Connected window. Its words and
+     photos, its Header, Words-and-Photo, Cards and Contact already were. */
+  quote: { words: ["quote", "who"], optional: ["who"], ground: true, voice: true },
+  photo: { words: ["caption"], optional: ["caption"], photo: true, ground: true },
+  links: { words: ["cue", "heading"], optional: ["cue", "heading"], items: ["title", "text"], itemsMax: 12, itemTo: true, ground: true, voice: true },
+  signup: { words: ["cue", "heading", "lede", "button"], optional: ["cue", "lede"], ground: true, voice: true },
   convictions: { fixed: true, only: "values" },
   teamGrid: { fixed: true, only: "team" },
   library: { fixed: true, only: "resources" },
@@ -56,7 +66,7 @@ const KINDS = {
   giving: { fixed: true, only: "give" },
 };
 /* What can be added from the console, in the order it offers them. */
-const ADDABLE = ["story", "points", "invite", "rows"];
+const ADDABLE = ["story", "points", "invite", "rows", "quote", "photo", "links", "signup"];
 /* The pages that are lists of sections, and the ones in the menu. */
 const PAGES = ["home", "about", "mission", "values", "team", "resources", "events", "contact", "give"];
 const NAV = ["about", "mission", "values", "team", "resources", "events", "contact"];
@@ -103,7 +113,8 @@ function nextPart(sec, prefix) {
 }
 
 /** A new section of a kind, with keys for what every look of it shows. */
-const START = { story: ["cue", "heading"], points: ["cue", "heading"], invite: ["cue", "heading", "lede"], rows: [] };
+const START = { story: ["cue", "heading"], points: ["cue", "heading"], invite: ["cue", "heading", "lede"], rows: [],
+  quote: ["quote", "who"], photo: ["caption"], links: ["cue", "heading"], signup: ["cue", "heading", "lede", "button"] };
 function newSection(kind, id) {
   const k = KINDS[kind], sec = { id, kind, words: {} };
   (START[kind] || k.words || []).forEach((f) => { sec.words[f] = blockKey(id, f); });
@@ -116,6 +127,7 @@ function newSection(kind, id) {
     });
   }
   if (kind === "invite") sec.buttons = [{ label: blockKey(id, "button1"), to: "give", style: "solid" }];
+  if (k.itemTo) sec.items.forEach((it) => { it.to = "about"; });
   return sec;
 }
 
@@ -156,7 +168,8 @@ function lorem(part, rnd) {
   if (/_bold$/.test(p)) return title(loremWords(r(1, 2), rnd)) + ".";
   if (/^(cue|label)$|_label$/.test(p)) return title(loremWords(r(1, 2), rnd));
   if (/^button\d*$|_title$/.test(p)) return title(loremWords(2, rnd));
-  if (/^(lede|note)$/.test(p)) return sentence(r(8, 12));
+  if (/^(lede|note|quote|caption)$/.test(p)) return sentence(r(8, 12));
+  if (p === "who") return title(loremWords(2, rnd));
   return sentence(r(10, 14)) + " " + sentence(r(7, 11));
 }
 

@@ -104,6 +104,16 @@ await check("a button goes to one of the site's pages or a web address, nothing 
   assert(!refused(web), refused(web));
 });
 
+await check("the staff Site Creator's quote, wide photo, links and sign-up can be added; a link goes to a page or a web address", async () => {
+  const doc = clone(DOC);
+  for (const kind of ["quote", "photo", "links", "signup"]) doc.pages.about.splice(1, 0, SECTIONS.newSection(kind, "s" + kind + "1"));
+  assert(!refused(doc), refused(doc));
+  const ok = checkSections(doc, DOC).doc.pages.about.find((s) => s.kind === "links");
+  assert(ok.items.every((it) => it.to === "about"), "where each goes, kept");
+  const bad = clone(doc); bad.pages.about.find((s) => s.kind === "links").items[0].to = "javascript:alert(1)";
+  assert(refused(bad), "a script link was accepted");
+});
+
 await check("what is not a known look is dropped, and the default is not written", async () => {
   const next = clone(DOC);
   next.pages.home[1].look = { ground: "plain", voice: "neon" };

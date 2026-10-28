@@ -482,7 +482,7 @@
     var want = state.langs.indexOf(guess) !== -1 ? guess : state.langs[0];
     fillPickers();
     $('cLang').disabled = false;
-    $('cLangs').disabled = false;
+    if (onTab() === 'languages') showLangs();
     await openLang(want, false, want === guess && words && !words.failed ? words : null);
     return true;
   }
@@ -533,7 +533,7 @@
     fillPickers();
     takeOthers();
     if (state.rows.length && !state.review) { renderCrumb(); if (!state.view && !state.find) renderRows(); }
-    if (!$('cSet').hidden) renderTable();
+    if (onTab() === 'languages') renderTable();
   }
 
   function notConfigured(reason) {
@@ -1028,19 +1028,26 @@
       if (s === 'menu' || own.indexOf(s) !== -1) return;
       var g = groupOf(s); (by[g] = by[g] || []).push(s);
     });
-    var prow = function (view, label, sub, note, changed, aside) {
-      return '<li class="ws-prow"><button type="button" class="ws-prow-open" data-view="' + esc(view) + '">' +
+    var prow = function (view, label, sub, note, changed, aside, attrs) {
+      return '<li class="ws-prow"' + (attrs || '') + '><button type="button" class="ws-prow-open" data-view="' + esc(view) + '">' +
         '<b>' + esc(label) + dot(changed) + '</b>' +
         '<span class="ws-prow-sub"><span>' + esc(sub) + '</span>' + (note || '') + '</span>' +
         '<span class="ws-chev ws-chev-r" aria-hidden="true"></span></button>' + (aside || '') + '</li>';
     };
     var html = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>';
     if (own.length) {
-      html += '<ol class="ws-plist">' + own.map(function (page) {
-        var n = state.doc.pages[page].length;
+      /* AS THE STAFF SITE CREATOR'S LIST (Chase, 2026-10-27: "things feel
+         different between the 2"): each page in the menu with its switch —
+         on the live site or not, saved at once like the languages — and its
+         grip, dragged into the menu's order (saved with the pages). Home is
+         always there; Give is the button at the end of the menu. */
+      html += '<ol class="ws-plist c-menu">' + own.map(function (page) {
+        var n = state.doc.pages[page].length, inMenu = state.doc.nav.indexOf(page) !== -1;
+        var v = state.site && state.site.visibility && state.site.visibility.pages && state.site.visibility.pages[page];
+        var aside = page === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>'
+          : v == null ? '' : pageSwitch(page, !liveOff(page));
         return prow('section:' + page, sectionLabel(page), n === 1 ? tr('ws.nSections1') : fill('ws.nSections', { n: n }),
-          missingNote(pageMissing(page)), pageDirty(page),
-          liveOff(page) ? '<span class="ws-always">' + esc(tr('sec.offLive')) + '</span>' : '');
+          missingNote(pageMissing(page)), pageDirty(page), aside + (inMenu ? grip() : ''), inMenu ? ' data-slug="' + esc(page) + '"' : '');
       }).join('') + '</ol>';
     }
     GROUPS.map(function (g) { return g[0]; }).concat(Object.keys(by).filter(function (g) {
@@ -1060,6 +1067,31 @@
       '<button type="button" class="link-btn" data-view="all">' + esc(fill('con.everyLine', { n: state.rows.length })) + '</button></div>';
     return html;
   }
+  /* A page's switch: shown on the live site, or only on the preview. */
+  function pageSwitch(page, on) {
+    var label = tr(on ? 'sec.page.live' : 'sec.page.preview');
+    return '<button type="button" class="switch small" role="switch" data-page-live="' + esc(page) + '" aria-checked="' + on + '" aria-label="' + esc(sectionLabel(page) + ' — ' + label) + '">' +
+      '<span class="switch-track"><span class="switch-state">' + esc(tr(on ? 'switch.on' : 'switch.off')) + '</span><span class="switch-knob"></span></span>' +
+      '<span class="switch-label">' + esc(label) + '</span></button>';
+  }
+  /* Saved at once, as the languages are: a quiet commit to site.json. */
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('[data-page-live]');
+    if (!b || b.disabled) return;
+    var page = b.getAttribute('data-page-live'), v = state.site.visibility.pages[page];
+    var on = b.getAttribute('aria-checked') !== 'true';
+    b.disabled = true;
+    var ok = await saveSetting(typeof v === 'object' ? 'visibility.pages.' + page + '.live' : 'visibility.pages.' + page, on);
+    b.disabled = false;
+    if (ok) { renderRows(); renderCrumb(); renderNav(); }
+  });
+  if (window.StaffSort) StaffSort($('cRows'), { items: '.c-menu > .ws-prow[data-slug]', handle: '.ws-prow .sort-grip',
+    key: function (it) { return it.getAttribute('data-slug'); },
+    drop: function (parent, from, to) {
+      state.doc.nav.splice(to, 0, state.doc.nav.splice(from, 1)[0]);
+      renderRows(); renderNav(); renderSaveBar(); prevArrange();
+    } });
+
   /* The menu of pages: the same groups as the list. A mark after a name
      says it has changes. */
   function pageMenu(selected, only) {
@@ -1084,9 +1116,12 @@
     var needs = state.rows.filter(needsWork).length;
     var sel = (state.view === 'needs' || needs ? '<option value="needs"' + (state.view === 'needs' ? ' selected' : '') + '>' + esc(tr('con.needsWork')) + ' (' + needs + ')</option>' : '') +
       '<option value="all"' + (state.view === 'all' ? ' selected' : '') + '>' + esc(fill('con.everyLine', { n: state.rows.length })) + '</option>';
+    var pg = /^section:/.test(state.view || '') ? state.view.slice(8) : null;
+    var pv = pg && state.site && state.site.visibility && state.site.visibility.pages && state.site.visibility.pages[pg];
     box.innerHTML = '<button type="button" class="ghost-btn sm" data-view="">← ' + esc(tr('ws.allPages')) + '</button>' +
       '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('web.pages')) + '</span>' +
-        '<select data-page-pick>' + sel + pageMenu(state.view) + '</select></label>';
+        '<select data-page-pick>' + sel + pageMenu(state.view) + '</select></label>' +
+      (pg === 'home' ? '<span class="ws-always">' + esc(tr('ws.always')) + '</span>' : pv != null ? pageSwitch(pg, !liveOff(pg)) : '');
   }
 
   /* FORMATTED WORDS (2026-10-07, Chase: "allowing the text controls that the
@@ -1165,7 +1200,11 @@
     '</div>';
   }
 
-  function isSeo(r) { return !r.split && /\.seo_(title|desc)$/.test(r.key); }
+  /* How a page shows in a search, when shared, and in a browser's tab: the
+     Advanced tab's (2026-10-27, as the staff Site Creator keeps the tab's
+     name there; the page itself keeps only its name in the menu). */
+  function isTabName(r) { return !r.split && r.key.split('.').length === 2 && /\.title$/.test(r.key) && PAGE_OF[r.section] != null; }
+  function isSeo(r) { return !r.split && (/\.seo_(title|desc)$/.test(r.key) || isTabName(r)); }
   function draftOf(key) { var id = 'site:' + key; return state.draft[id] != null ? state.draft[id] : ''; }
   function plainOf(v) { return String(v || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim(); }
   function seoCard(page) {
@@ -1399,7 +1438,11 @@
     library: [[8,10,40,10,'l'],[52,10,40,10,'l'],[8,28,84,8,'l'],[8,44,26,40,'l'],[37,44,26,40,'l'],[66,44,26,40,'l']],
     gatherings: [[8,10,84,3,'a'],[8,18,30,20,'t'],[8,46,70,6,'l'],[8,58,60,6,'l'],[8,74,22,10,'o']],
     contactForm: [[10,12,80,12,'l'],[10,30,80,12,'l'],[10,48,80,24,'l'],[10,80,20,10,'a']],
-    giving: [[8,10,40,30,'l'],[52,10,40,30,'l'],[8,48,84,24,'p'],[30,78,40,14,'o']]
+    giving: [[8,10,40,30,'l'],[52,10,40,30,'l'],[8,48,84,24,'p'],[30,78,40,14,'o']],
+    quote: [[10,26,76,12,'t'],[10,44,60,12,'t'],[10,68,22,5,'a']],
+    photo: [[6,14,88,58,'p'],[6,80,40,5,'l']],
+    links: [[8,8,20,5,'a'],[8,18,50,10,'t'],[8,38,84,1,'l'],[8,44,50,7,'t'],[86,44,6,7,'a'],[8,58,84,1,'l'],[8,64,46,7,'t'],[86,64,6,7,'a'],[8,78,84,1,'l']],
+    signup: [[8,12,20,5,'a'],[8,24,56,12,'t'],[8,44,70,6,'l'],[8,64,24,12,'a']]
   };
   function sketch(kind) {
     return (SKETCH[kind] || []).map(function (r) {
@@ -1435,7 +1478,6 @@
     /* the page's own lines: what the menu and the browser's tab call it */
     var own = [];
     if (page !== 'home' && rowOfKey('nav.' + page)) own.push(box('nav.' + page, tr('sec.page.menuName')));
-    if (rowOfKey(page + '.title')) own.push(box(page + '.title', tr('sec.page.tabName')));
     if (own.length) html += '<div class="c-rows c-pagerows">' + own.join('') + '</div>';
     html += '<div class="ws-stack' + (state.open ? ' has-open' : '') + '">';
     list.forEach(function (sec, i) {
@@ -1512,7 +1554,11 @@
       items.forEach(function (it, i) {
         html += '<div class="c-item"><div class="c-item-head"><b>' + esc(fill('sec.item.' + sec.kind, { n: i + 1 })) + '</b>' +
           (items.length > 1 ? '<button type="button" class="ws-icon del" data-drop-item="' + id + ':' + i + '" aria-label="' + esc(tr('sec.removeItem')) + '" title="' + esc(tr('sec.removeItem')) + '">✕</button>' : '') +
-          '</div><div class="c-rows">' + k.items.map(function (f) { return box(it[f], tr('sec.part.i' + f)); }).join('') + '</div></div>';
+          '</div><div class="c-rows">' + k.items.map(function (f) { return box(it[f], tr('sec.part.i' + f)); }).join('') + '</div>' +
+          /* a link goes somewhere: one of the site's pages, or an address (2026-10-27) */
+          (k.itemTo ? '<div class="ws-rows">' + lookRow(tr('sec.btn.to'), '<div class="ws-link"><select data-item-to="' + id + ':' + i + '">' + pageOptions(it.to) + '</select>' +
+            (SS.PAGES.indexOf(it.to) === -1 ? '<input type="url" data-item-url="' + id + ':' + i + '" value="' + esc(it.to || '') + '" placeholder="https://" spellcheck="false">' : '') + '</div>') + '</div>' : '') +
+          '</div>';
       });
       if (items.length < (k.itemsMax || 8)) html += '<button type="button" class="link-btn ws-more" data-add-item="' + id + '">+ ' + esc(tr('sec.add.item.' + sec.kind)) + '</button>';
     }
@@ -1687,7 +1733,9 @@
       sec = secOf(d.addItem);
       var n = SS.nextPart(sec, 'item'), it = {};
       SS.KINDS[sec.kind].items.forEach(function (f) { it[f] = SS.blockKey(sec.id, n + '_' + f); });
+      if (SS.KINDS[sec.kind].itemTo) it.to = 'about';
       sec.items.push(it);
+      it = Object.assign({}, it); delete it.to;
       addKeys(sec, Object.keys(it).map(function (f) { return it[f]; }));
       return arranged();
     }
@@ -1751,6 +1799,18 @@
     if (d.btnUrl) {
       at = d.btnUrl.split(':'); sec = secOf(at[0]);
       sec.buttons[Number(at[1])].to = t.value.trim();
+      return arranged();
+    }
+    if (d.itemTo) {
+      at = d.itemTo.split(':'); sec = secOf(at[0]);
+      sec.items[Number(at[1])].to = t.value === '__url' ? 'https://' : t.value;
+      arranged();
+      if (t.value === '__url') { var iu = $('cRows').querySelector('[data-item-url="' + d.itemTo + '"]'); if (iu) iu.focus(); }
+      return;
+    }
+    if (d.itemUrl) {
+      at = d.itemUrl.split(':'); sec = secOf(at[0]);
+      sec.items[Number(at[1])].to = t.value.trim();
       return arranged();
     }
     if (d.secPhoto && t.files && t.files[0]) {
@@ -2046,20 +2106,31 @@
       state.advPage = pages.indexOf(was) !== -1 ? was : pages[0];
     }
     var page = state.advPage;
-    var rows = state.rows.filter(function (r) { return r.section === page && isSeo(r); });
+    var rows = state.rows.filter(function (r) { return r.section === page && isSeo(r); })
+      .sort(function (a, b) { return (isTabName(b) ? 1 : 0) - (isTabName(a) ? 1 : 0); });
     box.innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.adv.title')) + '</h2>' +
       '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('web.pages')) + '</span><select data-adv-page>' +
         pages.map(function (sec) {
           var dirty = state.rows.some(function (r) { return r.section === sec && isSeo(r) && rowDirty(r); });
           return '<option value="' + esc(sec) + '"' + (sec === page ? ' selected' : '') + '>' + esc(sectionLabel(sec)) + (dirty ? ' •' : '') + '</option>';
         }).join('') + '</select></label></div>' +
-      seoCard(page) + '<div class="c-rows">' + rows.map(rowHtml).join('') + '</div>';
+      seoCard(page) + '<div class="c-rows">' + rows.map(function (r) { return rowHtml(r, isTabName(r) ? { label: tr('sec.page.tabName') } : null); }).join('') + '</div>';
     box.querySelectorAll('textarea').forEach(autosize);
   }
 
+  /* THE FILE FOR A TRANSLATOR (Languages tab): the lines still to be
+     translated into the language being written — every line once none is.
+     English, the source, has neither the file nor the upload. */
+  function translatorLines() {
+    var rows = state.rows.filter(needsWork);
+    if (!rows.length) rows = state.rows;
+    var ids = [];
+    rows.forEach(function (r) { r.lines.forEach(function (l) { ids.push(l.id); }); });
+    return ids;
+  }
   function renderMore() {
-    /* The file and the upload are for translating, so English has neither. */
-    var n = visibleLineIds().length;
+    if (!$('cDown')) return;
+    var n = translatorLines().length;
     $('cDown').hidden = isEn();
     $('cUp').hidden = isEn();
     $('cDown').textContent = n === 1 ? tr('con.download1') : fill('con.downloadN', { n: n });
@@ -2277,27 +2348,6 @@
     render();
   });
 
-  /* ---- More ------------------------------------------------------------
-     The file for a translator, bringing one back, and reading the words
-     again. A disclosure: a button showing buttons. */
-  function setMore(open) {
-    $('cMoreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
-    $('cMore').parentNode.classList.toggle('is-open', open);
-  }
-  $('cMoreBtn').addEventListener('click', function (e) {
-    e.stopPropagation();
-    setMore($('cMoreBtn').getAttribute('aria-expanded') !== 'true');
-  });
-  $('cMore').addEventListener('click', function () { setMore(false); });
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest || !e.target.closest('.c-more')) setMore(false);
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && $('cMoreBtn').getAttribute('aria-expanded') === 'true') {
-      setMore(false); $('cMoreBtn').focus();
-    }
-  });
-
   $('cReload').addEventListener('click', async function () {
     if (!state.lang) return;
     var n = dirtyIds().length;
@@ -2438,7 +2488,7 @@
   /* ---- the file for a translator, and what comes back ---------------- */
 
   $('cDown').addEventListener('click', async function () {
-    var ids = visibleLineIds();
+    var ids = translatorLines();
     if (!ids.length) return;
     var data = await send(WORDS, 'POST', { action: 'file', lang: state.lang, ids: ids });
     if (!data) return;
@@ -2663,9 +2713,8 @@
     toast(fill('con.addLangDone', { code: langLabel(body.code), n: body.strings }), 'ok');
     var site = await send(CONTENT + '?file=site');
     if (site && !site.failed) takeSite(site);
-    closeSettings();
     await openLang(body.code);
-    loadSummary();
+    showLangs();
   }
 
   /* Same shape as deleting a partner: something that exists nowhere else
@@ -2741,7 +2790,7 @@
     if (d.from === 'pages' || !state.site) return;
     if (d.sha) state.siteSha = d.sha;
     Object.keys(d.changes || {}).forEach(function (p) { setSiteValue(p, d.changes[p]); });
-    if (!$('cSet').hidden) renderTable();
+    if (onTab() === 'languages') renderTable();
   });
 
   function sw(path, on, label) {
@@ -2867,44 +2916,19 @@
     $('cSetBody').innerHTML = html;
   }
 
-  var lastFocus = null;
-  function openSettings() {
+  /* THE LANGUAGES TAB (2026-10-27): drawn whenever it is shown, with each
+     language's progress read again. */
+  function showLangs() {
+    if (!$('cSetBody') || !state.site) return;
     renderTable();
-    lastFocus = document.activeElement;
-    var back = $('cSet');
-    back.hidden = false;
-    void back.offsetHeight;
-    back.classList.add('in');
-    $('cSetClose').focus();
     loadSummary();
   }
+  document.addEventListener('web:panel', function (e) { if (e.detail === 'languages') showLangs(); });
   function guidesDirty() {
     return [].some.call(document.querySelectorAll('#cSetBody [data-guide]'), function (box) {
       return box.querySelector('textarea').value !== (state.notes.guides[box.getAttribute('data-guide')] || '');
     });
   }
-  async function closeSettings(ask) {
-    var back = $('cSet');
-    if (back.hidden) return;
-    if (ask && guidesDirty()) {
-      var ok = await window.StaffConfirm({
-        title: tr('ln.discardGuide'), confirm: tr('ln.discard'), cancel: tr('common.cancel')
-      });
-      if (!ok) return;
-    }
-    back.classList.remove('in');
-    setTimeout(function () { back.hidden = true; }, 200);
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
-  }
-
-  $('cLangs').addEventListener('click', openSettings);
-  $('cSetClose').addEventListener('click', function () { closeSettings(true); });
-  $('cSet').addEventListener('click', function (e) { if (e.target === $('cSet')) closeSettings(true); });
-  document.addEventListener('keydown', function (e) {
-    // Only when this dialog is on top; a confirmation opened from it closes first.
-    if (e.key === 'Escape' && !$('cSet').hidden && !document.querySelector('.dlg-back:not(#cSet)')) closeSettings(true);
-  });
-
   function takeNotes(data) {
     state.notes = { keep: data.keep || [], glossary: data.glossary || [], guides: data.guides || {} };
     state.notesWrite = !!data.can_write;

@@ -1466,3 +1466,20 @@ body:has(#webArea:is([data-tab="pages"],[data-tab="navigation"],[data-tab="foote
 .c-footnote.is-warn{color:var(--warn)}
 /* "On the Site", as the staff preview's head says it */
 .c-prev-bar .c-prev-on-site{text-transform:uppercase;letter-spacing:.14em;font-size:12px;white-space:nowrap}
+
+/* ---- Site Creator as the staff one (2026-10-27) -------------------------
+   Pages keeps only a small search over its list; the languages, the
+   translator's file and reading again are the Languages tab. Menu pages carry
+   the staff list's switch and grip. */
+.c-find-row{display:flex;justify-content:flex-end;margin:0 0 6px}
+.c-find{position:relative;display:flex;align-items:center;width:min(100%,260px)}
+.c-find svg{position:absolute;left:12px;width:14px;height:14px;fill:none;stroke:var(--dim);stroke-width:1.6;stroke-linecap:round;pointer-events:none}
+.c-find input[type="search"]{width:100%;padding:8px 12px 8px 34px;font-size:13px;border-radius:999px}
+.c-langs{margin-bottom:34px}
+.c-tl-head{margin-top:10px}
+.c-tl-acts{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0 18px}
+.c-tl-acts [hidden]{display:none}
+.c-reload-row{margin:6px 0 0;font-size:13px}
+.c-menu .ws-prow{gap:12px}
+.c-menu .ws-prow .switch{flex:none}
+.c-crumb .switch,.c-crumb .ws-always{margin-left:4px}

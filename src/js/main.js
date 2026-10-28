@@ -833,8 +833,9 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
 // subscribed), and so does this: "check your email".
 (function () {
   var dlg = document.getElementById('stay');
-  var opener = document.querySelector('[data-stay-open]');
-  if (!dlg || !opener || typeof dlg.showModal !== 'function') return;
+  /* every opener: the footer's, and any Stay Connected section's (2026-10-27) */
+  var openers = [].slice.call(document.querySelectorAll('[data-stay-open]'));
+  if (!dlg || !openers.length || typeof dlg.showModal !== 'function') return;
   var API = '/embed/v1/thauma/signup';
   var form = document.getElementById('stayForm');
   var box = document.getElementById('stayLists');
@@ -856,7 +857,8 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (b) {
       lists = (b && b.lists) || [];
-      if (!lists.length) return;
+      /* nothing to join: a section's button goes too, rather than opening nothing */
+      if (!lists.length) { openers.forEach(function (o) { if (!o.closest('footer')) o.hidden = true; }); return; }
       // One list needs no choosing: it is simply what they are joining.
       box.hidden = lists.length < 2;
       box.insertAdjacentHTML('beforeend', lists.map(function (l) {
@@ -867,7 +869,7 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
           '<span><b>' + esc(name) + '</b>' +
           (about ? '<small>' + esc(about) + '</small>' : '') + '</span></label>';
       }).join(''));
-      opener.hidden = false;
+      openers.forEach(function (o) { o.hidden = false; });
     })
     .catch(function () { /* no link rather than a broken one */ });
 
@@ -879,7 +881,7 @@ if (document.body.scrollHeight > window.innerHeight * 1.3) {
     started = Date.now();
     dlg.showModal();
   }
-  opener.addEventListener('click', open);
+  openers.forEach(function (o) { o.addEventListener('click', open); });
   dlg.addEventListener('click', function (e) {
     // The close button, or a click on the backdrop (the dialog element itself).
     if (e.target === dlg || e.target.closest('[data-stay-close]')) dlg.close();

@@ -30,7 +30,7 @@ if (!build) { console.log("  SKIP  no build — run eleventy first."); process.e
 const SITE = {
   languages: ["en", "hr", "sr"], defaultLang: "en",
   donorbox: { en: "", hr: "hr-form", sr: "" },
-  visibility: { languages: { hr: { dev: true, live: true }, sr: { dev: true, live: false } } },
+  visibility: { languages: { hr: { dev: true, live: true }, sr: { dev: true, live: false } }, pages: { about: { dev: true, live: true } } },
 };
 const NOTES = {
   keep: [{ id: "tk_1", term: "Thauma" }],
@@ -170,7 +170,7 @@ await check("each line is named for what it is, its block named by its own headi
   /* a page's own line, then a section's parts, named for their part of it */
   const { d } = await boot();
   view(d, "section:home");
-  assert(names(d)["site:home.title"] === "Name in the Browser Tab", names(d)["site:home.title"]);
+  assert(!names(d)["site:home.title"], "the browser tab's name is on Advanced, as on the staff Site Creator");
   open(d, "home-hero");
   assert(names(d)["site:home.cue"] === "Small Line Above", names(d)["site:home.cue"]);
   assert(names(d)["split:site:home.h1"] === "Heading", names(d)["split:site:home.h1"]);
@@ -263,22 +263,18 @@ await check("English has a Reference too, and nothing to send out", async () => 
 
 /* ------------------------------------------------------------------ file */
 
-await check("the file holds exactly what is on screen, and More says how many", async () => {
+await check("the translator's file, on the Languages tab, holds the lines still to translate", async () => {
   const { w, d, sent } = await boot();
   await pick(w, d, "hr");
-  assert(count(d) === 10, `the list of pages offers ${count(d)}, not every line`);
   view(d, "needs");
-  assert(count(d) === 2, `Needs work offers ${count(d)}`);
-  view(d, "section:home");
-  assert(count(d) === 8, `Home offers ${count(d)} (two-part headings count as two lines)`);
-  view(d, "section:e:confirm");
-  assert(/1 line\b/.test(d.getElementById("cDown").textContent), d.getElementById("cDown").textContent);
-  d.getElementById("cMoreBtn").click();
-  assert(d.querySelector(".c-more").classList.contains("is-open"), "More did not open");
+  const n = count(d);
+  assert(n === 2, `Needs work offers ${n}`);
+  assert(new RegExp("\\b" + n + " lines\\b").test(d.getElementById("cDown").textContent), d.getElementById("cDown").textContent);
+  assert(!d.getElementById("cMoreBtn") && !d.getElementById("cLangs"), "Pages keeps none of the extra tools");
   d.getElementById("cDown").click();
   await tick();
   const file = sent.find((s) => s.body && s.body.action === "file");
-  assert(file && file.body.ids.join() === "emails:confirm.helloAnon", `downloaded ${JSON.stringify(file && file.body.ids)}`);
+  assert(file && file.body.ids.length === n, `downloaded ${JSON.stringify(file && file.body.ids)}`);
 });
 
 /* ---------------------------------------------------------------- saving */
@@ -345,12 +341,17 @@ await check("a returned file replaces the editor for approval, flagged lines unt
 
 /* ------------------------------------------------------------- languages */
 
-async function table(d) { d.getElementById("cLangs").click(); await tick(100); return d.getElementById("cSetBody"); }
+async function table(d) {
+  const w = d.defaultView;
+  d.getElementById("webArea").setAttribute("data-tab", "languages");
+  d.dispatchEvent(new w.CustomEvent("web:panel", { detail: "languages" }));
+  await tick(100);
+  return d.getElementById("cSetBody");
+}
 
 await check("the languages table: progress, both switches, remove — no donation form", async () => {
   const { d } = await boot();
   const body = await table(d);
-  assert(!d.getElementById("cSet").hidden, "did not open");
   const hr = body.querySelector('[data-lang="hr"]');
   assert(/9 of 10/.test(hr.textContent), `progress: ${hr.textContent}`);
   assert(hr.querySelector('[data-set="visibility.languages.hr.dev"]') && hr.querySelector('[data-set="visibility.languages.hr.live"]'), "switches");
@@ -464,6 +465,18 @@ await check("a page's search title is on Advanced, not among its words; the emai
 
 /* --------------------------------------------------------- the sections */
 
+await check("as the staff Site Creator: each menu page has its switch and grip, and the switch saves at once", async () => {
+  const { d, sent } = await boot();
+  const rows = [...d.querySelectorAll("#cRows .c-menu > .ws-prow")];
+  const about = rows.find((r) => r.getAttribute("data-slug") === "about");
+  assert(about && about.querySelector('[data-page-live="about"][role="switch"]') && about.querySelector(".sort-grip"), "About: no switch or grip");
+  assert(!rows[0].querySelector("[data-page-live]") && /Always/.test(rows[0].textContent), "Home is always shown");
+  about.querySelector("[data-page-live]").click();
+  await tick(150);
+  const put = sent.find((s) => s.method === "PUT" && s.body && s.body.changes);
+  assert(put && Object.keys(put.body.changes)[0].startsWith("visibility.pages.about"), JSON.stringify(put && put.body));
+});
+
 await check("a section added is drawn open with stand-in words, and Save sends the page before the words", async () => {
   const { w, d, sent } = await boot();
   view(d, "section:home");
@@ -478,7 +491,8 @@ await check("a section added is drawn open with stand-in words, and Save sends t
   const id = added.getAttribute("data-sid"), box = added.querySelector(`[data-id="site:blocks.${id}.cue"]`);
   box.textContent = "Our Story";
   box.dispatchEvent(new w.Event("input", { bubbles: true }));
-  await type(w, d, "site:home.title", "Welcome");
+  open(d, "home-hero");
+  await type(w, d, "site:home.cue", "Welcome");
   d.getElementById("cSave").click();
   await tick(200);
   const posts = sent.filter((s) => s.method === "POST");
@@ -487,7 +501,7 @@ await check("a section added is drawn open with stand-in words, and Save sends t
   assert(page.doc.pages.home[2].id === id && page.sha === "d1", "the arrangement sent is not what is on screen");
   assert(page.words.en[`blocks.${id}.cue`] === "Our Story", "what was typed is not sent with it");
   assert(SECTIONS_JS.isLorem(page.words.hr[`blocks.${id}.cue`]), "the other languages are not given stand-in words");
-  assert(posts[1].body.items.map((i) => i.id).join() === "site:home.title", "the new words were saved twice");
+  assert(posts[1].body.items.map((i) => i.id).join() === "site:home.cue", "the new words were saved twice");
 });
 
 await check("a section is taken away, and moved, before anything is saved", async () => {

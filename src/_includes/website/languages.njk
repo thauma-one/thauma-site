@@ -1,0 +1,23 @@
+{#- WEBSITE › SITE CREATOR › LANGUAGES (Chase, 2026-10-27: "For all of the
+   extra things that we have, so as adding languages, why don't we just
+   reorganize where those functions live? Such as repopulating some things in
+   a new side tab"). What sat above Pages and made it unlike the staff Site
+   Creator — the Languages window, the translator's file, reading the words
+   again — is a tab of its own, as the staff one keeps its languages on a
+   tab of their own. Every language in one table (each control saves as it
+   changes), then the file for a translator and what comes back. Drawn by
+   admin-content.js (renderTable, renderMore). -#}
+<div class="ws-head"><h2 data-i18n="con.languages">Languages</h2></div>
+<div class="c-set-body c-langs" id="cSetBody"></div>
+
+<div class="ws-head c-tl-head"><h2 data-i18n="con.tlFile">For a Translator</h2></div>
+<p class="ws-small" data-i18n="con.tlFileNote">A file of the words still to translate into the language being written, for someone working outside the console, and the same file brought back.</p>
+<div class="c-tl-acts">
+  <button type="button" class="ghost-btn" id="cDown"></button>
+  <button type="button" class="ghost-btn" id="cUp" data-i18n="tl.upload">Upload Translation</button>
+  <input type="file" id="cFile" accept=".csv,text/csv" hidden
+         aria-label="Upload translation" data-i18n-attr="aria-label:tl.upload">
+</div>
+{#- "Nothing has changed" is a claim about the copy this page loaded; the
+   remedy for doubting it is to read again. -#}
+<p class="c-reload-row"><button type="button" class="link-btn" id="cReload" data-i18n="con.reload">Reload from GitHub</button></p>

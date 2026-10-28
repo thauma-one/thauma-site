@@ -1,0 +1,12 @@
+{#- A QUOTE (from the staff Site Creator, 2026-10-27: "I actually wanted all
+    Staff site creator sections to be available for Thauma as well"): one
+    line, large and thin, and who said it in the small line's voice. -#}
+{%- set wd = sec.words %}{% set look = sec.look or {} %}
+<section class="tquote{% if look.ground == "raised" %} alt{% endif %}"><div class="wrap">
+  <figure class="tq">
+    <blockquote>{{ t | w(wd.quote) | rich(wd.quote) }}</blockquote>
+    {%- if wd.who %}
+    <figcaption class="cue{% if look.voice == "ministry" %} foam{% endif %}">{{ t | w(wd.who) | rich(wd.who) }}</figcaption>
+    {%- endif %}
+  </figure>
+</div></section>
