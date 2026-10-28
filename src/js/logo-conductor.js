@@ -25,6 +25,11 @@
    the page is visible — coming back starts a fresh cycle a moment later,
    never two at once.
 
+   2026-10-28 (Chase): "the shimmer can slow down as well as the cascade
+   effect" — the sweep takes 3.8s (was 2.6s) and each character 1.6s (was
+   1.1s, .cs-ch in both pages); the cycle stays 8s. The first sweep comes
+   at 1.3s, with the logo.
+
    Reduced motion: the line in the page's language, still; no sweep.
 
    Reads: window.THAUMA_LINES = { lines: [...], start: ms }
@@ -42,7 +47,7 @@
 
   /* the band, in the logo's own units: 2600 wide, parked well clear */
   var BAND = 2600, PARK = -9000, FROM = -1450 - BAND, TO = 7712;
-  var CYCLE = 8000, SWEEP = 2600, START = C.start || 2500;
+  var CYCLE = 8000, SWEEP = 3800, START = C.start || 1300;
   if (grad) {
     Array.prototype.forEach.call(grad.querySelectorAll('animateTransform'), function (a) { a.parentNode.removeChild(a); });
   }

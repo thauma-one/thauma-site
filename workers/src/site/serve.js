@@ -127,7 +127,7 @@ main{position:relative;display:flex;flex-direction:column;align-items:center}
    cascading DOWN a character at a time, slowly (Chase, 2026-10-15) */
 .cs-line{display:grid;margin-top:40px;height:34px;overflow:hidden;font:100 22px/34px 'Sora',sans-serif;letter-spacing:.06em;color:var(--text)}
 .cs-line>span{grid-area:1/1;display:flex;justify-content:center}
-.cs-ch{display:inline-block;white-space:pre;font-kerning:none;animation-duration:1.1s;animation-timing-function:cubic-bezier(.55,.05,.45,.95);animation-fill-mode:both}
+.cs-ch{display:inline-block;white-space:pre;font-kerning:none;animation-duration:1.6s;animation-timing-function:cubic-bezier(.55,.05,.45,.95);animation-fill-mode:both}
 .cs-in .cs-ch{animation-name:c-in}.cs-out .cs-ch{animation-name:c-out}
 @keyframes c-in{from{transform:translateY(-105%);opacity:0}to{transform:none;opacity:1}}
 @keyframes c-out{from{transform:none;opacity:1}to{transform:translateY(105%);opacity:0}}
@@ -138,16 +138,16 @@ p{margin:48px 0 0}
 .btn:hover{color:var(--blue-hi);background:var(--blue-dim)}
 .btn:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 @media (prefers-reduced-motion:no-preference){
-  .lg-ch{animation:ch-in .75s cubic-bezier(.55,.05,.45,.95) both;animation-delay:calc(var(--i) * 90ms + 250ms)}
+  .lg-ch{animation:ch-in .65s cubic-bezier(.55,.05,.45,.95) both;animation-delay:calc(var(--i) * 70ms + 120ms)}
   /* the arriving line and the H's bar: ONE stroke, with the letters (2026-10-19) */
-  .lg-lead{animation:lg-lead .95s cubic-bezier(.25,.7,.35,1) .1s both}
-  .lg-close1{animation:line-in .7s cubic-bezier(.16,1,.3,1) 1.35s both}.lg-close2{animation:line-in .7s cubic-bezier(.16,1,.3,1) 1.5s both}
+  .lg-lead{animation:lg-lead .8s cubic-bezier(.25,.7,.35,1) .05s both}
+  .lg-close1{animation:line-in .6s cubic-bezier(.16,1,.3,1) .85s both}.lg-close2{animation:line-in .6s cubic-bezier(.16,1,.3,1) .95s both}
 }
 @media (prefers-reduced-motion:reduce){.glow::before,.glow::after{animation:none}.btn{transition:none}.brand-logo-sheen{display:none}.cs-ch{animation:none!important}}
 </style></head>
 <body><div class="glow"></div><main><div class="wordmark">${splitLogo("cl")}${sheenLogo("cl")}</div>
 ${order.length ? `<div class="cs-line" data-cascade aria-label="${escHtml(order[0].line)}"><span class="cs-out" aria-hidden="true"></span><span class="cs-in" aria-hidden="true"></span></div>
-<script>window.THAUMA_LINES = { start: 2300, lines: ${JSON.stringify(order.map((x) => x.line)).replace(/</g, "\\u003c")} };</script>` : ""}
+<script>window.THAUMA_LINES = { start: 1300, lines: ${JSON.stringify(order.map((x) => x.line)).replace(/</g, "\\u003c")} };</script>` : ""}
 ${conductor ? `<script>${conductor.replace(/<\/script/gi, "<\\/script")}</script>` : ""}
 <p><a class="btn" href="${home}/">${escHtml(word(lang, "closedLink"))}</a></p></main>${door ? `
 <script>
