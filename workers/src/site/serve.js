@@ -84,8 +84,21 @@ async function closedConductor(env) {
 }
 export async function closedSite(request, env) {
   const lang = pickLang(request.headers.get("Accept-Language"), builtInLangs(), "en");
-  const home = `https://${(env && env.SITE_DOMAIN) || "thauma.one"}`;
+  const html = closedHtml(lang, env, await closedParts(env));
+  return new Response(html, { status: 404, headers: {
+    "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+    "X-Robots-Tag": "noindex", "Vary": "Accept-Language",
+  } });
+}
+/* What the closed page is drawn from, fetched; closedHtml draws it without
+   waiting on anything, so the console's preview can draw it with the words
+   being written (lib/word-previews.js). */
+export async function closedParts(env) {
   const [door, lines, conductor] = await Promise.all([arcadeIsOut(env), closedLines(env), closedConductor(env)]);
+  return { door, lines, conductor };
+}
+export function closedHtml(lang, env, { door, lines, conductor }) {
+  const home = `https://${(env && env.SITE_DOMAIN) || "thauma.one"}`;
   /* the visitor's own language first, then the rest in the site's order */
   const first = Math.max(0, lines.findIndex((x) => x.lang === lang));
   const order = lines.slice(first).concat(lines.slice(0, first));
@@ -182,10 +195,7 @@ ${conductor ? `<script>${conductor.replace(/<\/script/gi, "<\\/script")}</script
   });
 })();
 </script>` : ""}</body></html>`;
-  return new Response(html, { status: 404, headers: {
-    "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
-    "X-Robots-Tag": "noindex", "Vary": "Accept-Language",
-  } });
+  return html;
 }
 
 /** The visitor's best language among the site's, else the site's fallback. */

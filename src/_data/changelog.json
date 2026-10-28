@@ -2,6 +2,16 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-28-admin-pages-every-preview",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Site Creator › Pages: every page now has its preview — the Stay Connected window, Page Not Found, the arcade, the notices, the forms and widgets on other websites, a ministry's site, its closed page and its app — each showing your words as you type them. The menu of pages is at the top of the list of pages too.",
+        "hr": "Kreator stranice › Stranice: svaka stranica sada ima svoj pregled — prozor za prijavu, Stranica nije pronađena, arkada, obavijesti, obrasci i widgeti na drugim web-stranicama, stranica službe, njezina zatvorena stranica i aplikacija — i svaki prikazuje vaše riječi dok ih pišete. Izbornik stranica sada je i na vrhu popisa stranica.",
+        "sr": "Креатор странице › Странице: свака страница сада има свој преглед — прозор за пријаву, Страница није пронађена, аркада, обавјештења, обрасци и виџети на другим веб-страницама, страница службе, њена затворена страница и апликација — и сваки приказује ваше ријечи док их пишете. Мени страница сада је и на врху списка страница."
+      }
+    },
+    {
       "id": "2026-10-28-landing-calmer",
       "date": "2026-10-28",
       "page": "site",

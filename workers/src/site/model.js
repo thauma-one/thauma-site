@@ -26,7 +26,7 @@
    Thauma writes for a visitor, so a language Thauma adds is a language a
    partner site speaks without anybody changing this code. A word a
    language has not been given yet is its English one. */
-import { wordsFor as sharedWords } from "../lib/mail-i18n.js";
+import { savedWordsFor as sharedWords, overWord } from "../lib/mail-i18n.js";
 import { cleanColor, SIZE_NAMES } from "../lib/tones.js";
 
 let WORDS = null;
@@ -43,6 +43,9 @@ function words() {
 
 /** A built-in word in a language, English where that language has none. */
 export function word(lang, key) {
+  /* the console's preview of these words, as they are being written */
+  const typed = overWord(lang, "site." + key);
+  if (typed) return typed;
   const W = words();
   return (W[lang] && W[lang][key]) || (W.en && W.en[key]) || "";
 }

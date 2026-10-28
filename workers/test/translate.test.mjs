@@ -453,5 +453,26 @@ await check("the pages after an email link, and the emails, draw with the words 
   eq(previewOf("e:app", "en", {}, "https://x"), null, "no preview where there is none");
 });
 
+await check("every other page a visitor meets elsewhere has its preview, with the words as typed", async () => {
+  /* Chase, 2026-10-28: "not every page has a preview" */
+  const { previewMore, MORE_PREVIEWS } = await import("../src/lib/word-previews.js");
+  const env = { ASSETS: { fetch: async () => new Response("[]", { headers: { "Content-Type": "application/json" } }) } };
+  const db = { query: async () => [], queryOne: async () => null };
+  const typed = { "notify.cue": "TYPED-CUE", "form.heading": "TYPED-FORM", "contact.heading": "TYPED-CONTACT",
+    "widget.funded": "TYPED-FUNDED", "dates.spring": "TYPED-SPRING {year}", "site.heroThin": "TYPED-HERO",
+    "site.closedLink": "TYPED-CLOSED", "app.tabHome": "TYPED-HOME" };
+  const want = { "e:notify": "TYPED-CUE", "e:form": "TYPED-FORM", "e:contact": "TYPED-CONTACT", "e:widget": "TYPED-FUNDED",
+    "e:dates": "TYPED-SPRING", "e:site": "TYPED-HERO", closed: "TYPED-CLOSED", "e:app": "TYPED-HOME" };
+  for (const p of MORE_PREVIEWS) {
+    const out = await previewMore(p, "hr", typed, { db, env, origin: "https://dev.thauma.one" });
+    assert(out && out.html.includes(want[p]), `${p} draws the typed word`);
+    assert(/lang="hr"/.test(out.html), `${p} in the language being written`);
+  }
+  const plain = await previewMore("e:site", "hr", {}, { db, env, origin: "https://x" });
+  assert(!plain.html.includes("TYPED-HERO"), "the typed words do not outlive the preview");
+  assert((await previewMore("e:form", "en", {}, { db, env, origin: "https://x" })).sandbox, "a form runs in a frame of its own");
+  eq(await previewMore("e:nothing", "en", {}, { db, env, origin: "https://x" }), null, "no preview where there is none");
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -363,6 +363,10 @@
       rows.push({ id: l.id, source: l.source, key: l.key, line: l, lines: [l] });
     });
     rows.forEach(function (r) { r.section = sectionOf(r.lines[0]); r.place = placeOf(r); r.label = labelFor(r); });
+    /* THE OLD SIGN-IN PAGE'S WORDS (staff.*): the page went with Netlify
+       (1ae26b2) and nothing shows them, so they are not a page to write —
+       unless a section has taken one up. */
+    rows.forEach(function (r) { if (r.section === 'staff' && !r.place.sec) r.section = '_unused'; });
     state.rows = rows.filter(function (r) { return !r.place.gone && r.section !== '_unused'; });
     state.shown = {};
     state.rows.forEach(function (r) { r.lines.forEach(function (l) { state.shown[l.id] = true; }); });
@@ -796,13 +800,27 @@
      where you go — a page opened in the list shows in it, and a link
      pressed in it opens that page's words. */
   var PAGE_OF = { home: '', about: 'about/', mission: 'mission/', values: 'values/', resources: 'resources/',
-    give: 'give/', contact: 'contact/', events: 'events/', team: 'team/', coming: 'coming-soon/' };
+    give: 'give/', contact: 'contact/', events: 'events/', team: 'team/', coming: 'coming-soon/',
+    /* EVERY PAGE HAS ITS PREVIEW (Chase, 2026-10-28: "not every page has a
+       preview"): Stay Connected is the window Home opens (?stay opens it
+       here); the words that are no one page's — a language's own name — are
+       Home's menu. After home, so an address still reads as Home. */
+    stay: '?stay', _general: '' };
+  /* thauma.one's pages that are not under a language: the one "not found"
+     page for every address, shown in the language being written, and the
+     arcade, told which language to speak */
+  var PATH_OF = { notFound: function () { return '/404.html'; },
+    arcade: function () { return '/arcade/?lang=' + encodeURIComponent(state.lang || 'en'); } };
   var prev = { url: null, device: 'wide', section: null, timer: null };
   /* THE PAGES AND EMAILS THE SERVER DRAWS (admin-translate.js previewOf):
      after a link in an email, and the emails themselves — asked for with
      the words as they are on screen, and asked again as they are typed. */
-  var SERVED = ['e:confirmed', 'e:unsub', 'e:back', 'e:confirm', 'e:brand', 'e:receipt'];
-  function prevKind(sec) { return PAGE_OF[sec] != null ? 'site' : SERVED.indexOf(sec) !== -1 ? 'served' : 'none'; }
+  var SERVED = ['e:confirmed', 'e:unsub', 'e:back', 'e:confirm', 'e:brand', 'e:receipt',
+    /* and the rest a visitor meets elsewhere (lib/word-previews.js): the
+       notices, the forms and widgets on other websites, a ministry's site,
+       its closed page and its app, drawn for a sample ministry */
+    'e:notify', 'e:form', 'e:contact', 'e:widget', 'e:dates', 'e:site', 'closed', 'e:app'];
+  function prevKind(sec) { return PAGE_OF[sec] != null || PATH_OF[sec] ? 'site' : SERVED.indexOf(sec) !== -1 ? 'served' : 'none'; }
   function prevSection() {
     if (prev.section) return prev.section;
     var v = state.view || '';
@@ -810,6 +828,7 @@
   }
   function prevUrl() {
     var sec = prevSection();
+    if (PATH_OF[sec]) return PATH_OF[sec]();
     return '/' + (state.lang || 'en') + '/' + (PAGE_OF[sec] != null ? PAGE_OF[sec] : '');
   }
   function prevDoc() {
@@ -848,7 +867,8 @@
     if (!box || !f) return;
     if (prev.device === 'phone') { f.style.width = ''; f.style.height = ''; f.style.transform = ''; return; }
     /* an email is read at an email's width, not a desktop's */
-    var w = prevKind(prevSection()) === 'served' && /^e:(confirm|brand|receipt)$/.test(prevSection()) ? 720 : 1280;
+    var w = prevKind(prevSection()) === 'served' && /^e:(confirm|brand|receipt|notify)$/.test(prevSection()) ? 720 :
+      prevSection() === 'e:app' ? 430 : 1280;
     var k = Math.min(1, box.clientWidth / w);
     f.style.width = w + 'px';
     f.style.height = Math.round(box.clientHeight / k) + 'px';
@@ -884,6 +904,7 @@
       $('cPrevOpen').href = url;
       $('cPrevGone').hidden = true;
       $('cPrevFrame').removeAttribute('srcdoc');
+      $('cPrevFrame').removeAttribute('sandbox');
       $('cPrevFrame').src = url;
     } else prevDrawAll();
   }
@@ -912,6 +933,9 @@
     var f = $('cPrevFrame'), y = 0;
     try { y = f.contentWindow.scrollY || 0; } catch (e) { /* not drawn yet */ }
     f.removeAttribute('src');
+    /* one with scripts of its own (a form, a widget, a site, the app) runs
+       them in a frame of its own, apart from the console */
+    if (data.sandbox) f.setAttribute('sandbox', 'allow-scripts'); else f.removeAttribute('sandbox');
     f.dataset.keep = String(y);
     f.srcdoc = html;
   }
@@ -927,19 +951,30 @@
       var doc = prevDoc();
       /* A page this build does not have (a coming-soon site builds only its
          landing page): said, not shown as a blank. */
-      if (doc && $('cPrevFrame').hasAttribute('srcdoc')) {
+      /* (one drawn in a frame of its own cannot be reached: nothing to do) */
+      if ($('cPrevFrame').hasAttribute('srcdoc')) {
         var keep = Number($('cPrevFrame').dataset.keep || 0);
         if (keep) try { $('cPrevFrame').contentWindow.scrollTo(0, keep); } catch (e) { /* gone */ }
         return;
       }
-      var missing = !doc || !doc.querySelector('[data-k]') || /404/.test(doc.title || '');
+      var sec = prevSection();
+      if (doc && sec === 'notFound') {
+        /* the one "not found" page holds every language; show this one */
+        [].forEach.call(doc.querySelectorAll('[data-lang-block]'), function (el) { el.hidden = el.getAttribute('data-lang-block') !== state.lang; });
+        doc.documentElement.setAttribute('lang', state.lang);
+      }
+      if (doc && sec === 'stay') {
+        var stay = doc.getElementById('stay');
+        if (stay && !stay.open) try { stay.showModal(); } catch (e) { stay.setAttribute('open', ''); }
+      }
+      var missing = !doc || (sec !== 'arcade' && !doc.querySelector('[data-k]')) || (sec !== 'notFound' && /404/.test(doc.title || ''));
       $('cPrevGone').hidden = !missing;
       if (!doc) return;
       /* THE WORDS FOLLOW THE PREVIEW (as the staff Site Creator's do,
          2026-10-04): a page opened by pressing a link in it becomes the
          page being written, so the two never show different pages. */
       var path = doc.location.pathname, seen = pageAt(path);
-      if (path !== prev.url && seen) {
+      if (path !== String(prev.url).split('?')[0] && seen) {
         prev.url = path;
         $('cPrevUrl').textContent = path;
         $('cPrevOpen').href = path;
@@ -1110,9 +1145,17 @@
   }
   function renderCrumb() {
     var box = $('cCrumb');
-    var open = !!state.view && !state.find;
-    box.hidden = !open;
-    if (!open) { box.innerHTML = ''; return; }
+    box.hidden = !!state.find;
+    if (state.find) { box.innerHTML = ''; return; }
+    /* THE MENU OF PAGES ON THE LIST TOO (Chase, 2026-10-28: "the page
+       selection dropdown doesn't appear on the main page selection menu even
+       though it should still show up"): All Pages chosen, every page a
+       choice away. */
+    if (!state.view) {
+      box.innerHTML = '<label class="ws-pagepick"><span class="sr-only">' + esc(tr('web.pages')) + '</span>' +
+        '<select data-page-pick><option value="" selected>' + esc(tr('ws.allPages')) + '</option>' + pageMenu(null) + '</select></label>';
+      return;
+    }
     var needs = state.rows.filter(needsWork).length;
     var sel = (state.view === 'needs' || needs ? '<option value="needs"' + (state.view === 'needs' ? ' selected' : '') + '>' + esc(tr('con.needsWork')) + ' (' + needs + ')</option>' : '') +
       '<option value="all"' + (state.view === 'all' ? ' selected' : '') + '>' + esc(fill('con.everyLine', { n: state.rows.length })) + '</option>';

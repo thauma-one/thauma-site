@@ -19,7 +19,9 @@ eleventyExcludeFromCollections: true
 <style>html,body{height:100%;background:#07090E;overflow:hidden}</style>
 <script>
   (function () {
-    var m = document.cookie.match(/thauma_lang=([a-z]{2})/);
+    /* ?lang= first: the console's preview of the arcade's words, in the
+       language being written (admin-content.js) */
+    var m = location.search.match(/[?&]lang=([a-z]{2})/) || document.cookie.match(/thauma_lang=([a-z]{2})/);
     var langs = {{ activeLangs | dump | safe }};
     if (m && langs.indexOf(m[1]) !== -1) document.documentElement.lang = m[1];
   })();

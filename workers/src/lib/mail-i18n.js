@@ -94,6 +94,13 @@ export function withWords(lang, words, fn) {
   OVER = { lang: String(lang || "en").toLowerCase(), words: words || {} };
   try { return fn(); } finally { OVER = null; }
 }
+/** A word being written in the console (withWords), or undefined. For words
+    read from a table of their own (site/model.js word). */
+export function overWord(lang, key) {
+  if (!OVER || OVER.lang !== String(lang || "en").toLowerCase()) return undefined;
+  const v = OVER.words[key];
+  return typeof v === "string" && v !== "" ? v : undefined;
+}
 
 /** The languages this file actually carries. */
 export const LANGS = Object.keys(STRINGS);
@@ -104,13 +111,17 @@ export const LANGS = Object.keys(STRINGS);
  * language without a round trip and without a missing key ever reading as
  * blank. Small: only what that widget shows.
  */
-export function wordsFor(...prefixes) {
+export function wordsFor(...prefixes) { return wordTables(prefixes, true); }
+/** The same, as saved, never as being written: for a table kept between
+    requests (site/model.js), which a preview must not leave its words in. */
+export function savedWordsFor(...prefixes) { return wordTables(prefixes, false); }
+function wordTables(prefixes, typed) {
   const keep = (k) => prefixes.some((p) => k.startsWith(p));
   const out = {};
   for (const lang of LANGS) {
     out[lang] = {};
     for (const k of Object.keys(STRINGS.en).filter(keep)) {
-      out[lang][k] = has(STRINGS[lang], k) ? STRINGS[lang][k] : STRINGS.en[k];
+      out[lang][k] = (typed && overWord(lang, k)) || (has(STRINGS[lang], k) ? STRINGS[lang][k] : STRINGS.en[k]);
     }
   }
   return out;

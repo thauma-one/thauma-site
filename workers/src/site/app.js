@@ -227,6 +227,16 @@ export async function serveApp(request, env, { db, row, doc, base, rest }) {
   } });
 }
 
+/* THE CONSOLE'S PREVIEW OF THE APP'S WORDS (lib/word-previews.js): the app
+   as a phone gets it, for a sample ministry, asking nothing of the server. */
+export function appPreview({ payload, doc, name, lang }) {
+  const design = doc.design || {};
+  const L = siteLook(design.look, payload.theme, design.colors || {}, design.mode);
+  const data = appData(payload, doc, { display_name: name });
+  const boot = { base: "", lang, data, words: appWords(data.langs), key: null, slug: payload.partner.slug, site: "#", logo: null };
+  return renderApp({ L, design, boot, title: data.name, apple: "" });
+}
+
 /* --------------------------------------------------------------- the page -- */
 
 function vars(P) {
@@ -630,7 +640,7 @@ $('invite').addEventListener('click',function(e){var v=$('invite');
   if(e.target.closest('[data-install]')){if(deferred){deferred.prompt();deferred.userChoice.then(function(){v.hidden=true;deferred=null})}
     else{var s=$('sheet');s.innerHTML='<div class="top"><span class="k">'+esc(w('addHome',{name:D.name}))+'</span><button type="button" class="close" data-close aria-label="'+esc(w('close'))+'">×</button></div><h1 style="font:var(--thin) 30px/1.15 var(--display);color:var(--fg)">'+esc(w('iosTitle',{name:D.name}))+'</h1><div class="ssec" style="border:0"><div class="row"><span>1 · '+esc(w('ios1'))+'</span></div><div class="row"><span>2 · '+esc(w('ios2'))+'</span></div><p class="note">'+esc(w('iosPush'))+'</p></div>';s.hidden=false;lock(true)}}});
 
-if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});
+try{if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){})}catch(e){}
 draw();tour();if(ios)invite();
 if(pushOn())save();
 })();`;

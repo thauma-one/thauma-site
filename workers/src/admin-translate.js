@@ -52,6 +52,7 @@ import { PROD_WORKFLOW } from "./admin-publish.js";
 import { EDITORS } from "./admin-content.js";
 import { loadNotes, briefFor } from "./lib/translation-notes.js";
 import { withWords } from "./lib/mail-i18n.js";
+import { previewMore } from "./lib/word-previews.js";
 import { siteOrigin } from "./lib/origin.js";
 import { listConfirmEmail, contactReceiptEmail } from "./lib/mail.js";
 import { confirmedHtml } from "./confirm.js";
@@ -365,8 +366,10 @@ export default {
 
     /* ---- a page or an email, as the words being written draw it ---- */
     if (body.action === "preview") {
-      const out = previewOf(String(body.page || ""), String(body.lang || "en").toLowerCase(),
-        body.words && typeof body.words === "object" ? body.words : {}, siteOrigin(env, request));
+      const pg = String(body.page || ""), lang = String(body.lang || "en").toLowerCase();
+      const words = body.words && typeof body.words === "object" ? body.words : {};
+      const origin = siteOrigin(env, request);
+      const out = previewOf(pg, lang, words, origin) || await previewMore(pg, lang, words, { db, env, origin });
       return out ? json(out) : json({ error: "There is no preview of that page.", code: "no-preview" }, 404);
     }
 
