@@ -35,6 +35,13 @@
      palette of their own to read them from. */
   var ACCENT = '#2FD8FF', ACCENT2 = '#5CF2C4';
   var PREVIEW_MAX_H = 480, DESKTOP_W = 1000;
+  /* SHOWN ON (2026-10-28, as on staff Sharing): each one on thauma.one —
+     its page, or for the sign-up form the window every page's footer opens
+     — or as pasted on other websites. thauma.one is drawn at a computer's
+     width, as the Site Creator draws it. */
+  var SITE_W = 1280;
+  var ON_SITE = { events: { page: 'events/', part: 'main' }, resources: { page: 'resources/', part: 'main' },
+                  contact: { page: 'contact/', part: 'main' }, signup: { page: '', part: 'dialog#stay' } };
 
   var $ = function (id) { return document.getElementById(id); };
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
@@ -58,7 +65,8 @@
   /* Updates' "Share settings and code → Sharing" opens its own (?item=). */
   var asked = new URLSearchParams(location.search).get('item');
   var state = { mail: null, data: null, saved: null, draft: null, item: ITEMS.indexOf(asked) !== -1 ? asked : 'events', busy: false,
-                device: 'wide', lang: 'en', theme: 'dark', writing: 'en', beside: null };
+                device: 'wide', lang: 'en', theme: 'dark', writing: 'en', beside: null, where: {} };
+  function onSite(item) { return state.where[item] !== 'other'; }
 
   /* The site's languages: the ones this build publishes (#libLangs, areas.njk). */
   var HOME = 'en';
@@ -279,16 +287,114 @@
       '<script src="' + origin + '/embed/v1/widget.js" async></' + 'script>';
   }
 
-  var timer = null;
+  var timer = null, seq = 0;
   function drawPreviewSoon() { clearTimeout(timer); timer = setTimeout(drawPreview, 180); }
+
+  function drawWhere() {
+    $('wfWhere').innerHTML = '<optgroup label="thauma.one"><option value="site">' + esc(tr('sh.item.' + state.item)) +
+      '</option></optgroup><option value="other">' + esc(tr('sh.otherSites')) + '</option>';
+    $('wfWhere').value = onSite(state.item) ? 'site' : 'other';
+    /* A background is the other website's: thauma.one has its own. */
+    $('wfTheme').closest('.sh-card').hidden = onSite(state.item);
+  }
+
+  /* A NEW DRAWING FADES IN OVER THE OLD (staff-sharing.js show): loaded in a
+     second, hidden frame and swapped in once it has. thauma.one's own page
+     is same-origin, so its fonts load; anything else stays sandboxed. */
+  var nextFrame = null, nextH = 0;
+  function show(html, site) {
+    var old = $('wfFrame');
+    if (nextFrame && nextFrame.parentNode) nextFrame.parentNode.removeChild(nextFrame);
+    if (html == null) { nextFrame = null; old.removeAttribute('srcdoc'); return; }
+    var next = document.createElement('iframe');
+    next.title = old.title;
+    if (!site) next.setAttribute('sandbox', 'allow-scripts');
+    next.className = 'is-next';
+    nextFrame = next; nextH = 0;
+    next.addEventListener('load', function () {
+      setTimeout(function () {
+        if (nextFrame !== next) return;
+        nextFrame = null;
+        if (old.parentNode) old.parentNode.removeChild(old);
+        next.id = 'wfFrame'; next.className = '';
+        if (nextH) fit(nextH);
+      }, 80);
+    }, { once: true });
+    old.parentNode.appendChild(next);
+    next.srcdoc = html;
+  }
+  function inline(js) {
+    return '<script>' + String(js).replace(/<\/(script)/gi, '<\\/$1') + '</' + 'script>';
+  }
+
+  /* ITS PAGE ON THAUMA.ONE, as built, with this page's working copy: the
+     reasons and lists the page asks the server for are answered from the
+     screen instead, so a change shows before Save. Everything but the part
+     is hidden and links stay put. */
+  async function drawSite() {
+    var item = state.item, at = ON_SITE[item], my = ++seq;
+    var path = '/' + state.lang + '/' + at.page;
+    var html = await fetch(path, { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; })
+      .catch(function () { return ''; });
+    if (my !== seq) return;
+    if (!html) { show(null); return; }
+    var d = state.draft;
+    var lists = ((state.mail && state.mail.lists) || []).filter(function (l) { return d.lists[l.id]; })
+      .map(function (l) { return { slug: l.slug, name: l.name, description: l.description || null, texts: l.texts || {} }; });
+    var topics = d.contact.topics.filter(function (t) { return t.label.trim(); })
+      .map(function (t, i) { return { id: 'p' + i, label: t.label, labels: t.labels || {} }; });
+    var only = '<base href="' + esc(location.origin + path) + '">' +
+      '<style>html.wf-only body{margin:0;padding:0}html.wf-only main{padding-top:0!important;margin-top:0!important}' +
+      'html.wf-only dialog#stay{position:static;display:block;margin:24px auto}html.wf-only [data-stay-close]{display:none}</style>' +
+      inline('(' + onlyPart.toString() + ')(' + JSON.stringify(at.part) + ',' +
+        JSON.stringify({ lists: lists, topics: topics }).replace(/</g, '\\u003c') + ')');
+    show(html.replace(/<head>/i, function (h) { return h + only; }), true);
+  }
+  /* Runs inside the frame. */
+  function onlyPart(sel, R) {
+    var d = document.documentElement, real = window.fetch;
+    d.classList.add('wf-only');
+    window.fetch = function (u, o) {
+      var s = String(u && u.url ? u.url : u), m = /[?&]lang=([^&]*)/.exec(s);
+      var get = !o || !o.method || String(o.method).toUpperCase() === 'GET';
+      var answer = function (b) { return Promise.resolve(new Response(JSON.stringify(b), { headers: { 'Content-Type': 'application/json' } })); };
+      if (get && /\/embed\/v1\/thauma\/signup(\?|$)/.test(s)) return answer({ lists: R.lists });
+      if (get && /\/api\/contact\?/.test(s)) {
+        var lang = m ? decodeURIComponent(m[1]) : '';
+        return answer({ topics: R.topics.map(function (t) { return { id: t.id, label: t.labels[lang] || t.label }; }) });
+      }
+      return real.apply(this, arguments);
+    };
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href]');
+      if (a) e.preventDefault();
+    }, true);
+    document.addEventListener('DOMContentLoaded', function () {
+      var el = document.querySelector(sel);
+      if (!el) return;
+      if (el.tagName === 'DIALOG') el.setAttribute('open', '');
+      for (var n = el; n && n.parentElement; n = n.parentElement) {
+        n.hidden = false;
+        [].forEach.call(n.parentElement.children, function (c) {
+          if (c !== n && !/^(SCRIPT|STYLE|LINK|META)$/.test(c.tagName)) c.style.display = 'none';
+        });
+        if (n.parentElement === document.body) break;
+      }
+      function tell() { parent.postMessage({ __thaumaSite: Math.ceil(el.getBoundingClientRect().bottom + scrollY + (el.tagName === 'DIALOG' ? 24 : 0)) }, '*'); }
+      if (window.ResizeObserver) new ResizeObserver(tell).observe(el);
+      tell();
+    });
+  }
 
   /* The real widget or form, in a frame sandboxed to scripts only, drawn
      from the screen rather than from what is saved — the preview leads
      Save. */
   function drawPreview() {
-    var frame = $('wfFrame'), item = state.item;
+    var item = state.item;
     if (!state.draft) return;
     fit(lastH);
+    if (onSite(item)) { drawSite(); return; }
+    var my = ++seq;
     var mode = state.theme;
     var bg = mode === 'light' ? '#ffffff' : mode === 'dark' ? '#0b0f15' : 'Canvas';
     var head = '<!doctype html><meta charset="utf-8">' +
@@ -298,11 +404,11 @@
     var theme = ' data-theme="' + esc(mode) + '"', lang = ' data-lang="' + esc(state.lang) + '"';
 
     if (!isForm(item)) {
-      if (!state.data) { frame.removeAttribute('srcdoc'); return; }
-      frame.srcdoc = head +
+      if (!state.data) { show(null); return; }
+      show(head +
         '<script>window.__thaumaPreview=' + JSON.stringify(state.data).replace(/</g, '\\u003c') + '</' + 'script>' +
         '<div data-thauma="thauma" data-widget="' + item + '"' + theme + lang + '></div>' +
-        '<script src="' + location.origin + '/embed/v1/widget.js"></' + 'script>';
+        '<script src="' + location.origin + '/embed/v1/widget.js"></' + 'script>', false);
       return;
     }
     var fa = ' data-accent="' + ACCENT + '" data-accent2="' + ACCENT2 + '"' + theme + lang;
@@ -312,18 +418,30 @@
       var v = String(words[f[0]] || '').trim();
       if (v) fa += ' data-' + f[0] + '="' + esc(v) + '"';
     });
-    var tag = item === 'signup' ? 'form' : 'contact';
-    frame.srcdoc = head + '<div data-thauma-' + tag + fa + '></div>' +
-      '<script src="/embed/v1/thauma/' + tag + '.js?t=' + Date.now() + '"></' + 'script>';
+    var tag = item === 'signup' ? 'form' : 'contact', d = state.draft;
+    /* The form as it is on screen here — its lists, reasons and words — built
+       by the server the way a visitor's is (lib/form-preview.js). */
+    call('POST', { action: 'form-preview', form: item, draft: {
+      lists: Object.keys(d.lists).filter(function (id) { return d.lists[id]; }), signupWords: d.formWords.signup,
+      topics: d.contact.topics, contactOpen: d.contact.is_open, contactWords: d.formWords.contact } })
+      .catch(function () { return {}; })
+      .then(function (b) {
+        if (my !== seq) return;
+        show(head + '<div data-thauma-' + tag + fa + '></div>' + (b.script ? inline(b.script) : ''), false);
+      });
   }
 
   /* The frame takes the height its content reports. A form is scaled to
      fit rather than scrolled, and says so. */
   window.addEventListener('message', function (e) {
-    var h = e.data && e.data.__thaumaHeight;
+    /* thauma.one's page says how tall its part is. */
+    var h = e.data && (onSite(state.item) ? e.data.__thaumaSite : e.data.__thaumaHeight);
     var frame = $('wfFrame');
-    if (!h || !frame || frame.contentWindow !== e.source) return;
-    fit(Math.max(180, Math.min(2400, h)));
+    if (!h) return;
+    h = Math.max(180, Math.min(2400, h));
+    if (nextFrame && nextFrame.contentWindow === e.source) { nextH = h; return; }
+    if (!frame || frame.contentWindow !== e.source) return;
+    fit(h);
   });
 
   var lastH = 300;
@@ -331,7 +449,11 @@
     lastH = h;
     var frame = $('wfFrame'), wrap = $('wfScale'), stage = $('wfStage');
     var scale;
-    if (isForm(state.item)) {
+    if (onSite(state.item)) {
+      var sw = stage.getBoundingClientRect().width || SITE_W;
+      scale = state.device === 'wide' ? Math.min(1, sw / SITE_W) : 1;
+      wrap.style.inlineSize = state.device === 'wide' && scale < 1 ? SITE_W + 'px' : '100%';
+    } else if (isForm(state.item)) {
       scale = Math.min(1, PREVIEW_MAX_H / h);
       wrap.style.inlineSize = (100 / scale) + '%';
     } else if (state.device === 'wide') {
@@ -350,7 +472,7 @@
   window.addEventListener('resize', function () { fit(lastH); });
 
   function drawAll() {
-    drawList(); drawSide(); drawLangs(); drawWords(); drawContact(); drawLists(); drawBar(); drawPreviewSoon();
+    drawList(); drawSide(); drawLangs(); drawWords(); drawContact(); drawLists(); drawWhere(); drawBar(); drawPreviewSoon();
   }
   /* After an edit: everything but the field being typed in. */
   function changed() { drawList(); drawSide(); drawBar(); drawPreviewSoon(); }
@@ -459,7 +581,7 @@
     if (pick) {
       state.item = pick.dataset.wf;
       lastH = 300;
-      drawList(); drawSide(); drawWords(); drawPreviewSoon();
+      drawList(); drawSide(); drawWords(); drawWhere(); drawPreviewSoon();
       return;
     }
     if (!state.draft) return;
@@ -482,6 +604,7 @@
     });
   });
   $('wfLang').addEventListener('change', function () { state.lang = this.value; drawSide(); drawPreviewSoon(); });
+  $('wfWhere').addEventListener('change', function () { state.where[state.item] = this.value; drawWhere(); drawPreviewSoon(); });
   $('wfTheme').addEventListener('change', function () { state.theme = this.value; drawSide(); drawPreviewSoon(); });
   $('wfCopy').addEventListener('click', function () {
     navigator.clipboard.writeText(code()).then(function () { toast(tr('ml.copied'), 'ok'); })

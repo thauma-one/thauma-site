@@ -68,8 +68,8 @@ function answers({ admin = true } = {}) {
   };
 }
 
-async function boot({ hash = "", admin = true } = {}) {
-  const sent = [];
+async function boot({ hash = "", admin = true, site = null } = {}) {
+  const sent = [], previews = [];
   const a = answers({ admin });
   const dom = new JSDOM(readFileSync(PAGE, "utf8"), {
     runScripts: "outside-only", pretendToBeVisual: true,
@@ -79,9 +79,13 @@ async function boot({ hash = "", admin = true } = {}) {
   w.fetch = async (url, opts = {}) => {
     url = String(url);
     const method = opts.method || "GET";
-    if (method !== "GET") sent.push({ url, method, body: JSON.parse(opts.body) });
+    /* A preview asked for is not a save: kept apart (Shown On, form-preview). */
+    const preview = url.includes("/site/") || /"action":"form-preview"/.test(opts.body || "");
+    if (method !== "GET") (preview ? previews : sent).push({ url, method, body: JSON.parse(opts.body) });
+    if (url.includes("/site/")) return { ok: true, status: 200, text: async () => "<!doctype html><html><head></head><body><main><section id=\"s-x\"></section></main></body></html>" };
     const body = url.includes("staff-settings") ? a.settings
-      : url.includes("staff-embed") ? a.preview : a.mail;
+      : url.includes("staff-embed") ? a.preview : url.includes("staff-site") ? (site || { site: null })
+      : /"action":"form-preview"/.test(opts.body || "") ? { script: "/*form*/" } : a.mail;
     return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(body)) };
   };
   w.StaffProblem = () => {}; w.StaffProblemClear = () => {};
@@ -100,7 +104,9 @@ async function boot({ hash = "", admin = true } = {}) {
   const pick = async (k) => { click(item(k)); await settle(); };
   const save = async () => { click(d.getElementById("shSave")); await settle(200); };
   const type = (el, v) => { el.value = v; el.dispatchEvent(new w.Event("input", { bubbles: true })); };
-  return { w, d, sent, click, item, pick, save, type };
+  /* The newest drawing: it loads behind the one shown and takes its place. */
+  const drawn = () => [].slice.call(d.querySelectorAll("#shScale iframe")).pop();
+  return { w, d, sent, previews, click, item, pick, save, type, drawn };
 }
 
 await check("the six are listed, each saying whether it is live", async () => {
@@ -176,7 +182,7 @@ await check("the second color is a number of degrees round, or free", async () =
 });
 
 await check("an embed wears the ministry's colors, or its own", async () => {
-  const { d, sent, pick, click, type, save, item } = await boot();
+  const { d, sent, pick, click, type, save, item, drawn } = await boot();
   await pick("goal");
   eq(d.getElementById("shOwnPicker").hidden, true, "its own picker shows before it has its own");
   click(d.querySelector('#shLookSeg [data-look="own"]'));
@@ -185,7 +191,7 @@ await check("an embed wears the ministry's colors, or its own", async () => {
   type(d.querySelector('#shOwnPicker [data-hex="1"]'), "#E4572E");
   assert(item("goal").classList.contains("is-dirty"), "the row should be marked");
   await settle(250);
-  assert(/"accent":"#E4572E"/.test(d.getElementById("shFrame").getAttribute("srcdoc") || ""),
+  assert(/"accent":"#E4572E"/.test(drawn().getAttribute("srcdoc") || ""),
     "the preview does not wear the embed's own color");
   await save();
   eq(sent[0].body.embed.accent, "#1AE4FF", "the ministry's color moved");
@@ -237,7 +243,7 @@ await check("the sign-up form: a list saved whole, the form's words saved as the
 });
 
 await check("writing Croatian beside English: the English shows above, both are saved", async () => {
-  const { w, d, sent, pick, type, save } = await boot();
+  const { w, d, sent, pick, type, save, drawn } = await boot();
   await pick("signup");
   const writing = d.getElementById("shWriting");
   assert(/usual words/.test(writing.querySelector('option[value="hr"]').textContent),
@@ -247,8 +253,8 @@ await check("writing Croatian beside English: the English shows above, both are 
   const ref = d.querySelector('#shWordFields .ms-ref');
   eq(ref && ref.textContent, "Stay in touch", "the English heading shown above");
   type(d.querySelector('#shWordFields [data-word="heading"]'), "Javite nam se");
-  assert(/data-lang="hr"/.test(d.getElementById("shFrame").srcdoc || "") ||
-    await new Promise((r) => setTimeout(() => r(/data-lang="hr"/.test(d.getElementById("shFrame").srcdoc)), 250)),
+  assert(/data-lang="hr"/.test(drawn().srcdoc || "") ||
+    await new Promise((r) => setTimeout(() => r(/data-lang="hr"/.test(drawn().srcdoc)), 250)),
     "the preview should be in the language being written");
   await save();
   const f = sent.find((p) => p.body.action === "form-words");
@@ -329,6 +335,35 @@ await check("the roadmap's code is Full or Condensed, and nothing is saved by ch
 await check("a reload comes back to the same one", async () => {
   const { item } = await boot({ hash: "#contact" });
   assert(item("contact").classList.contains("is-on"), "opened on something else");
+});
+
+/* SHOWN ON (Chase, 2026-10-28: the previews should "match what actually show
+   up on that web page … even if they aren't saved yet"). */
+await check("on the ministry's own site: its page, drawn by the site with what is on screen", async () => {
+  const site = { site: { preview: "/site/chaseroush/" }, languages: ["en", "hr"], fallback: "en",
+    page_names: { en: { home: "Home", stay: "Stay Connected" } },
+    pages: [{ id: "home", path: "home", label: {}, sections: [{ id: "h1", type: "hero" }, { id: "t1", type: "timeline" }] },
+            { id: "stay", path: "stay", label: {}, sections: [{ id: "f1", type: "signup" }] }] };
+  const { w, d, sent, previews, pick, click, drawn } = await boot({ site });
+  await pick("signup");
+  const where = d.getElementById("shWhere");
+  eq(d.getElementById("shWhereWrap").hidden, false, "Shown On, for an item on the site");
+  eq([].map.call(where.options, (o) => o.textContent), ["Stay Connected", "Other Websites"], "its page, or elsewhere");
+  click(d.querySelector('#shLists [data-list="l2"]'));
+  await settle(300);
+  const last = previews.filter((p) => p.url.includes("/site/")).pop();
+  assert(last && last.url === "/site/chaseroush/en/stay/?draft", `the page asked for: ${last && last.url}`);
+  eq(last.body.forms.lists, ["l1", "l2"], "the list switched on, not saved yet");
+  assert(/<base href="https:\/\/next.thauma.one\/site\/chaseroush\/en\/stay\/">/.test(drawn().srcdoc) && /"s-f1"/.test(drawn().srcdoc), "the page, at its address, cut to its section");
+  eq(drawn().hasAttribute("sandbox"), false, "the site's own page, same-origin as the Site Creator's preview");
+  eq(sent.length, 0, "nothing saved");
+  where.value = "other";
+  where.dispatchEvent(new w.Event("change"));
+  await settle(300);
+  eq(drawn().getAttribute("sandbox"), "allow-scripts", "on other websites: sandboxed, as before");
+  assert(/data-thauma-form/.test(drawn().srcdoc) && /\/\*form\*\//.test(drawn().srcdoc), "the form, built from the screen");
+  await pick("prayer");
+  eq(d.getElementById("shWhereWrap").hidden, true, "nothing to choose for an item the site does not carry");
 });
 
 /* ---- the preview fits ---- */

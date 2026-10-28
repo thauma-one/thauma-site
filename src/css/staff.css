@@ -2371,8 +2371,14 @@ html.console-menu-open{overflow:hidden}
 
 .sh-mid{min-width:0}
 .sh-mid .emb-stagebar{align-items:center;gap:12px}
+/* Shown On and Language keep together, at the right, when the bar wraps. */
+.sh-picks{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px 18px;margin-left:auto}
 #shStage{overflow:hidden}
 #shStage iframe{display:block;inline-size:100%;block-size:300px;border:0;background:transparent}
+/* The next drawing, loading behind the one shown (staff-sharing.js and
+   admin-forms.js, show). */
+.emb-scale{position:relative}
+.emb-scale iframe.is-next{position:absolute;inset:0 auto auto 0;opacity:0;pointer-events:none}
 .sh-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   padding:18px 20px;margin-bottom:14px}
 .sh-card[hidden]{display:none}

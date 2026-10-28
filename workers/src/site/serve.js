@@ -27,6 +27,7 @@ import { assertNoPersonalData } from "../lib/nopii.js";
 import { siteOrigin } from "../lib/origin.js";
 import { cleanDoc, PAGES, word, builtInLangs, cleanLinkTarget, pagePath, pageAt } from "./model.js";
 import { renderPage, simplePage } from "./render.js";
+import { withSharingDraft, withDraftLooks, cleanFormDraft, draftFormScripts } from "../lib/form-preview.js";
 
 const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -309,8 +310,15 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
     return simplePage("Not found", "There is no page at this address.", 404);
   }
 
-  const partner = await db.queryOne("partner_for_site", { partner_id: row.partner_id });
-  const payload = await embedPayload(db, partner, { onlyShared: false });
+  /* SHARING'S WORKING COPY (Chase, 2026-10-28: the Sharing previews should
+     "match what actually show up on that web page" and show changes "even if
+     they aren't saved yet"). Sharing posts what is on its screen — the
+     ministry's colors, the timeline's period, the forms' lists, reasons and
+     words — and gets this page drawn with it. A preview's only, for the team
+     the ?draft gate above let in; nothing is stored. */
+  const unsaved = draft && request.method === "POST" ? await request.json().catch(() => null) : null;
+  const partner = withSharingDraft(await db.queryOne("partner_for_site", { partner_id: row.partner_id }), unsaved);
+  const payload = withDraftLooks(await embedPayload(db, partner, { onlyShared: false }), partner, unsaved);
   try { assertNoPersonalData(payload, { where: "partner site" }); }
   catch (err) {
     console.error("partner site withheld:", err.message);
@@ -320,11 +328,14 @@ export async function serveSite(request, env, { sub, rest, base, draft = false }
   /* ?part=footer, for the console's Footer tab (Chase, 2026-09-29: "Can the
      footer preview show ONLY the footer?"). Previews only. */
   const only = draft && url.searchParams.get("part") === "footer" ? "footer" : null;
+  const origin = siteOrigin(env, request) || url.origin;
+  const scripts = unsaved ? await draftFormScripts(db, { partnerId: row.partner_id, slug: row.slug, origin,
+    look: partner, forms: cleanFormDraft(unsaved.forms) }) : {};
   const html = renderPage({
-    doc, payload, lang, pageId, base, draft, only, langNames,
+    doc, payload, lang, pageId, base, draft, only, langNames, scripts,
     theme: payload.theme,
     site: { slug: row.slug, display_name: row.display_name, giving_url: row.giving_url, subdomain: row.subdomain },
-    origin: siteOrigin(env, request) || url.origin,
+    origin,
   });
   return new Response(html, {
     headers: {

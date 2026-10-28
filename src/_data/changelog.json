@@ -2,6 +2,26 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-28-sharing-shown-on",
+      "date": "2026-10-28",
+      "page": "staff:sharing",
+      "text": {
+        "en": "Sharing's preview can now show each piece on your own site — the page it is on, drawn by the site itself in its own design — or as it looks pasted on other websites (Shown On, above the preview). Everything you change shows straight away, before Save: the colors, the timeline's dates, the lists on the sign-up form, the contact form's reasons and the forms' words.",
+        "hr": "Pregled u Dijeljenju sada može prikazati svaki dio na vašoj stranici — na stranici na kojoj se nalazi, kako je sama stranica crta u svom izgledu — ili kako izgleda kad se zalijepi na druge web-stranice (Prikazano na, iznad pregleda). Sve što promijenite vidi se odmah, prije spremanja: boje, datumi vremenske crte, popisi na obrascu za prijavu, razlozi kontaktnog obrasca i riječi obrazaca.",
+        "sr": "Преглед у Дијељењу сада може приказати сваки дио на вашој страници — на страници на којој се налази, како је сама страница црта у свом изгледу — или како изгледа кад се залијепи на друге веб-странице (Приказано на, изнад прегледа). Све што промијените види се одмах, прије спремања: боје, датуми временске црте, спискови на обрасцу за пријаву, разлози контактног обрасца и ријечи образаца."
+      }
+    },
+    {
+      "id": "2026-10-28-admin-sharing-shown-on",
+      "date": "2026-10-28",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Sharing can now show each one on thauma.one — the Events, Resources and Contact pages and the Stay Connected window — or as it looks pasted on other websites. The contact form's reasons and the sign-up lists show there before Save.",
+        "hr": "Web-stranica › Dijeljenje sada može prikazati svaki dio na thauma.one — stranice Događaji, Resursi i Kontakt te prozor za prijavu — ili kako izgleda zalijepljen na druge web-stranice. Razlozi kontaktnog obrasca i popisi za prijavu vide se ondje prije spremanja.",
+        "sr": "Веб-страница › Дијељење сада може приказати сваки дио на thauma.one — странице Догађаји, Ресурси и Контакт те прозор за пријаву — или како изгледа залијепљен на друге веб-странице. Разлози контактног обрасца и спискови за пријаву виде се ондје прије спремања."
+      }
+    },
+    {
       "id": "2026-10-28-site-smaller",
       "date": "2026-10-28",
       "page": "staff:website",

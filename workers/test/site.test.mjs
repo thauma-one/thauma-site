@@ -14,6 +14,7 @@ import { removeSiteDns } from "../src/lib/site-dns.js";
 import { word } from "../src/site/model.js";
 import * as MODEL from "../src/site/model.js";
 import { sized, sizedInline, SIZE_JS, SITE_UNIT } from "../src/site/size.js";
+import { cleanFormDraft, draftFormScripts, withSharingDraft, withDraftLooks } from "../src/lib/form-preview.js";
 /* the page as written, before its lengths became site units (site/size.js) */
 const unsized = (h) => String(h).replace(/calc\(var\(--su,1px\)\*(-?[\d.]+)\)/g, "$1px");
 import { readFileSync } from "node:fs";
@@ -1469,6 +1470,42 @@ check("smaller on a computer: every length in site units, 80% on a wide screen a
   const W = readFileSync(new URL("../src/embed-widget.js", import.meta.url), "utf8");
   assert(/getAttribute\('data-look'\) \? sized\(css\) : css/.test(W), "the widgets on a ministry's site only");
   for (const f of ["signup", "contact"]) assert(readFileSync(new URL(`../src/${f}.js`, import.meta.url), "utf8").includes("(node.getAttribute('data-look') ? sized : String)("), `the ${f} form too`);
+});
+
+/* SHARING'S PREVIEW IS THE SITE (Chase, 2026-10-28: the previews should
+   "match what actually show up on that web page … even if they aren't saved
+   yet"): a ?draft page drawn with Sharing's working copy. */
+await checkAsync("Sharing draws the site's page with what is on its screen, saved or not", async () => {
+  const d = starter("full", { name: "Chase Roush", langs: ["en"], fallback: "en" });
+  for (const id of ["stay", "contact"]) d.pages.find((p) => p.id === id).on = true;
+  /* Saved: the form's script from the server, as a visitor gets it. */
+  assert(page(d, "stay").includes('src="https://thauma.one/embed/v1/chase-roush/form.js" defer'), "saved: the form's own script");
+  /* Unsaved: the script built from the screen, inline; a closed form none. */
+  const own = page(d, "stay", "en", { scripts: { signup: "var x='</script><!--';" } });
+  assert(!own.includes("/form.js") && own.includes("<script>var x='<\\/script><\\!--';</script>"), "the working copy's script, inline and unbreakable");
+  assert(!page(d, "contact", "en", { scripts: { contact: "" } }).includes("contact.js"), "a contact form switched off draws nothing");
+
+  /* The lists switched on there, the reasons and words as typed. */
+  const db = { async query(name, p) {
+    assert(name === "mailing_lists_for_partner" && p.partner_id === 7, "the ministry's own lists");
+    return [{ id: "a", slug: "news", name: "News", texts: "{}" }, { id: "b", slug: "prayer", name: "Prayer", texts: "{}" }];
+  } };
+  const forms = cleanFormDraft({ lists: ["b"], signupOpen: true, signupWords: { en: { button: "Join Now" }, "x y": {} },
+    topics: [{ label: "Hello", labels: { hr: "Bok" } }, { label: " " }], contactOpen: true });
+  assert(forms.topics.length === 1 && Object.keys(forms.signupWords).join() === "en", "only real languages and named reasons");
+  const out = await draftFormScripts(db, { partnerId: 7, slug: "chase-roush", origin: "https://thauma.one", look: null, forms });
+  assert(out.signup.includes('value=\\"prayer') && !out.signup.includes('value=\\"news'), "the lists switched on");
+  assert(out.signup.includes("Join Now") && out.contact.includes("Hello") && out.contact.includes("Bok"), "the words and reasons as typed");
+  const shut = await draftFormScripts(db, { partnerId: 7, slug: "c", origin: "o", forms: cleanFormDraft({ lists: ["a"], signupOpen: false, topics: [], contactOpen: false }) });
+  assert(shut.signup === "" && shut.contact === "", "closed forms: nothing");
+  assert(Object.keys(await draftFormScripts(db, { partnerId: 7, slug: "c", origin: "o", forms: cleanFormDraft({}) })).length === 0, "nothing said: as saved");
+
+  /* The ministry's colors, period and each widget's own colors. */
+  const p = withSharingDraft({ id: 7, embed_accent: "#1AE4FF", timeline_start: "2026-01-01" },
+    { accent: "#FF5A36", turn: 40, period: { start: "2027-02-03", end: "nope" } });
+  assert(p.embed_accent === "#FF5A36" && p.embed_turn === 40 && p.timeline_start === "2027-02-03" && p.timeline_end === null, "colors and period laid over");
+  const pay = withDraftLooks({ looks: { roadmap: { accent: "#1AE4FF" }, goal: { accent: "#1AE4FF" } } }, p, { looks: { roadmap: { accent: "#00FF00" }, goal: { accent: null } } });
+  assert(pay.looks.roadmap.accent === "#00FF00" && pay.looks.goal.accent === "#FF5A36", "a widget's own colors, or the ministry's");
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

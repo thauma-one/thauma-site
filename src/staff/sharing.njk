@@ -55,8 +55,14 @@ staffHeading: What Appears on <b>Other Websites</b>
       </div>
       <span class="emb-scale-note" id="shScaleNote"></span>
       <span class="c-gap"></span>
-      <label class="sh-pick" id="shLangWrap"><span data-i18n="emb.lang">Language</span>
-        <select id="shLang"></select></label>
+      <span class="sh-picks">
+        {#- Its page on the ministry's own site, drawn by the site, or Other
+           Websites (staff-sharing.js, Shown On). -#}
+        <label class="sh-pick" id="shWhereWrap" hidden><span data-i18n="sh.shownOn">Shown On</span>
+          <select id="shWhere"></select></label>
+        <label class="sh-pick" id="shLangWrap"><span data-i18n="emb.lang">Language</span>
+          <select id="shLang"></select></label>
+      </span>
     </div>
     <div class="emb-stage" id="shStage">
       <div class="emb-scale" id="shScale">

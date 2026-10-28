@@ -1486,7 +1486,7 @@ function renderSection(sec, ctx) {
  *   origin   where the widget and form scripts come from
  *   draft    true: a preview of what is not published yet
  */
-export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft, only = null, langNames = {} }) {
+export function renderPage({ doc, site, payload, theme, lang, pageId, base, origin, draft, only = null, langNames = {}, scripts = {} }) {
   DIMS = doc.dims || {};
   const fallback = doc.fallback;
   const design = doc.design;
@@ -1796,6 +1796,12 @@ export function renderPage({ doc, site, payload, theme, lang, pageId, base, orig
     (draft ? "" : `<link rel="alternate" hreflang="x-default" href="${esc(altHref(doc.fallback))}">`);
   const m = design.motion;
   const widgets = /data-thauma="/.test(body);
+  /* A form's script, or — for Sharing's preview of the page with its working
+     copy (lib/form-preview.js) — that script built from what is on screen
+     there, inline: "" is a form the working copy has closed. */
+  const formTag = (file, own) => own === undefined
+    ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/${file}" defer></script>`
+    : own ? `<script>${String(own).replace(/<\/(script)/gi, "<\\/$1").replace(/<!--/g, "<\\!--")}</script>` : "";
   /* WHEN THE MENU FOLDS INTO ITS BUTTON: on a phone-sized screen always;
      above that, only when the page has measured that nothing else makes it
      fit on one line (NAV_JS: tighter, socials gathered, pages under More).
@@ -1836,8 +1842,8 @@ ${body}
 </main>
 ${foot}${appAsk}`}
 ${widgets ? `<script>window.__thaumaPreview=${JSON.stringify(payload).replace(/</g, "\\u003c")};</script><script src="${esc(origin)}/embed/v1/widget.js" async></script>` : ""}
-${ctx.needs.signup ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/form.js" defer></script>` : ""}
-${ctx.needs.contact ? `<script src="${esc(origin)}/embed/v1/${esc(site.slug)}/contact.js" defer></script>` : ""}
+${ctx.needs.signup ? formTag("form.js", scripts.signup) : ""}
+${ctx.needs.contact ? formTag("contact.js", scripts.contact) : ""}
 <script>${MOTION_JS}</script>${draft || !site.subdomain ? "" : `<script>(${HIT_JS})(${JSON.stringify(String(site.subdomain))})</script>`}
 </body>
 </html>`;

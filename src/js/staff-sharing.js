@@ -36,6 +36,8 @@
   var SETTINGS = '/api/staff-settings';
   var PREVIEW = '/api/staff-embed';
   var MAILING = '/api/staff-mailing';
+  /* Where on the ministry's own site each item sits (Shown On). */
+  var SITE = '/api/staff-site?sections';
   var HEX = /^#[0-9a-fA-F]{6}$/;
   var DEFAULT_ACCENT = '#1AE4FF';
   var PREVIEW_MAX_H = 480;
@@ -46,6 +48,10 @@
   var DESKTOP_W = 1000;
   var WIDGETS = ['roadmap', 'goal', 'prayer', 'videos'];
   var ITEMS = WIDGETS.concat(['signup', 'contact']);
+  /* The section of the ministry's site that draws each item. */
+  var SECTION_OF = { roadmap: 'timeline', goal: 'goals', prayer: 'prayer', videos: 'videos', signup: 'signup', contact: 'contact' };
+  /* A site's page is shown at a computer's width, as the Site Creator shows it. */
+  var SITE_W = 1280;
 
   var $ = function (id) { return document.getElementById(id); };
   function tr(key) { return window.StaffI18n ? window.StaffI18n.t(key) : key; }
@@ -83,7 +89,7 @@
   /* ---- state ----------------------------------------------------------- */
 
   var state = {
-    settings: null, payload: null, mail: null,
+    settings: null, payload: null, mail: null, site: null, where: {},
     item: null, device: 'wide', lang: null,
     saved: null, draft: null, busy: false,
     writing: null, beside: null, roadStyle: 'full',
@@ -204,6 +210,69 @@
     return !!d.contact.is_open;
   }
 
+  /* ---- shown on ---------------------------------------------------------
+     SHOWN ON (Chase, 2026-10-28: "make the Sharing previews match what
+     actually show up on that web page … even if they aren't saved yet").
+     On the ministry's own site an item wears the site's design — its type,
+     cards, fields and the layout its section chose — not the look it has
+     pasted elsewhere. So the preview offers each page of the site that
+     carries it, drawn by the site itself with this page's working copy, and
+     Other Websites. */
+  function places(item) {
+    var s = state.site, out = [];
+    if (!s || !s.pages) return out;
+    s.pages.forEach(function (p) {
+      var mine = p.sections.filter(function (x) { return x.type === SECTION_OF[item]; });
+      mine.forEach(function (x, i) {
+        out.push({ key: p.id + '/' + x.id, page: p, sec: x,
+          label: pageName(p) + (mine.length > 1 ? ' · ' + (i + 1) : '') });
+      });
+    });
+    return out;
+  }
+  function pageName(p) {
+    var l = (window.StaffI18n && window.StaffI18n.lang) || 'en', s = state.site;
+    var own = p.label || {};
+    return own[l] || own[s.fallback] || ((s.page_names || {})[l] || (s.page_names || {}).en || {})[p.id] ||
+      Object.keys(own).map(function (k) { return own[k]; }).filter(Boolean)[0] || p.id;
+  }
+  /* The place chosen for an item: its first page on the site until another
+     is picked, or Other Websites when the site has none. */
+  function placeOf(item) {
+    var all = places(item), want = state.where[item];
+    if (want === 'other') return null;
+    return all.filter(function (p) { return p.key === want; })[0] || all[0] || null;
+  }
+  function drawWhere() {
+    var all = places(state.item), at = placeOf(state.item);
+    $('shWhereWrap').hidden = !all.length;
+    if (!all.length) return;
+    $('shWhere').innerHTML = '<optgroup label="' + esc(tr('sh.yourSite')) + '">' + all.map(function (p) {
+      return '<option value="' + esc(p.key) + '">' + esc(p.label) + '</option>';
+    }).join('') + '</optgroup><option value="other">' + esc(tr('sh.otherSites')) + '</option>';
+    $('shWhere').value = at ? at.key : 'other';
+  }
+  /* What is on screen here, as the site's page reads it (lib/form-preview.js):
+     the ministry's colors and period only where this account may see them. */
+  function sharingDraft() {
+    var d = state.draft, out = {};
+    if (state.settings) {
+      out.accent = d.accent; out.accent2 = d.accent2; out.turn = d.turn; out.theme = d.theme;
+      out.period = d.period;
+      out.looks = d.looks;
+    }
+    out.forms = formDraft();
+    return out;
+  }
+  function formDraft() {
+    var d = state.draft;
+    return {
+      lists: Object.keys(d.lists).filter(function (id) { return d.lists[id]; }), signupOpen: d.signupOpen,
+      signupWords: d.formWords.signup,
+      topics: d.contact.topics, contactOpen: d.contact.is_open, contactWords: d.formWords.contact
+    };
+  }
+
   /* ---- drawing --------------------------------------------------------- */
 
   function drawBar() {
@@ -261,6 +330,8 @@
     if (own) paintPicker($('shOwnPicker'), item);
     $('shTheme').value = l.theme || d.theme;
     $('shTheme').disabled = !admin;
+    /* A background is the other website's: the site's own page has its own. */
+    $('shTheme').closest('.sh-pick').hidden = !!placeOf(item);
   }
 
   /* ---- the wheel (color-pair.js) ------------------------------------
@@ -464,13 +535,97 @@
      The real widget or form, in a frame sandboxed to scripts only (no
      same-origin, so it cannot reach this console's session), drawn from the
      screen rather than from what is saved — the preview leads Save. */
-  var timer = null;
+  var timer = null, seq = 0, lastSite = '';
   function drawPreviewSoon() { clearTimeout(timer); timer = setTimeout(drawPreview, 180); }
 
+  /* A NEW DRAWING FADES IN OVER THE OLD (as the Site Creator's does): it
+     loads in a second frame, hidden, and takes the old one's place once it
+     has, so typing a word does not blink the preview. A page of the
+     ministry's own site is same-origin, as the Site Creator's preview is, so
+     the site's fonts and pictures load; anything else stays sandboxed. */
+  var nextFrame = null, nextH = 0;
+  function show(html, site) {
+    var old = $('shFrame');
+    if (nextFrame && nextFrame.parentNode) nextFrame.parentNode.removeChild(nextFrame);
+    if (html == null) { nextFrame = null; old.removeAttribute('srcdoc'); return; }
+    var next = document.createElement('iframe');
+    next.title = old.title;
+    if (!site) next.setAttribute('sandbox', 'allow-scripts');
+    next.className = 'is-next';
+    nextFrame = next; nextH = 0;
+    next.addEventListener('load', function () {
+      setTimeout(function () {
+        if (nextFrame !== next) return;
+        nextFrame = null;
+        if (old.parentNode) old.parentNode.removeChild(old);
+        next.id = 'shFrame'; next.className = '';
+        if (nextH) fit(nextH);
+      }, 80);
+    }, { once: true });
+    old.parentNode.appendChild(next);
+    next.srcdoc = html;
+  }
+  function inline(js) {
+    return '<script>' + String(js).replace(/<\/(script)/gi, '<\\/$1') + '</' + 'script>';
+  }
+
+  /* ITS PAGE ON THE SITE, drawn by the site with this page's working copy
+     (a POST to the ?draft page, site/serve.js), cut to the one section:
+     everything else on the page is hidden, links stay put, and it arrives
+     settled — the preview is of the thing, not of its entrance. */
+  async function drawSite(at) {
+    var item = state.item, s = state.site;
+    var langs = s.languages || [];
+    var want = isForm(item) ? state.writing : state.lang;
+    var lang = langs.indexOf(want) !== -1 ? want : s.fallback || langs[0];
+    var path = s.site.preview + lang + '/' + (at.page.id === 'home' ? '' : at.page.path + '/');
+    var body = JSON.stringify(sharingDraft());
+    var key = path + '#' + at.sec.id + '|' + state.device + '|' + body;
+    if (key === lastSite) return;
+    lastSite = key;
+    var my = ++seq;
+    var res = await fetch(path + '?draft', { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: body }).catch(function () { return null; });
+    var html = res && res.ok ? await res.text() : '';
+    if (my !== seq) return;
+    if (!html) { lastSite = ''; show(null); return; }
+    var only = '<base href="' + esc(location.origin + path) + '">' +
+      '<style>html.sh-only body{margin:0}html.sh-only main{padding:0!important;margin:0!important}</style>' +
+      inline('(' + onlySection.toString() + ')(' + JSON.stringify('s-' + at.sec.id) + ')');
+    show(html.replace(/<head>/i, function (h) { return h + only; }), true);
+  }
+  /* Runs inside the frame. */
+  function onlySection(id) {
+    var d = document.documentElement;
+    d.classList.add('sh-only', 'settled');
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href]');
+      if (a) e.preventDefault();
+    }, true);
+    document.addEventListener('DOMContentLoaded', function () {
+      var el = document.getElementById(id);
+      if (!el) return;
+      for (var n = el; n && n.parentElement; n = n.parentElement) {
+        n.hidden = false;
+        [].forEach.call(n.parentElement.children, function (c) {
+          if (c !== n && !/^(SCRIPT|STYLE|LINK|META)$/.test(c.tagName)) c.style.display = 'none';
+        });
+        if (n.parentElement === document.body) break;
+      }
+      function tell() { parent.postMessage({ __thaumaSite: Math.ceil(el.getBoundingClientRect().bottom + scrollY) }, '*'); }
+      if (window.ResizeObserver) new ResizeObserver(tell).observe(el);
+      tell();
+    });
+  }
+
   function drawPreview() {
-    var frame = $('shFrame'), d = state.draft, item = state.item;
+    var d = state.draft, item = state.item;
     if (!d || !item) return;
     fit(lastH);
+    var at = placeOf(item);
+    if (at) { drawSite(at); return; }
+    lastSite = '';
+    var my = ++seq;
     var look = lookOf(item), mode = look.mode;
     /* The background the mode assumes: "Match their page" follows the
        viewer's own light or dark setting. Dark is --bg (main.css). */
@@ -481,7 +636,7 @@
       '<body style="margin:0;padding:20px;background:' + bg + '">';
 
     if (!isForm(item)) {
-      if (!state.payload || !slug()) { frame.removeAttribute('srcdoc'); return; }
+      if (!state.payload || !slug()) { show(null); return; }
       var live = clone(state.payload);
       live.theme = look;
       delete live.looks;
@@ -489,14 +644,14 @@
       var attrs = 'data-thauma="' + esc(slug()) + '"' + (item !== 'goal' ? ' data-widget="' + item + '"' : '') +
         (item === 'roadmap' && state.roadStyle === 'condensed' ? ' data-style="condensed"' : '') +
         (state.lang ? ' data-lang="' + esc(state.lang) + '"' : '');
-      frame.srcdoc = head +
+      show(head +
         '<script>window.__thaumaPreview=' + JSON.stringify(live).replace(/</g, '\\u003c') + '</' + 'script>' +
         '<div ' + attrs + '></div>' +
-        '<script src="' + location.origin + '/embed/v1/widget.js"></' + 'script>';
+        '<script src="' + location.origin + '/embed/v1/widget.js"></' + 'script>', false);
       return;
     }
 
-    if (!who()) { frame.removeAttribute('srcdoc'); return; }
+    if (!who()) { show(null); return; }
     var fa = ' data-accent="' + esc(look.accent) + '" data-accent2="' + esc(look.accent2) + '"' +
       ' data-theme="' + esc(mode) + '"';
     /* In the language being written, with its words as typed. */
@@ -508,18 +663,30 @@
       else if (f[0] === 'blurb') fa += ' data-blurb=""';
     });
     var tag = item === 'signup' ? 'form' : 'contact';
-    frame.srcdoc = head + '<div data-thauma-' + tag + fa + '></div>' +
-      '<script src="/embed/v1/' + encodeURIComponent(who()) + '/' + tag + '.js?t=' + Date.now() + '"></' + 'script>';
+    /* The form as it is on screen here — its lists, reasons and words — built
+       by the server the way a visitor's is (lib/form-preview.js). */
+    fetch(MAILING, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'form-preview', form: item, draft: formDraft() }) })
+      .then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
+      .then(function (b) {
+        if (my !== seq) return;
+        show(head + '<div data-thauma-' + tag + fa + '></div>' + (b.script ? inline(b.script) : ''), false);
+      });
   }
 
   /* The frame takes the height its content reports. A form is scaled down to
      fit rather than scrolled, and says so — otherwise the smaller type reads
      as the type a visitor gets. */
   window.addEventListener('message', function (e) {
-    var h = e.data && e.data.__thaumaHeight;
-    var frame = $('shFrame');
-    if (!h || !frame || frame.contentWindow !== e.source) return;
+    var frame = $('shFrame'), site = !!placeOf(state.item);
+    /* A site's page says how tall its section is; the widget inside it
+       reports only itself. */
+    var h = e.data && (site ? e.data.__thaumaSite : e.data.__thaumaHeight);
+    if (!h) return;
     h = Math.max(180, Math.min(2400, h));
+    /* The drawing still loading behind keeps its height for when it shows. */
+    if (nextFrame && nextFrame.contentWindow === e.source) { nextH = h; return; }
+    if (!frame || frame.contentWindow !== e.source) return;
     fit(h);
   });
 
@@ -528,7 +695,11 @@
     lastH = h;
     var frame = $('shFrame'), wrap = $('shScale'), stage = $('shStage');
     var scale;
-    if (isForm(state.item)) {
+    if (placeOf(state.item)) {
+      var sw = stage.getBoundingClientRect().width || SITE_W;
+      scale = state.device === 'wide' ? Math.min(1, sw / SITE_W) : 1;
+      wrap.style.inlineSize = state.device === 'wide' && scale < 1 ? SITE_W + 'px' : '100%';
+    } else if (isForm(state.item)) {
       scale = Math.min(1, PREVIEW_MAX_H / h);
       wrap.style.inlineSize = (100 / scale) + '%';
     } else if (state.device === 'wide') {
@@ -552,6 +723,7 @@
     drawSide();
     drawLook();
     drawWords();
+    drawWhere();
     drawBar();
     drawPreviewSoon();
   }
@@ -579,10 +751,12 @@
   }
 
   async function load() {
-    var r = await Promise.allSettled([get(SETTINGS), get(PREVIEW), get(MAILING)]);
+    var r = await Promise.allSettled([get(SETTINGS), get(PREVIEW), get(MAILING), get(SITE)]);
     state.settings = r[0].status === 'fulfilled' ? r[0].value : null;
     state.payload = r[1].status === 'fulfilled' ? r[1].value : null;
     state.mail = r[2].status === 'fulfilled' ? r[2].value : null;
+    state.site = r[3].status === 'fulfilled' && r[3].value.site ? r[3].value : null;
+    lastSite = '';
     if (!state.settings && !state.mail) {
       $('shList').innerHTML = '<p class="empty">' + esc((r[0].reason && r[0].reason.message) || tr('err.unreachable')) + '</p>';
       return;
@@ -809,6 +983,12 @@
     if (!b || b.dataset.road === state.roadStyle) return;
     state.roadStyle = b.dataset.road;
     drawSide();
+    drawPreviewSoon();
+  });
+
+  $('shWhere').addEventListener('change', function () {
+    state.where[state.item] = this.value;
+    drawLook();
     drawPreviewSoon();
   });
 

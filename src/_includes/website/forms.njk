@@ -31,8 +31,13 @@
         </div>
         <span class="emb-scale-note" id="wfScaleNote"></span>
         <span class="c-gap"></span>
-        <label class="sh-pick"><span data-i18n="emb.lang">Language</span>
-          <select id="wfLang"></select></label>
+        <span class="sh-picks">
+          {#- Its place on thauma.one, or Other Websites (admin-forms.js). -#}
+          <label class="sh-pick"><span data-i18n="sh.shownOn">Shown On</span>
+            <select id="wfWhere"></select></label>
+          <label class="sh-pick"><span data-i18n="emb.lang">Language</span>
+            <select id="wfLang"></select></label>
+        </span>
       </div>
       <div class="emb-stage" id="wfStage">
         <div class="emb-scale" id="wfScale">
