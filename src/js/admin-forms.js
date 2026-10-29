@@ -315,9 +315,15 @@
       setTimeout(function () {
         if (nextFrame !== next) return;
         nextFrame = null;
-        if (old.parentNode) old.parentNode.removeChild(old);
-        next.id = 'wfFrame'; next.className = '';
+        /* it takes the old one's name and height, fades in over it, and
+           the old one goes once it is covered */
+        old.id = ''; next.id = 'wfFrame';
         if (nextH) fit(nextH);
+        next.classList.add('is-in');
+        setTimeout(function () {
+          if (old.parentNode) old.parentNode.removeChild(old);
+          next.className = '';
+        }, 260);
       }, 80);
     }, { once: true });
     old.parentNode.appendChild(next);
@@ -352,8 +358,13 @@
   }
   /* Runs inside the frame. */
   function onlyPart(sel, R) {
-    var d = document.documentElement, real = window.fetch;
+    var d = document.documentElement, real = window.fetch, mm = window.matchMedia;
     d.classList.add('wf-only');
+    /* It arrives settled, as staff Sharing's does: the preview is of the
+       thing, not of its entrance (the site's motion asks this first). */
+    window.matchMedia = function (q) {
+      return /prefers-reduced-motion:\s*reduce/.test(q) ? { matches: true, media: q, addEventListener: function () {}, removeEventListener: function () {}, addListener: function () {}, removeListener: function () {} } : mm.call(window, q);
+    };
     window.fetch = function (u, o) {
       var s = String(u && u.url ? u.url : u), m = /[?&]lang=([^&]*)/.exec(s);
       var get = !o || !o.method || String(o.method).toUpperCase() === 'GET';
@@ -502,8 +513,10 @@
       call('GET'),
       fetch(DATA, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
     ]);
+    /* drawn now, either way: it fades in (staff.css, SHARING ARRIVES ONCE) */
     if (got[0].status !== 'fulfilled') {
-      $('wfProblem').textContent = got[0].reason.message; $('wfProblem').hidden = false; return;
+      $('wfProblem').textContent = got[0].reason.message; $('wfProblem').hidden = false;
+      root.classList.add('is-ready'); return;
     }
     $('wfProblem').hidden = true;
     state.mail = got[0].value;
@@ -511,6 +524,10 @@
     state.saved = snapshot();
     state.draft = clone(state.saved);
     drawAll();
+    /* drawn, the stage at its size: it fades in (staff.css, SHARING
+       ARRIVES ONCE) */
+    fit(lastH);
+    root.classList.add('is-ready');
   }
 
   async function save() {

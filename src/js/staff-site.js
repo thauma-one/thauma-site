@@ -1494,7 +1494,13 @@
 
   function drawOverview() {
     var pages = state.doc.pages;
-    $('wsPages').innerHTML = '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>' +
+    /* THE MENU OF PAGES ON THE LIST TOO (Chase, 2026-10-29, as on admin's
+       Pages): All Pages chosen, every page a choice away. */
+    $('wsPages').innerHTML = '<div class="ws-crumb"><label class="ws-pagepick"><span class="sr-only">' + esc(tr('ws.tab.pages')) + '</span>' +
+        '<select data-pick-page><option value="" selected>' + esc(tr('ws.allPages')) + '</option>' + pages.map(function (x) {
+          return '<option value="' + esc(x.id) + '">' + esc(pageLabel(x, state.langA)) + (x.on ? '' : ' · ' + esc(tr('ws.off'))) + '</option>';
+        }).join('') + '</select></label></div>' +
+      '<div class="ws-head"><h2>' + esc(tr('ws.yourPages')) + '</h2></div>' +
       '<ol class="ws-plist">' + pages.map(function (x, i) {
         var n = allSecs(x).length;
         return '<li class="ws-prow' + (x.on ? '' : ' is-off') + '" data-pid="' + esc(x.id) + '">' +
@@ -2684,7 +2690,7 @@
 
   $('wsRoot').addEventListener('change', async function (e) {
     var t = e.target, p = currentPage();
-    if (t.dataset.pickPage !== undefined) { state.page = t.value; state.edit = null; drawPages(); refreshFrame(); return; }
+    if (t.dataset.pickPage !== undefined) { state.page = t.value || null; state.edit = null; drawPages(); refreshFrame(); return; }
     if (t.dataset.advPage !== undefined) { state.advPage = t.value; drawAdvanced(); return; }
     if (t.dataset.chipPick) return applyChip(t.dataset.chipPick, t.value);
     /* A description typed in reads as the language writes one — English in

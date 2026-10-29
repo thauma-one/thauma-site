@@ -110,6 +110,11 @@
           <span class="console-me-fallback" data-i18n="nav.account">Account</span>
           <span class="console-caret" aria-hidden="true"></span>
         </button>
+        {#- The name from this tab's last page, before the header is drawn
+            (2026-10-29): staff.js put it there after, so every page showed
+            "Account", then the name, a different width. staff.js paints it
+            again from the server; a stale one is corrected there. -#}
+        <script>try{var w=JSON.parse(sessionStorage.getItem('thauma.staff.who')||'null'),p=document.getElementById('partnerPill');if(w&&w.name&&p){p.textContent=w.name;p.title=w.email||'';p.hidden=false}}catch(e){}</script>
         <div class="console-me-menu" id="consoleMe">
           {#- The ministry's own site, once it is switched on (0044) — filled
               and shown by staff.js from /api/staff-site?brief. Beside it,

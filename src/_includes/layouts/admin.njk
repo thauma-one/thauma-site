@@ -22,6 +22,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>{{ adminTitle }} · Thauma Administration</title>
+{#- The type, fetched with the styles rather than after them, so a page is
+    not drawn in the fallback font first and redrawn (2026-10-29). -#}
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
 <link rel="stylesheet" href="/css/tokens.css?v={{ "/css/tokens.css" | v }}">
 <link rel="stylesheet" href="/css/staff.css?v={{ "/css/staff.css" | v }}">
 <link rel="stylesheet" href="/css/admin.css?v={{ "/css/admin.css" | v }}">
@@ -29,6 +33,7 @@
 {% include "console-roles-head.njk" %}
 </head>
 <body class="is-admin" data-admin-page="{{ adminPage }}">
+{% include "console-env.njk" %}
 
 {#- The stripe. Full width, above everything, present on every admin page and
    on none of the staff ones. -#}

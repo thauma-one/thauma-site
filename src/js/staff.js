@@ -2143,71 +2143,8 @@
   }
   window.StaffPrompt = promptDialog;
 
-  /* =====================================================================
-     WHICH ONE AM I LOOKING AT
-     =====================================================================
-     Three consoles exist and they are pixel-identical. Since 2026-09-29 all
-     three read and write ONE database, thauma-ops (wrangler.toml, ONE
-     DATABASE) — so what differs is the CODE each runs, and the band's job
-     became saying that an edit on dev or staging is an edit to the real
-     records. Before that each read a different database, and on 2026-08-20
-     that cost an evening: the dev console
-     was asked whether the database was up to date, answered "yes" — correctly,
-     about its own database — and production was published past three unapplied
-     migrations on the strength of it. Later the same night, production's admin
-     pages were reported empty while every request in the log had gone to the
-     Pi. Neither was a misreading of anything on screen, because there was
-     nothing on screen to read.
-
-     FROM THE HOSTNAME, NOT FROM THE API. This has to be right exactly when
-     everything else is broken — an environment label that disappears when the
-     server errors is missing at the only moment it matters. The hostname is
-     already in the address bar and cannot fail to load.
-
-     The mapping is checked against wrangler.toml by
-     test/console-environment.test.mjs, so it cannot quietly drift from the
-     bindings it claims to describe. */
-  var ENVIRONMENTS = {
-    'thauma.one':      { key: 'production', label: 'PRODUCTION', db: 'thauma-ops',
-                         note: 'the live site' },
-    'next.thauma.one': { key: 'staging',    label: 'STAGING',
-                         db: 'thauma-ops — the real records, shared with the live site',
-                         note: 'Edits here are real — the live site uses these same records' },
-    'dev.thauma.one':  { key: 'dev',        label: 'DEV',
-                         db: 'thauma-ops — the real records, shared with the live site',
-                         note: 'Edits here are real — the live site uses these same records' },
-  };
-
-  function showEnvironment() {
-    var env = ENVIRONMENTS[location.hostname];
-    /* THE LIVE CONSOLE WEARS NO BAND (Chase, 2026-10-14: "The actual
-       thauma.one staff and admin pages shouldn't have that Production
-       banner. It should just be the site all buttoned up"). The band exists
-       to set dev and staging apart from it; with no band, it is live. */
-    if (env && env.key === 'production') return;
-    /* An unknown host is worth saying out loud rather than staying silent:
-       localhost, a tunnel, somebody's fork. "I do not know" is information. */
-    if (!env) {
-      env = { key: 'unknown', label: location.hostname.toUpperCase(),
-              db: 'unknown', note: 'not a known Thauma address' };
-    }
-
-    var band = document.createElement('div');
-    band.className = 'env-band env-' + env.key;
-    band.setAttribute('role', 'note');
-    band.innerHTML =
-      '<b>' + esc(env.label) + '</b>' +
-      '<span class="env-note">' + esc(env.note) + '</span>' +
-      '<span class="env-db">database: <code>' + esc(env.db) + '</code></span>';
-
-    var top = document.querySelector('.top');
-    if (top && top.parentNode) top.parentNode.insertBefore(band, top);
-    else document.body.insertBefore(band, document.body.firstChild);
-
-    document.documentElement.classList.add('has-env-band');
-  }
-
-  showEnvironment();
+  /* WHICH ONE AM I LOOKING AT — the band naming dev or staging is drawn
+     before the header, from src/_includes/console-env.njk. */
 
   /* THE SEAM. Logging a contact from the supporter dialog changes what this
      table says about that person — that is the point of logging it — so the

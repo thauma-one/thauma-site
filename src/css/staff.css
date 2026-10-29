@@ -2379,6 +2379,19 @@ html.console-menu-open{overflow:hidden}
    admin-forms.js, show). */
 .emb-scale{position:relative}
 .emb-scale iframe.is-next{position:absolute;inset:0 auto auto 0;opacity:0;pointer-events:none}
+/* SHARING ARRIVES ONCE (Chase, 2026-10-29: "the sharing section glitches
+   between navigation and isn't smooth"). It was drawn empty, then its list,
+   then its panels, each moving the others, then the preview at one height
+   and another. Now it waits for what it fetches and fades in drawn
+   (is-ready, staff-sharing.js and admin-forms.js load; three seconds at most
+   if something stops it); a new drawing fades in over the old; the stage
+   glides to the drawing's height. */
+.sh-page>*{transition:opacity .25s cubic-bezier(.55,.05,.45,.95)}
+.sh-page:not(.is-ready)>:not(.rolegate){opacity:0;animation:sh-late 0s 3s forwards}
+@keyframes sh-late{to{opacity:1}}
+.emb-scale iframe.is-next.is-in{opacity:1;transition:opacity .25s cubic-bezier(.55,.05,.45,.95)}
+#wfStage,#shStage{transition:block-size .25s cubic-bezier(.55,.05,.45,.95)}
+@media (prefers-reduced-motion:reduce){.sh-page>*,.emb-scale iframe.is-next.is-in,#wfStage,#shStage{transition:none}}
 .sh-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   padding:18px 20px;margin-bottom:14px}
 .sh-card[hidden]{display:none}

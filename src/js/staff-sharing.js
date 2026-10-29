@@ -557,9 +557,15 @@
       setTimeout(function () {
         if (nextFrame !== next) return;
         nextFrame = null;
-        if (old.parentNode) old.parentNode.removeChild(old);
-        next.id = 'shFrame'; next.className = '';
+        /* it takes the old one's name and height, fades in over it, and
+           the old one goes once it is covered */
+        old.id = ''; next.id = 'shFrame';
         if (nextH) fit(nextH);
+        next.classList.add('is-in');
+        setTimeout(function () {
+          if (old.parentNode) old.parentNode.removeChild(old);
+          next.className = '';
+        }, 260);
       }, 80);
     }, { once: true });
     old.parentNode.appendChild(next);
@@ -759,6 +765,7 @@
     lastSite = '';
     if (!state.settings && !state.mail) {
       $('shList').innerHTML = '<p class="empty">' + esc((r[0].reason && r[0].reason.message) || tr('err.unreachable')) + '</p>';
+      ready();
       return;
     }
     if (window.StaffActing && state.settings) window.StaffActing(state.settings);
@@ -770,6 +777,14 @@
     state.draft = clone(state.saved);
     fillLangs();
     choose(state.item || (location.hash || '').slice(1) || items()[0]);
+    if (state.draft && state.item) fit(lastH);
+    ready();
+  }
+  /* drawn, the stage at its size: it fades in (staff.css, SHARING ARRIVES
+     ONCE) */
+  function ready() {
+    var pg = document.querySelector('.sh-page');
+    if (pg) pg.classList.add('is-ready');
   }
 
   /* ---- saving ---------------------------------------------------------- */

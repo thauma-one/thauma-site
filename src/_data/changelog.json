@@ -2,6 +2,46 @@
   "_about": "What's new, in words a person reads (docs: workers/src/changes.js). One entry per change somebody would notice, added WITH the change: id (unique, never reused), date, page (console | site | staff:<slug> | admin:<slug>, as in consoleNav.js — it decides who sees the entry), text in every console language. Publish puts every entry not yet published into that release.",
   "entries": [
     {
+      "id": "2026-10-29-staff-pages-menu-on-list",
+      "date": "2026-10-29",
+      "page": "staff:website",
+      "text": {
+        "en": "Site Creator › Pages: the menu of pages is at the top of the list of pages too, so any page is one choice away.",
+        "hr": "Kreator stranice › Stranice: izbornik stranica sada je i na vrhu popisa stranica, pa je svaka stranica udaljena jedan odabir.",
+        "sr": "Креатор странице › Странице: изборник страница сада је и на врху пописа страница, па је свака страница удаљена један одабир."
+      }
+    },
+    {
+      "id": "2026-10-29-console-steady-pages",
+      "date": "2026-10-29",
+      "page": "console",
+      "text": {
+        "en": "Moving between pages is steadier: the header arrives with your name, its type and the dev band already in place, instead of shifting a moment later.",
+        "hr": "Prelazak između stranica je mirniji: zaglavlje stiže s vašim imenom, svojim slovima i trakom razvojne verzije već na mjestu, umjesto da se pomakne trenutak kasnije.",
+        "sr": "Прелазак између страница је мирнији: заглавље стиже с вашим именом, својим словима и траком развојне верзије већ на мјесту, умјесто да се помјери тренутак касније."
+      }
+    },
+    {
+      "id": "2026-10-29-sharing-arrives-once",
+      "date": "2026-10-29",
+      "page": "staff:sharing",
+      "text": {
+        "en": "Sharing opens in one smooth step: it waits until it is drawn, then fades in, and the preview fades from one drawing to the next instead of jumping.",
+        "hr": "Dijeljenje se otvara u jednom glatkom koraku: čeka dok se ne iscrta, zatim se pojavi, a pregled prelazi s jednog prikaza na drugi bez skokova.",
+        "sr": "Дијељење се отвара у једном глатком кораку: чека док се не исцрта, затим се појави, а преглед прелази с једног приказа на други без скокова."
+      }
+    },
+    {
+      "id": "2026-10-29-admin-sharing-arrives-once",
+      "date": "2026-10-29",
+      "page": "admin:website",
+      "text": {
+        "en": "Website › Sharing opens in one smooth step, and thauma.one's pages in its preview arrive settled, without their entrance.",
+        "hr": "Web-stranica › Dijeljenje otvara se u jednom glatkom koraku, a stranice thauma.one u pregledu stižu smirene, bez svog ulaska.",
+        "sr": "Веб-страница › Дијељење отвара се у једном глатком кораку, а странице thauma.one у прегледу стижу смирене, без свог уласка."
+      }
+    },
+    {
       "id": "2026-10-28-admin-pages-every-preview",
       "date": "2026-10-28",
       "page": "admin:website",

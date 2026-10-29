@@ -31,14 +31,14 @@ const eq = (a, b, m) => assert(JSON.stringify(a) === JSON.stringify(b),
   `${m} — got ${JSON.stringify(a)}, want ${JSON.stringify(b)}`);
 
 const root = new URL("../", import.meta.url);
-const staffJs = readFileSync(fileURLToPath(new URL("src/js/staff.js", root)), "utf8");
+const staffJs = readFileSync(fileURLToPath(new URL("src/_includes/console-env.njk", root)), "utf8");
 const toml = readFileSync(fileURLToPath(new URL("wrangler.toml", root)), "utf8");
 
 /* The mapping as the browser will see it. Parsed out of the source rather than
    imported, because staff.js is an IIFE that needs a DOM to run. */
 function mappingFromSource() {
   const block = staffJs.match(/var ENVIRONMENTS = \{([\s\S]*?)\n  \};/);
-  if (!block) throw new Error("could not find ENVIRONMENTS in staff.js");
+  if (!block) throw new Error("could not find ENVIRONMENTS in console-env.njk");
   const out = {};
   for (const m of block[1].matchAll(
     /'([^']+)':\s*\{[^}]*?key:\s*'([^']+)'[^}]*?db:\s*'([^']+)'/g)) {

@@ -27,12 +27,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>{{ staffTitle }} · Thauma Staff</title>
+{#- The type, fetched with the styles rather than after them, so a page is
+    not drawn in the fallback font first and redrawn (2026-10-29). -#}
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Sora-latin-v2.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/Inter-latin-v2.woff2" crossorigin>
 <link rel="stylesheet" href="/css/tokens.css?v={{ "/css/tokens.css" | v }}">
 <link rel="stylesheet" href="/css/staff.css?v={{ "/css/staff.css" | v }}">
 {% set consoleApp = true %}{% include "brand-head.njk" %}
 {% include "console-roles-head.njk" %}
 </head>
 <body class="is-staff" data-staff-page="{{ staffPage }}">
+{% include "console-env.njk" %}
 
 {% include "console-header.njk" %}
 
